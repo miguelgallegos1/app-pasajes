@@ -1,11 +1,13 @@
 // app/login/page.tsx
-// Pantalla de login: 6 cajitas de PIN, tema negro y naranja.
+// Pantalla de login: 6 cajitas de PIN, tema negro y naranja, logo de buseta.
 // El PIN por sí solo identifica al usuario (es único por persona).
 
 "use client";
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { IconoBuseta } from "../../components/Icons";
+import { APP_NOMBRE } from "../../lib/config";
 
 export default function LoginPage() {
   const [digitos, setDigitos] = useState(["", "", "", "", "", ""]);
@@ -29,7 +31,6 @@ export default function LoginPage() {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "PIN incorrecto");
-      // Limpiamos las cajitas para que intente de nuevo
       setDigitos(["", "", "", "", "", ""]);
       inputsRef.current[0]?.focus();
       return;
@@ -46,9 +47,7 @@ export default function LoginPage() {
   };
 
   const handleChange = (index: number, valor: string) => {
-    // Solo permite un dígito numérico por cajita
     const soloNumero = valor.replace(/[^0-9]/g, "").slice(-1);
-
     const nuevosDigitos = [...digitos];
     nuevosDigitos[index] = soloNumero;
     setDigitos(nuevosDigitos);
@@ -57,14 +56,12 @@ export default function LoginPage() {
       inputsRef.current[index + 1]?.focus();
     }
 
-    // Si ya se llenaron las 6 cajitas, se envía automáticamente
     if (nuevosDigitos.every((d) => d !== "") && index === 5) {
       enviarPin(nuevosDigitos.join(""));
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    // Al borrar en una cajita vacía, salta a la anterior
     if (e.key === "Backspace" && !digitos[index] && index > 0) {
       inputsRef.current[index - 1]?.focus();
     }
@@ -74,13 +71,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-black px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500 mb-4">
-            <span className="text-2xl font-bold text-black">P</span>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500 mb-4 text-black">
+            <IconoBuseta className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Gestión de Pasajes</h1>
-          <p className="text-sm text-neutral-400 mt-1">
-            Ingresa tu PIN de 6 dígitos
-          </p>
+          <h1 className="text-2xl font-bold text-white">{APP_NOMBRE}</h1>
+          <p className="text-sm text-neutral-400 mt-1">Ingresa tu PIN de 6 dígitos</p>
         </div>
 
         <div className="flex justify-center gap-2 sm:gap-3">
@@ -105,15 +100,8 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {error && (
-          <p className="text-sm text-red-500 text-center mt-4">{error}</p>
-        )}
-
-        {loading && (
-          <p className="text-sm text-orange-400 text-center mt-4">
-            Verificando...
-          </p>
-        )}
+        {error && <p className="text-sm text-red-500 text-center mt-4">{error}</p>}
+        {loading && <p className="text-sm text-orange-400 text-center mt-4">Verificando...</p>}
       </div>
     </div>
   );

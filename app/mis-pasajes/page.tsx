@@ -1,6 +1,4 @@
 // app/mis-pasajes/page.tsx
-// Panel del colaborador: ve su historial y puede crear/eliminar solicitudes.
-
 import { redirect } from "next/navigation";
 import { db } from "../../lib/db";
 import { getSession } from "../../lib/auth";
@@ -8,36 +6,68 @@ import PanelColaborador from "../../components/PanelColaborador";
 
 export default async function MisPasajesPage() {
   const session = await getSession();
-
-  // Si no hay sesión, o el rol no corresponde a un colaborador, al login
   if (!session) redirect("/login");
 
   const colaborador = await db.colaborador.findUnique({
     where: { usuarioId: session.id },
+  });
+  if (!colaborador) redirect("/login");
+
+  const equipo = colaborador.esSupervisor
+    ? await db.colaborador.findMany({
+        where: { supervisorId: colaborador.id, estado: "ACTIVO" },
+        select: { id: true, nombreCompleto: true },
+        orderBy: { nombreCompleto: "asc" },
+      })
+    : [];
+
+  // Si es Supervisor, la tabla trae SUS solicitudes + las de todo su equipo.
+  // Si es colaborador normal, solo las suyas.
+  const idsAConsultar = [colaborador.id, ...equipo.map((c) => c.id)];
+
+  const solicitudes = await db.solicitudPasaje.findMany({
+    where: {
+      colaboradorId: { in: idsAConsultar },
+      estado: { in: ["PENDIENTE", "APROBADA"] },
+    },
+    orderBy: { fecha: "desc" },
     include: {
-      ruta: true,
-      solicitudes: { orderBy: { fechaSolicitud: "desc" } },
+      ruta: { include: { area: true } },
+      colaborador: { select: { nombreCompleto: true } },
     },
   });
 
-  if (!colaborador) redirect("/login");
+  const rutasPropias = await db.ruta.findMany({
+    where: { sitioId: colaborador.sitioId, areaId: colaborador.areaId, activo: true },
+    include: { area: true },
+    orderBy: { valor: "asc" },
+  });
 
-  // Convertimos los campos Decimal a number simple para poder pasarlos
-  // a un componente cliente (Next.js no serializa el tipo Decimal de Prisma)
-  const solicitudesSerializadas = colaborador.solicitudes.map((s) => ({
+  const solicitudesSerializadas = solicitudes.map((s) => ({
     id: s.id,
-    frecuencia: s.frecuencia,
-    cantidadPasajes: s.cantidadPasajes,
+    fecha: s.fecha.toISOString(),
+    fechaSolicitud: s.fechaSolicitud.toISOString(),
     montoTotal: Number(s.montoTotal),
     estado: s.estado,
-    fechaSolicitud: s.fechaSolicitud.toISOString(),
-    comentario: s.comentario,
+    observaciones: s.observaciones,
+    rutaLabel: s.ruta.area.nombre,
+    nombreColaborador: s.colaborador.nombreCompleto,
+  }));
+
+  const rutasPropiasSerializadas = rutasPropias.map((r) => ({
+    id: r.id,
+    valor: Number(r.valor),
+    label: r.area.nombre,
   }));
 
   return (
     <PanelColaborador
+      colaboradorId={colaborador.id}
       nombreCompleto={colaborador.nombreCompleto}
-      nombreRuta={colaborador.ruta.nombre}
+      fotoUrl={colaborador.fotoUrl}
+      esSupervisor={colaborador.esSupervisor}
+      equipo={equipo}
+      rutasPropias={rutasPropiasSerializadas}
       solicitudes={solicitudesSerializadas}
     />
   );

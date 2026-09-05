@@ -1,52 +1,36 @@
 // ============================================================
 // SCHEMA DE BASE DE DATOS - App de Gestión de Pasajes Corporativos
 // ============================================================
-// Este archivo define TODAS las tablas de la base de datos.
-// Cada vez que lo modifiques, debes correr:
+// Cada vez que modifiques este archivo, corre:
 //   npx --no-install prisma migrate dev --name nombre_del_cambio
-// para que Prisma actualice la base de datos real en Neon.
 // ============================================================
 
-// Generador del cliente: crea el código TypeScript que usamos
-// en el resto de la app para leer/escribir en la base de datos.
 generator client {
   provider = "prisma-client"
-  output   = "../app/generated/prisma" // carpeta autogenerada, no se toca a mano
+  output   = "../app/generated/prisma"
 }
 
-// Conexión a la base de datos (la URL real vive en .env, no aquí)
 datasource db {
   provider = "postgresql"
 }
 
 // ------------------------------------------------------------
-// ENUMS: listas fijas de valores posibles (evitan errores de tipeo)
+// ENUMS
 // ------------------------------------------------------------
 
-// Roles del sistema (ver módulo 1 de requerimientos)
 enum Rol {
-  SUPER_ADMIN   // control total del sistema
-  ADMIN_TH      // Talento Humano: gestiona su(s) sitio(s)
-  COLABORADOR   // usuario final que registra pasajes
-  FINANZAS      // marca solicitudes aprobadas como pagadas
+  SUPER_ADMIN
+  ADMIN_TH
+  COLABORADOR
+  FINANZAS
 }
 
-// Estado de un colaborador dentro de la empresa
 enum EstadoColaborador {
   ACTIVO
   INACTIVO
 }
 
-// Frecuencia con la que un colaborador solicita pasajes
-enum Frecuencia {
-  DIARIA
-  SEMANAL
-  MENSUAL
-  ANUAL
-}
-
-// Ciclo de vida de una solicitud de pasajes:
-// PENDIENTE -> (APROBADA o RECHAZADA) -> PAGADA
+// Ciclo de vida: PENDIENTE -> (APROBADA o RECHAZADA) -> PAGADA
 enum EstadoSolicitud {
   PENDIENTE
   APROBADA
@@ -55,19 +39,20 @@ enum EstadoSolicitud {
 }
 
 // ------------------------------------------------------------
-// EMPRESA: nivel más alto de la jerarquía organizacional
+// EMPRESA
 // ------------------------------------------------------------
 model Empresa {
   id        String            @id @default(cuid())
   nombre    String
-  ruc       String?           @unique // RUC/NIT, opcional pero único si se llena
+  ruc       String?           @unique
   activo    Boolean           @default(true)
   createdAt DateTime          @default(now())
-  sitios    SitioProductivo[] // una empresa tiene muchos sitios
+  sitios    SitioProductivo[]
+  rutas     Ruta[]
 }
 
 // ------------------------------------------------------------
-// SITIO PRODUCTIVO: cada empresa puede tener varias sedes/plantas
+// SITIO PRODUCTIVO
 // ------------------------------------------------------------
 model SitioProductivo {
   id            String        @id @default(cuid())
@@ -75,12 +60,13 @@ model SitioProductivo {
   direccion     String?
   empresa       Empresa       @relation(fields: [empresaId], references: [id])
   empresaId     String
-  areas         Area[]        // un sitio tiene muchas áreas
-  colaboradores Colaborador[] // un sitio tiene muchos colaboradores
+  areas         Area[]
+  colaboradores Colaborador[]
+  rutas         Ruta[]
 }
 
 // ------------------------------------------------------------
-// ÁREA: departamento/sección dentro de un sitio (ej. Producción, Logística)
+// ÁREA
 // ------------------------------------------------------------
 model Area {
   id            String        @id @default(cuid())
@@ -88,75 +74,107 @@ model Area {
   sitio         SitioProductivo @relation(fields: [sitioId], references: [id])
   sitioId       String
   colaboradores Colaborador[]
+  rutas         Ruta[]
 }
 
 // ------------------------------------------------------------
-// RUTA: ruta de transporte que usa un colaborador, con su costo base
+// RUTA: definida por la combinación única Empresa + Sitio + Área,
+// con un VALOR FIJO que no se edita desde el formulario de solicitud.
+// Solo TH o Super Admin pueden crear/editar/dar de baja rutas
+// (esa pantalla de administración la construimos más adelante).
 // ------------------------------------------------------------
 model Ruta {
-  id            String        @id @default(cuid())
-  nombre        String        // ej. "Ruta Norte - Terminal Carcelén"
-  montoBase     Decimal       @db.Decimal(10, 2) // valor monetario base del pasaje
-  activo        Boolean       @default(true)
-  colaboradores Colaborador[]
+  id        String   @id @default(cuid())
+  empresa   Empresa  @relation(fields: [empresaId], references: [id])
+  empresaId String
+  sitio     SitioProductivo @relation(fields: [sitioId], references: [id])
+  sitioId   String
+  area      Area     @relation(fields: [areaId], references: [id])
+  areaId    String
+  valor     Decimal  @db.Decimal(10, 2) // valor fijo del pasaje para esta combinación
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  solicitudes SolicitudPasaje[]
+
+  // Relación opcional a futuro: "ruta habitual" de un colaborador,
+  // para autocompletar en el formulario cuando la app madure.
+  colaboradoresConEstaRutaHabitual Colaborador[] @relation("RutaHabitual")
+
+  // Evita crear dos rutas para la misma combinación Empresa+Sitio+Área
+  @@unique([empresaId, sitioId, areaId])
 }
 
 // ------------------------------------------------------------
-// USUARIO: cuenta de acceso al sistema (login con PIN)
-// Puede ser Super Admin, TH, Finanzas o un Colaborador
+// USUARIO: cuenta de acceso (login con PIN único)
 // ------------------------------------------------------------
 model Usuario {
   id          String       @id @default(cuid())
   nombre      String
-  email       String?      @unique // usado como "código de acceso" en el login
-  pinHash     String       // el PIN NUNCA se guarda en texto plano, solo su hash
+  email       String?      @unique
+  pinHash     String
   rol         Rol
   activo      Boolean      @default(true)
   createdAt   DateTime     @default(now())
-  colaborador Colaborador? // solo existe si el usuario es de rol COLABORADOR
+  colaborador Colaborador?
 }
 
 // ------------------------------------------------------------
-// COLABORADOR: datos específicos de un usuario tipo "colaborador"
-// (separado de Usuario para no mezclar datos de login con datos laborales)
+// COLABORADOR
 // ------------------------------------------------------------
 model Colaborador {
   id             String            @id @default(cuid())
   usuario        Usuario           @relation(fields: [usuarioId], references: [id])
   usuarioId      String            @unique
   nombreCompleto String
-  fotoUrl        String?           // URL de la foto (ej. subida a Cloudinary)
-  ruta           Ruta              @relation(fields: [rutaId], references: [id])
-  rutaId         String
+  fotoUrl        String?
   sitio          SitioProductivo   @relation(fields: [sitioId], references: [id])
   sitioId        String
   area           Area              @relation(fields: [areaId], references: [id])
   areaId         String
+
+  // Ruta habitual (opcional, para autocompletar en el futuro)
+  rutaHabitualId String?
+  rutaHabitual   Ruta?             @relation("RutaHabitual", fields: [rutaHabitualId], references: [id])
+
+  // --- Jerarquía de Supervisor / Equipo ---
+  // Si esSupervisor = true, puede crear solicitudes por su equipo.
+  esSupervisor   Boolean           @default(false)
+  supervisorId   String?
+  supervisor     Colaborador?      @relation("Equipo", fields: [supervisorId], references: [id])
+  equipo         Colaborador[]     @relation("Equipo")
+
   estado         EstadoColaborador @default(ACTIVO)
-  solicitudes    SolicitudPasaje[] // historial de solicitudes de este colaborador
+  solicitudes    SolicitudPasaje[]
   createdAt      DateTime          @default(now())
 }
 
 // ------------------------------------------------------------
-// SOLICITUD DE PASAJE: el corazón del sistema.
-// Ciclo de vida: PENDIENTE -> APROBADA/RECHAZADA -> PAGADA
+// SOLICITUD DE PASAJE: un registro = UN DÍA de pasaje.
 // ------------------------------------------------------------
 model SolicitudPasaje {
-  id              String          @id @default(cuid())
-  colaborador     Colaborador     @relation(fields: [colaboradorId], references: [id])
-  colaboradorId   String
-  frecuencia      Frecuencia
-  cantidadPasajes Int
-  montoTotal      Decimal         @db.Decimal(10, 2) // SIEMPRE calculado en el backend, nunca confiar en el valor del cliente
+  id            String          @id @default(cuid())
+  colaborador   Colaborador     @relation(fields: [colaboradorId], references: [id])
+  colaboradorId String
+
+  ruta          Ruta            @relation(fields: [rutaId], references: [id])
+  rutaId        String
+
+  fecha         DateTime        // el día del pasaje solicitado (no la fecha de creación)
+  montoTotal    Decimal         @db.Decimal(10, 2) // = ruta.valor al momento de crear (snapshot)
+  observaciones String?
+
   estado          EstadoSolicitud @default(PENDIENTE)
-  fechaSolicitud  DateTime        @default(now())
-  fechaAprobacion DateTime?       // se llena cuando TH aprueba
-  fechaPago       DateTime?       // se llena cuando Finanzas marca como pagada
-  aprobadoPorId   String?         // id del usuario de TH que aprobó
-  pagadoPorId     String?         // id del usuario de Finanzas que pagó
+  fechaSolicitud  DateTime        @default(now()) // cuándo se registró en el sistema
+  fechaAprobacion DateTime?
+  fechaPago       DateTime?
+  aprobadoPorId   String?
+  pagadoPorId     String?
   comentario      String?         // motivo de rechazo o nota de TH
 
-  // Índices para que el Dashboard filtre rápido por estado y por fecha
+  // Si un Supervisor creó esta solicitud en nombre de otro colaborador
+  creadoPorUsuarioId String?
+
   @@index([colaboradorId, estado])
-  @@index([fechaSolicitud])
+  @@index([fecha])
 }

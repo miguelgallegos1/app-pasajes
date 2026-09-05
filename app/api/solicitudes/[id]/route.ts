@@ -1,6 +1,6 @@
 // app/api/solicitudes/[id]/route.ts
-// DELETE: el colaborador solo puede eliminar SU PROPIA solicitud,
-// y solo si todavía está PENDIENTE de aprobación.
+// DELETE: el colaborador elimina SU PROPIA solicitud pendiente,
+// o un Supervisor elimina una pendiente de alguien de SU equipo.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
@@ -21,16 +21,22 @@ export async function DELETE(
     where: { id },
     include: { colaborador: true },
   });
-
   if (!solicitud) {
     return NextResponse.json({ error: "No encontrada" }, { status: 404 });
   }
 
+  const miColaborador = await db.colaborador.findUnique({
+    where: { usuarioId: session.id },
+  });
+
   const esPropietario = solicitud.colaborador.usuarioId === session.id;
+  const esSuSupervisor =
+    !!miColaborador?.esSupervisor && solicitud.colaborador.supervisorId === miColaborador.id;
   const esSuperAdmin = session.rol === "SUPER_ADMIN";
 
   const puedeEliminar =
-    esSuperAdmin || (esPropietario && solicitud.estado === "PENDIENTE");
+    esSuperAdmin ||
+    ((esPropietario || esSuSupervisor) && solicitud.estado === "PENDIENTE");
 
   if (!puedeEliminar) {
     return NextResponse.json(

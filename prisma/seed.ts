@@ -1,58 +1,68 @@
 // prisma/seed.ts
 //
-// Este script llena la base de datos con datos de PRUEBA:
-// una empresa, un sitio, dos áreas, dos rutas, y un usuario de cada rol.
-// Se ejecuta con: npx prisma db seed
+// Llena la base de datos con datos de PRUEBA usando la NUEVA estructura:
+// - Rutas ahora se definen por Empresa + Sitio + Área (valor fijo)
+// - Colaboradores ya no tienen una ruta fija, la eligen por solicitud
+// - Se incluye un Supervisor de ejemplo con un colaborador en su equipo
 //
-// NOTA: cada vez que lo corras, va a intentar CREAR estos registros de nuevo.
-// Si ya existen, te va a dar error de "unique constraint". Para reiniciar
-// todo desde cero, hay que borrar los datos en Prisma Studio primero.
+// Se ejecuta con: npx prisma db seed
 
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL }); 
-const db = new PrismaClient({ adapter }); 
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const db = new PrismaClient({ adapter });
 
 async function main() {
-  // 1. Empresa de prueba
+  // 1. Empresa
   const empresa = await db.empresa.create({
     data: { nombre: "GROWFLOWERS PRODUCCIONES S.A.", ruc: "1790012345001" },
   });
 
-  // 2. Sitio productivo de esa empresa
+  // 2. Sitio productivo
   const sitio = await db.sitioProductivo.create({
     data: {
       nombre: "CAYAMBE",
-      direccion: "Av. Galo Plaza Lasso",
+      direccion: "Vía Cayambe - Tabacundo",
       empresaId: empresa.id,
     },
   });
 
-  // 3. Áreas dentro del sitio
+  // 3. Áreas
   const areaProduccion = await db.area.create({
     data: { nombre: "Producción", sitioId: sitio.id },
   });
-  const areaLogistica = await db.area.create({
+  const areaCultivo = await db.area.create({
     data: { nombre: "Cultivo", sitioId: sitio.id },
   });
 
-  // 4. Rutas de transporte con su monto base
-  const rutaNorte = await db.ruta.create({
-    data: { nombre: "Tabacundo - Cayambe", montoBase: 0.45 },
+  // 4. Rutas: UNA por cada combinación Empresa + Sitio + Área, con valor fijo
+  const rutaProduccion = await db.ruta.create({
+    data: {
+      empresaId: empresa.id,
+      sitioId: sitio.id,
+      areaId: areaProduccion.id,
+      valor: 0.45,
+    },
   });
-  const rutaSur = await db.ruta.create({
-    data: { nombre: "Tabacundo - Y de Tabacundo", montoBase: 0.5 },
+  const rutaCultivo = await db.ruta.create({
+    data: {
+      empresaId: empresa.id,
+      sitioId: sitio.id,
+      areaId: areaCultivo.id,
+      valor: 0.5,
+    },
   });
 
-  // 5. Los PINes se hashean ANTES de guardarlos (nunca en texto plano)
+  // 5. PINes hasheados (nunca en texto plano)
   const pinHashAdmin = await bcrypt.hash("123456", 10);
   const pinHashTH = await bcrypt.hash("111111", 10);
-  const pinHashColab = await bcrypt.hash("222222", 10);
   const pinHashFin = await bcrypt.hash("333333", 10);
+  const pinHashSupervisor = await bcrypt.hash("444444", 10);
+  const pinHashColab = await bcrypt.hash("222222", 10);
 
-  // 6. Usuario Super Admin
+  // 6. Super Admin
   await db.usuario.create({
     data: {
       nombre: "Miguel Gallegos (Super Admin)",
@@ -62,7 +72,7 @@ async function main() {
     },
   });
 
-  // 7. Usuario de Talento Humano
+  // 7. Talento Humano
   await db.usuario.create({
     data: {
       nombre: "María Torres (TH)",
@@ -72,7 +82,7 @@ async function main() {
     },
   });
 
-  // 8. Usuario de Finanzas
+  // 8. Finanzas
   await db.usuario.create({
     data: {
       nombre: "Carlos Pago (Finanzas)",
@@ -82,7 +92,26 @@ async function main() {
     },
   });
 
-  // 9. Usuario Colaborador (junto con su registro de Colaborador asociado)
+  // 9. Supervisor (es un Colaborador con esSupervisor = true)
+  const usuarioSupervisor = await db.usuario.create({
+    data: {
+      nombre: "Ana Rodríguez (Supervisora)",
+      email: "supervisor@empresa.com",
+      pinHash: pinHashSupervisor,
+      rol: "COLABORADOR", // el supervisor sigue siendo rol COLABORADOR, solo con la bandera activada
+      colaborador: {
+        create: {
+          nombreCompleto: "Ana Rodríguez",
+          sitioId: sitio.id,
+          areaId: areaProduccion.id,
+          esSupervisor: true,
+        },
+      },
+    },
+    include: { colaborador: true },
+  });
+
+  // 10. Colaborador normal (Juan Pérez), asignado al equipo de Ana
   const usuarioColaborador = await db.usuario.create({
     data: {
       nombre: "Juan Pérez",
@@ -92,30 +121,33 @@ async function main() {
       colaborador: {
         create: {
           nombreCompleto: "Juan Pérez",
-          rutaId: rutaNorte.id,
           sitioId: sitio.id,
           areaId: areaProduccion.id,
+          supervisorId: usuarioSupervisor.colaborador!.id, // pertenece al equipo de Ana
         },
       },
     },
     include: { colaborador: true },
   });
 
-  // 10. Un par de solicitudes de ejemplo, en distintos estados
+  // 11. Solicitudes de ejemplo para Juan (una de ayer PENDIENTE, una de hoy APROBADA)
+  const ayer = new Date();
+  ayer.setDate(ayer.getDate() - 1);
+
   await db.solicitudPasaje.createMany({
     data: [
       {
         colaboradorId: usuarioColaborador.colaborador!.id,
-        frecuencia: "SEMANAL",
-        cantidadPasajes: 1,
-        montoTotal: 3.5,
+        rutaId: rutaProduccion.id,
+        fecha: ayer,
+        montoTotal: rutaProduccion.valor,
         estado: "PENDIENTE",
       },
       {
         colaboradorId: usuarioColaborador.colaborador!.id,
-        frecuencia: "MENSUAL",
-        cantidadPasajes: 1,
-        montoTotal: 15.4,
+        rutaId: rutaProduccion.id,
+        fecha: new Date(),
+        montoTotal: rutaProduccion.valor,
         estado: "APROBADA",
         fechaAprobacion: new Date(),
       },
@@ -127,7 +159,8 @@ async function main() {
   console.log("SUPER_ADMIN  → superadmin@empresa.com / PIN: 123456");
   console.log("ADMIN_TH     → th@empresa.com / PIN: 111111");
   console.log("FINANZAS     → finanzas@empresa.com / PIN: 333333");
-  console.log("COLABORADOR  → juan.perez@empresa.com / PIN: 222222");
+  console.log("SUPERVISOR   → Ana Rodríguez / PIN: 444444");
+  console.log("COLABORADOR  → Juan Pérez / PIN: 222222 (equipo de Ana)");
   console.log("-----------------------------------");
 }
 
