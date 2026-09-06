@@ -1,20 +1,23 @@
 // components/PanelColaborador.tsx
-// Panel del colaborador/supervisor: header, tabla (Pendientes/Aprobadas,
-// propias + del equipo si es Supervisor), formulario con comboboxes
-// buscables, historial de pagos, y confirmaciones con diseño propio.
+// Panel del colaborador/supervisor: buscador, tabla con observaciones
+// visibles, Editar/Eliminar mientras esté Pendiente o Rechazada, historial
+// de pagos, y confirmaciones con diseño propio.
 
 "use client";
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Header from "./Header";
 import CalendarioSelector from "./CalendarioSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ModalHistorial from "./ModalHistorial";
-import { APP_VERSION, APP_DESARROLLADOR } from "../lib/config";
+import Paginacion from "./Paginacion";
+import { formatearFecha } from "../lib/fechas";
+import Spinner from "./Spinner";
 
 type Solicitud = {
   id: string;
+  colaboradorId: string;
+  rutaId: string;
   fecha: string;
   fechaSolicitud: string;
   montoTotal: number;
@@ -38,10 +41,11 @@ const CLASE_CAMPO =
   "mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm text-neutral-900 " +
   "transition hover:border-neutral-300 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none";
 
+const POR_PAGINA = 8;
+
 export default function PanelColaborador({
   colaboradorId,
   nombreCompleto,
-  fotoUrl,
   esSupervisor,
   equipo,
   rutasPropias,
@@ -49,7 +53,6 @@ export default function PanelColaborador({
 }: {
   colaboradorId: string;
   nombreCompleto: string;
-  fotoUrl: string | null;
   esSupervisor: boolean;
   equipo: MiembroEquipo[];
   rutasPropias: RutaSimple[];
@@ -57,7 +60,27 @@ export default function PanelColaborador({
 }) {
   const router = useRouter();
 
+  const [busqueda, setBusqueda] = useState("");
+  const [paginaActual, setPaginaActual] = useState(1);
+
+  const solicitudesFiltradas = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    if (!texto) return solicitudes;
+    return solicitudes.filter(
+      (s) =>
+        s.rutaLabel.toLowerCase().includes(texto) ||
+        s.nombreColaborador.toLowerCase().includes(texto) ||
+        (s.observaciones ?? "").toLowerCase().includes(texto)
+    );
+  }, [solicitudes, busqueda]);
+
+  const cambiarBusqueda = (v: string) => {
+    setBusqueda(v);
+    setPaginaActual(1);
+  };
+
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [modoEdicionId, setModoEdicionId] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -72,6 +95,16 @@ export default function PanelColaborador({
   const [observaciones, setObservaciones] = useState("");
   const [rutasDisponibles, setRutasDisponibles] = useState<RutaSimple[]>(rutasPropias);
   const [cargandoRutas, setCargandoRutas] = useState(false);
+
+  const totalPaginas = Math.max(1, Math.ceil(solicitudesFiltradas.length / POR_PAGINA));
+  const solicitudesPagina = useMemo(
+    () => solicitudesFiltradas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
+    [solicitudesFiltradas, paginaActual]
+  );
+  const totalGeneral = useMemo(
+    () => solicitudesFiltradas.reduce((acc, s) => acc + s.montoTotal, 0),
+    [solicitudesFiltradas]
+  );
 
   const opcionesColaborador = useMemo(
     () => [
@@ -100,20 +133,25 @@ export default function PanelColaborador({
     return `${y}-${m}-${d}`;
   }, []);
 
-  const cambiarColaborador = async (nuevoId: string) => {
-    setColaboradorSeleccionado(nuevoId);
-    setRutaId("");
-    if (nuevoId === colaboradorId) {
+  const cargarRutasDe = async (idColaborador: string) => {
+    if (idColaborador === colaboradorId) {
       setRutasDisponibles(rutasPropias);
       return;
     }
     setCargandoRutas(true);
-    const res = await fetch(`/api/rutas?colaboradorId=${nuevoId}`);
+    const res = await fetch(`/api/rutas?colaboradorId=${idColaborador}`);
     setCargandoRutas(false);
     if (res.ok) setRutasDisponibles(await res.json());
   };
 
+  const cambiarColaborador = async (nuevoId: string) => {
+    setColaboradorSeleccionado(nuevoId);
+    setRutaId("");
+    await cargarRutasDe(nuevoId);
+  };
+
   const abrirModal = () => {
+    setModoEdicionId(null);
     setModalAbierto(true);
     setColaboradorSeleccionado(colaboradorId);
     setRutasDisponibles(rutasPropias);
@@ -123,24 +161,41 @@ export default function PanelColaborador({
     setError("");
   };
 
+  const abrirEdicion = async (s: Solicitud) => {
+    setModoEdicionId(s.id);
+    setColaboradorSeleccionado(s.colaboradorId);
+    setFecha(s.fecha.split("T")[0]);
+    setObservaciones(s.observaciones ?? "");
+    setError("");
+    await cargarRutasDe(s.colaboradorId);
+    setRutaId(s.rutaId);
+    setModalAbierto(true);
+  };
+
   const confirmarRegistro = async () => {
     setEnviando(true);
     setError("");
-    const res = await fetch("/api/solicitudes", {
-      method: "POST",
+
+    const url = modoEdicionId ? `/api/solicitudes/${modoEdicionId}` : "/api/solicitudes";
+    const method = modoEdicionId ? "PATCH" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ colaboradorId: colaboradorSeleccionado, rutaId, fecha, observaciones }),
     });
+
     setEnviando(false);
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo registrar el pasaje");
+      setError(data.error ?? "No se pudo guardar la solicitud");
       setConfirmando(false);
       return;
     }
     setConfirmando(false);
     setModalAbierto(false);
+    setModoEdicionId(null);
     router.refresh();
   };
 
@@ -160,10 +215,8 @@ export default function PanelColaborador({
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
-      <Header nombreCompleto={nombreCompleto} fotoUrl={fotoUrl} />
-
-      <main className="flex-1 px-4 sm:px-8 py-5 space-y-4">
+    <div className="flex flex-col">
+      <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-lg sm:text-xl font-bold">Mis Pasajes</h1>
           <div className="flex gap-2">
@@ -182,30 +235,38 @@ export default function PanelColaborador({
           </div>
         </div>
 
-        {esSupervisor && (
-          <p className="text-xs text-orange-400">
-            Cuentas con acceso de Supervisor — viendo tus solicitudes y las de tu equipo
-          </p>
-        )}
+        <p className="text-xs text-orange-400 font-medium">
+          Rol: {esSupervisor ? "Supervisor" : "Colaborador"}
+        </p>
 
-        <div className="bg-white text-black rounded-2xl overflow-hidden shadow-sm">
+        <div className="relative max-w-sm">
+          <input
+            value={busqueda}
+            onChange={(e) => cambiarBusqueda(e.target.value)}
+            placeholder="Buscar por ruta, colaborador u observación..."
+            className="w-full rounded-xl border border-neutral-700 bg-neutral-900 text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+          />
+        </div>
+
+        <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[620px]">
-              <thead className="bg-neutral-50 text-neutral-500 text-left">
+            <table className="w-full text-sm min-w-[760px]">
+              <thead className="bg-neutral-100/70 text-neutral-500 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   {esSupervisor && <th className="px-4 py-3 font-medium">Colaborador</th>}
                   <th className="px-4 py-3 font-medium">Ruta</th>
                   <th className="px-4 py-3 font-medium">Valor</th>
+                  <th className="px-4 py-3 font-medium">Observaciones</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {solicitudes.map((s) => (
-                  <tr key={s.id} className="border-t border-neutral-100">
+                {solicitudesPagina.map((s) => (
+                  <tr key={s.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
                     <td className="px-4 py-3">
-                      <p className="font-medium">{new Date(s.fecha).toLocaleDateString()}</p>
+                      <p className="font-medium">{formatearFecha(s.fecha)}</p>
                       <p className="text-[11px] text-neutral-400">
                         Registrado: {new Date(s.fechaSolicitud).toLocaleString("es-EC", {
                           day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -222,49 +283,72 @@ export default function PanelColaborador({
                     )}
                     <td className="px-4 py-3">{s.rutaLabel}</td>
                     <td className="px-4 py-3">${s.montoTotal.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-neutral-500 max-w-[180px] truncate" title={s.observaciones ?? ""}>
+                      {s.observaciones || "—"}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
                         {s.estado}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {s.estado === "PENDIENTE" && (
-                        <button
-                          onClick={() => setIdAEliminar(s.id)}
-                          className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
-                        >
-                          Eliminar
-                        </button>
+                      {(s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => abrirEdicion(s)}
+                            className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => setIdAEliminar(s.id)}
+                            className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
                 ))}
-                {solicitudes.length === 0 && (
+                {solicitudesFiltradas.length === 0 && (
                   <tr>
-                    <td colSpan={esSupervisor ? 6 : 5} className="px-4 py-10 text-center text-neutral-400">
-                      Aún no hay solicitudes registradas
+                    <td colSpan={esSupervisor ? 7 : 6} className="px-4 py-10 text-center text-neutral-400">
+                      {busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"}
                     </td>
                   </tr>
                 )}
               </tbody>
+
+              {solicitudesFiltradas.length > 0 && (
+                <tfoot>
+                  <tr className="border-t border-neutral-200 bg-neutral-100/70 font-semibold">
+                    <td className="px-4 py-3" colSpan={esSupervisor ? 3 : 2}>
+                      Total ({solicitudesFiltradas.length} {solicitudesFiltradas.length === 1 ? "solicitud" : "solicitudes"})
+                    </td>
+                    <td className="px-4 py-3">${totalGeneral.toFixed(2)}</td>
+                    <td colSpan={3}></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
-        </div>
-      </main>
 
-      <footer className="text-center text-[11px] text-neutral-600 py-4 border-t border-neutral-900">
-        Desarrollado por {APP_DESARROLLADOR} · v{APP_VERSION}
-      </footer>
+          <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
+        </div>
+      </div>
 
       {modalAbierto && !confirmando && (
         <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
           <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl">
             <div>
-              <h2 className="text-lg font-bold text-neutral-900">Registrar pasaje del día</h2>
+              <h2 className="text-lg font-bold text-neutral-900">
+                {modoEdicionId ? "Editar solicitud" : "Registrar pasaje del día"}
+              </h2>
               <p className="text-xs text-neutral-500 mt-0.5">Completa los datos del viaje</p>
             </div>
 
-            {esSupervisor && (
+            {esSupervisor && !modoEdicionId && (
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                   ¿Para quién es esta solicitud?
@@ -329,7 +413,7 @@ export default function PanelColaborador({
             <div className="flex gap-2 justify-end pt-1">
               <button
                 type="button"
-                onClick={() => setModalAbierto(false)}
+                onClick={() => { setModalAbierto(false); setModoEdicionId(null); }}
                 className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
               >
                 Cancelar
@@ -340,7 +424,7 @@ export default function PanelColaborador({
                 onClick={() => setConfirmando(true)}
                 className="px-5 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40 transition shadow-sm hover:shadow-md"
               >
-                Guardar
+                {modoEdicionId ? "Guardar cambios" : "Guardar"}
               </button>
             </div>
           </div>
@@ -351,8 +435,10 @@ export default function PanelColaborador({
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
           <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl">?</div>
-            <p className="font-semibold text-neutral-900">¿Seguro que quieres registrar este pasaje?</p>
-            <p className="text-sm text-neutral-500">{fecha} · ${valorSeleccionado?.toFixed(2)}</p>
+            <p className="font-semibold text-neutral-900">
+              {modoEdicionId ? "¿Guardar los cambios?" : "¿Seguro que quieres registrar este pasaje?"}
+            </p>
+            <p className="text-sm text-neutral-500">{formatearFecha(fecha)} · ${valorSeleccionado?.toFixed(2)}</p>
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmando(false)}
@@ -361,13 +447,14 @@ export default function PanelColaborador({
               >
                 Cancelar
               </button>
-              <button
-                onClick={confirmarRegistro}
-                disabled={enviando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition"
-              >
-                {enviando ? "Guardando..." : "Confirmar"}
-              </button>
+                <button
+                  onClick={confirmarRegistro}
+                  disabled={enviando}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+                >
+                  {enviando && <Spinner className="w-4 h-4" />}
+                  {enviando ? "Guardando..." : "Confirmar"}
+                </button>
             </div>
           </div>
         </div>
@@ -390,8 +477,9 @@ export default function PanelColaborador({
               <button
                 onClick={confirmarEliminacion}
                 disabled={eliminando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
+                {eliminando && <Spinner className="w-4 h-4" />}
                 {eliminando ? "Eliminando..." : "Eliminar"}
               </button>
             </div>

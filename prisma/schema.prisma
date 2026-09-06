@@ -1,9 +1,6 @@
 // ============================================================
 // SCHEMA DE BASE DE DATOS - App de Gestión de Pasajes Corporativos
 // ============================================================
-// Cada vez que modifiques este archivo, corre:
-//   npx --no-install prisma migrate dev --name nombre_del_cambio
-// ============================================================
 
 generator client {
   provider = "prisma-client"
@@ -13,10 +10,6 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
-// ------------------------------------------------------------
-// ENUMS
-// ------------------------------------------------------------
 
 enum Rol {
   SUPER_ADMIN
@@ -30,7 +23,6 @@ enum EstadoColaborador {
   INACTIVO
 }
 
-// Ciclo de vida: PENDIENTE -> (APROBADA o RECHAZADA) -> PAGADA
 enum EstadoSolicitud {
   PENDIENTE
   APROBADA
@@ -38,22 +30,17 @@ enum EstadoSolicitud {
   PAGADA
 }
 
-// ------------------------------------------------------------
-// EMPRESA
-// ------------------------------------------------------------
 model Empresa {
-  id        String            @id @default(cuid())
-  nombre    String
-  ruc       String?           @unique
-  activo    Boolean           @default(true)
-  createdAt DateTime          @default(now())
-  sitios    SitioProductivo[]
-  rutas     Ruta[]
+  id           String            @id @default(cuid())
+  nombre       String
+  ruc          String?           @unique
+  activo       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  sitios       SitioProductivo[]
+  rutas        Ruta[]
+  asignaciones AsignacionTH[]
 }
 
-// ------------------------------------------------------------
-// SITIO PRODUCTIVO
-// ------------------------------------------------------------
 model SitioProductivo {
   id            String        @id @default(cuid())
   nombre        String
@@ -63,11 +50,11 @@ model SitioProductivo {
   areas         Area[]
   colaboradores Colaborador[]
   rutas         Ruta[]
+  asignaciones  AsignacionTH[]
+
+  @@index([empresaId])
 }
 
-// ------------------------------------------------------------
-// ÁREA
-// ------------------------------------------------------------
 model Area {
   id            String        @id @default(cuid())
   nombre        String
@@ -75,53 +62,62 @@ model Area {
   sitioId       String
   colaboradores Colaborador[]
   rutas         Ruta[]
+  asignaciones  AsignacionTH[]
+
+  @@index([sitioId])
 }
 
-// ------------------------------------------------------------
-// RUTA: definida por la combinación única Empresa + Sitio + Área,
-// con un VALOR FIJO que no se edita desde el formulario de solicitud.
-// Solo TH o Super Admin pueden crear/editar/dar de baja rutas
-// (esa pantalla de administración la construimos más adelante).
-// ------------------------------------------------------------
 model Ruta {
   id        String   @id @default(cuid())
+  nombre    String   @default("Ruta sin nombre") // ej: "El Yaznán - Cayambe - Tabacundo"
   empresa   Empresa  @relation(fields: [empresaId], references: [id])
   empresaId String
   sitio     SitioProductivo @relation(fields: [sitioId], references: [id])
   sitioId   String
   area      Area     @relation(fields: [areaId], references: [id])
   areaId    String
-  valor     Decimal  @db.Decimal(10, 2) // valor fijo del pasaje para esta combinación
+  valor     Decimal  @db.Decimal(10, 2)
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
 
   solicitudes SolicitudPasaje[]
-
-  // Relación opcional a futuro: "ruta habitual" de un colaborador,
-  // para autocompletar en el formulario cuando la app madure.
   colaboradoresConEstaRutaHabitual Colaborador[] @relation("RutaHabitual")
 
-  // Evita crear dos rutas para la misma combinación Empresa+Sitio+Área
-  @@unique([empresaId, sitioId, areaId])
+  @@unique([areaId, nombre]) // evita 2 rutas con el mismo nombre en la misma área
+  @@index([sitioId, areaId, activo])
 }
 
-// ------------------------------------------------------------
-// USUARIO: cuenta de acceso (login con PIN único)
-// ------------------------------------------------------------
 model Usuario {
-  id          String       @id @default(cuid())
-  nombre      String
-  email       String?      @unique
-  pinHash     String
-  rol         Rol
-  activo      Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  colaborador Colaborador?
+  id           String        @id @default(cuid())
+  nombre       String
+  email        String?       @unique
+  pinHash      String
+  rol          Rol
+  activo       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  colaborador  Colaborador?
+  asignaciones AsignacionTH[]
+
+  @@index([rol])
 }
 
-// ------------------------------------------------------------
-// COLABORADOR
-// ------------------------------------------------------------
+model AsignacionTH {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  usuarioId String
+
+  empresa   Empresa?         @relation(fields: [empresaId], references: [id])
+  empresaId String?
+  sitio     SitioProductivo? @relation(fields: [sitioId], references: [id])
+  sitioId   String?
+  area      Area?            @relation(fields: [areaId], references: [id])
+  areaId    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([usuarioId])
+}
+
 model Colaborador {
   id             String            @id @default(cuid())
   usuario        Usuario           @relation(fields: [usuarioId], references: [id])
@@ -133,12 +129,9 @@ model Colaborador {
   area           Area              @relation(fields: [areaId], references: [id])
   areaId         String
 
-  // Ruta habitual (opcional, para autocompletar en el futuro)
   rutaHabitualId String?
   rutaHabitual   Ruta?             @relation("RutaHabitual", fields: [rutaHabitualId], references: [id])
 
-  // --- Jerarquía de Supervisor / Equipo ---
-  // Si esSupervisor = true, puede crear solicitudes por su equipo.
   esSupervisor   Boolean           @default(false)
   supervisorId   String?
   supervisor     Colaborador?      @relation("Equipo", fields: [supervisorId], references: [id])
@@ -147,11 +140,13 @@ model Colaborador {
   estado         EstadoColaborador @default(ACTIVO)
   solicitudes    SolicitudPasaje[]
   createdAt      DateTime          @default(now())
+
+  @@index([areaId])
+  @@index([sitioId])
+  @@index([supervisorId])
+  @@index([areaId, estado])
 }
 
-// ------------------------------------------------------------
-// SOLICITUD DE PASAJE: un registro = UN DÍA de pasaje.
-// ------------------------------------------------------------
 model SolicitudPasaje {
   id            String          @id @default(cuid())
   colaborador   Colaborador     @relation(fields: [colaboradorId], references: [id])
@@ -160,21 +155,22 @@ model SolicitudPasaje {
   ruta          Ruta            @relation(fields: [rutaId], references: [id])
   rutaId        String
 
-  fecha         DateTime        // el día del pasaje solicitado (no la fecha de creación)
-  montoTotal    Decimal         @db.Decimal(10, 2) // = ruta.valor al momento de crear (snapshot)
+  fecha         DateTime
+  montoTotal    Decimal         @db.Decimal(10, 2)
   observaciones String?
 
   estado          EstadoSolicitud @default(PENDIENTE)
-  fechaSolicitud  DateTime        @default(now()) // cuándo se registró en el sistema
+  fechaSolicitud  DateTime        @default(now())
   fechaAprobacion DateTime?
   fechaPago       DateTime?
   aprobadoPorId   String?
   pagadoPorId     String?
-  comentario      String?         // motivo de rechazo o nota de TH
+  comentario      String?
 
-  // Si un Supervisor creó esta solicitud en nombre de otro colaborador
   creadoPorUsuarioId String?
 
   @@index([colaboradorId, estado])
   @@index([fecha])
+  @@index([rutaId])
+  @@index([estado, fecha])
 }

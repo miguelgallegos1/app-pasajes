@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { IconoCalendario } from "./Icons";
+import { formatearFecha } from "../lib/fechas";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -67,21 +68,19 @@ export default function CalendarioSelector({
       <button
         type="button"
         onClick={() => setAbierto((a) => !a)}
-        className={`w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left
+        className={`w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left text-sm
           border transition
           ${abierto ? "border-orange-400 ring-2 ring-orange-500/15" : "border-neutral-200 hover:border-neutral-300"}
         `}
       >
         <span className={value ? "text-neutral-900 font-medium" : "text-neutral-400"}>
-          {value
-            ? new Date(value).toLocaleDateString("es-EC", { day: "numeric", month: "long", year: "numeric" })
-            : "Selecciona una fecha"}
+          {value ? formatearFecha(value) : "Selecciona una fecha"}
         </span>
         <IconoCalendario className="w-5 h-5 text-orange-500 shrink-0" />
       </button>
 
       {abierto && (
-        <div className="absolute z-50 mt-2 bg-white ring-1 ring-black/5 rounded-2xl shadow-2xl p-4 w-72 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute z-50 mt-2 bg-white ring-1 ring-black/5 rounded-2xl shadow-2xl p-4 w-72">
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"

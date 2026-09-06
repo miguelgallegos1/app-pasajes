@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { db } from "../../lib/db";
 import { getSession } from "../../lib/auth";
+import AppShell from "../../components/AppShell";
 import PanelColaborador from "../../components/PanelColaborador";
 
 export default async function MisPasajesPage() {
@@ -21,54 +22,54 @@ export default async function MisPasajesPage() {
       })
     : [];
 
-  // Si es Supervisor, la tabla trae SUS solicitudes + las de todo su equipo.
-  // Si es colaborador normal, solo las suyas.
   const idsAConsultar = [colaborador.id, ...equipo.map((c) => c.id)];
 
   const solicitudes = await db.solicitudPasaje.findMany({
     where: {
       colaboradorId: { in: idsAConsultar },
-      estado: { in: ["PENDIENTE", "APROBADA"] },
+      estado: { in: ["PENDIENTE", "APROBADA", "RECHAZADA"] },
     },
     orderBy: { fecha: "desc" },
     include: {
-      ruta: { include: { area: true } },
+      ruta: true, // ya no hace falta "area", usamos el nombre propio de la ruta
       colaborador: { select: { nombreCompleto: true } },
     },
   });
 
   const rutasPropias = await db.ruta.findMany({
     where: { sitioId: colaborador.sitioId, areaId: colaborador.areaId, activo: true },
-    include: { area: true },
-    orderBy: { valor: "asc" },
+    orderBy: { nombre: "asc" },
   });
 
   const solicitudesSerializadas = solicitudes.map((s) => ({
     id: s.id,
+    colaboradorId: s.colaboradorId,
+    rutaId: s.rutaId,
     fecha: s.fecha.toISOString(),
     fechaSolicitud: s.fechaSolicitud.toISOString(),
     montoTotal: Number(s.montoTotal),
     estado: s.estado,
     observaciones: s.observaciones,
-    rutaLabel: s.ruta.area.nombre,
+    rutaLabel: s.ruta.nombre,
     nombreColaborador: s.colaborador.nombreCompleto,
   }));
 
   const rutasPropiasSerializadas = rutasPropias.map((r) => ({
     id: r.id,
     valor: Number(r.valor),
-    label: r.area.nombre,
+    label: r.nombre,
   }));
 
   return (
-    <PanelColaborador
-      colaboradorId={colaborador.id}
-      nombreCompleto={colaborador.nombreCompleto}
-      fotoUrl={colaborador.fotoUrl}
-      esSupervisor={colaborador.esSupervisor}
-      equipo={equipo}
-      rutasPropias={rutasPropiasSerializadas}
-      solicitudes={solicitudesSerializadas}
-    />
+    <AppShell rol={session.rol} nombreCompleto={colaborador.nombreCompleto} fotoUrl={colaborador.fotoUrl}>
+      <PanelColaborador
+        colaboradorId={colaborador.id}
+        nombreCompleto={colaborador.nombreCompleto}
+        esSupervisor={colaborador.esSupervisor}
+        equipo={equipo}
+        rutasPropias={rutasPropiasSerializadas}
+        solicitudes={solicitudesSerializadas}
+      />
+    </AppShell>
   );
 }

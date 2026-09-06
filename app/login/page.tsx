@@ -1,6 +1,6 @@
 // app/login/page.tsx
 // Pantalla de login: 6 cajitas de PIN, tema negro y naranja, logo de buseta.
-// El PIN por sí solo identifica al usuario (es único por persona).
+// Ahora con un overlay de carga claro mientras se verifica el PIN.
 
 "use client";
 
@@ -8,6 +8,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { IconoBuseta } from "../../components/Icons";
 import { APP_NOMBRE } from "../../lib/config";
+import Spinner from "../../components/Spinner";
 
 export default function LoginPage() {
   const [digitos, setDigitos] = useState(["", "", "", "", "", ""]);
@@ -26,23 +27,26 @@ export default function LoginPage() {
       body: JSON.stringify({ pin: pinCompleto }),
     });
 
-    setLoading(false);
-
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "PIN incorrecto");
       setDigitos(["", "", "", "", "", ""]);
+      setLoading(false);
       inputsRef.current[0]?.focus();
       return;
     }
 
     const { rol } = await res.json();
     const destino: Record<string, string> = {
-      SUPER_ADMIN: "/admin",
-      ADMIN_TH: "/th/aprobaciones",
+      SUPER_ADMIN: "/dashboard",
+      ADMIN_TH: "/dashboard",
       COLABORADOR: "/mis-pasajes",
-      FINANZAS: "/finanzas/pagos",
+      FINANZAS: "/dashboard",
     };
+    // OJO: dejamos "loading" en true a propósito — la pantalla se queda
+    // mostrando el overlay de carga hasta que router.push() navegue de
+    // verdad a la siguiente página, evitando el "parpadeo" de volver al
+    // formulario justo antes de cambiar de pantalla.
     router.push(destino[rol] ?? "/");
   };
 
@@ -68,8 +72,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center bg-black px-4 relative">
+      <div className={`w-full max-w-sm transition-opacity ${loading ? "opacity-40 pointer-events-none" : ""}`}>
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500 mb-4 text-black">
             <IconoBuseta className="w-8 h-8" />
@@ -101,8 +105,16 @@ export default function LoginPage() {
         </div>
 
         {error && <p className="text-sm text-red-500 text-center mt-4">{error}</p>}
-        {loading && <p className="text-sm text-orange-400 text-center mt-4">Verificando...</p>}
       </div>
+
+      {/* Overlay de carga: cubre toda la pantalla mientras se verifica el PIN,
+          para que sea imposible confundirlo con que "no está pasando nada". */}
+      {loading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40">
+          <Spinner className="w-10 h-10 text-orange-500" />
+          <p className="text-sm text-orange-400 font-medium">Verificando tu PIN...</p>
+        </div>
+      )}
     </div>
   );
 }
