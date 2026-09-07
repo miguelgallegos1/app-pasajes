@@ -62,7 +62,7 @@ export async function PATCH(
       rutaId: ruta.id,
       fecha: new Date(fecha),
       montoTotal: ruta.valor,
-      observaciones: observaciones || null,
+      observaciones: observaciones?.trim() ? observaciones.trim().toUpperCase() : null,
       estado: "PENDIENTE", // al corregirla, vuelve a la cola de aprobación
     },
   });

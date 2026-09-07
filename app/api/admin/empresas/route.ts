@@ -15,7 +15,9 @@ export async function POST(req: Request) {
   if (!nombre?.trim()) return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 });
 
   try {
-    const empresa = await db.empresa.create({ data: { nombre: nombre.trim(), ruc: ruc?.trim() || null } });
+    const empresa = await db.empresa.create({
+      data: { nombre: nombre.trim().toUpperCase(), ruc: ruc?.trim() ? ruc.trim().toUpperCase() : null },
+    });
     return NextResponse.json(empresa, { status: 201 });
   } catch (e: any) {
     if (e.code === "P2002") return NextResponse.json({ error: "Ya existe una empresa con ese RUC" }, { status: 400 });

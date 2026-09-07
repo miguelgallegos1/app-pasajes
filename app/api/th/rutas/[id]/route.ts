@@ -28,7 +28,7 @@ export async function PATCH(
   }
 
   const data: Record<string, unknown> = {};
-  if (nombre?.trim()) data.nombre = nombre.trim();
+  if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
   if (valor !== undefined) {
     if (Number(valor) <= 0) return NextResponse.json({ error: "El valor debe ser mayor a 0" }, { status: 400 });
     data.valor = Number(valor);

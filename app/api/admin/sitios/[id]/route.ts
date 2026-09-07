@@ -18,8 +18,8 @@ export async function PATCH(
   const { nombre, direccion } = await req.json();
 
   const data: Record<string, unknown> = {};
-  if (nombre?.trim()) data.nombre = nombre.trim();
-  if (direccion !== undefined) data.direccion = direccion?.trim() || null;
+  if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
+  if (direccion !== undefined) data.direccion = direccion?.trim() ? direccion.trim().toUpperCase() : null;
 
   const actualizado = await db.sitioProductivo.update({ where: { id }, data });
   return NextResponse.json(actualizado);

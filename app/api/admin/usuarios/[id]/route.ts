@@ -20,7 +20,7 @@ export async function PATCH(
   const { nombre, activo } = await req.json();
 
   const data: Record<string, unknown> = {};
-  if (nombre) data.nombre = nombre;
+  if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
   if (typeof activo === "boolean") data.activo = activo;
 
   const actualizado = await db.usuario.update({ where: { id }, data });

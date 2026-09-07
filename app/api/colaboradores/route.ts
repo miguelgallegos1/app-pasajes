@@ -16,9 +16,10 @@ export async function POST(req: Request) {
 
   const { nombreCompleto, areaId, pin, esSupervisor, supervisorId } = await req.json();
 
-  if (!nombreCompleto || !areaId || !pin) {
+  if (!nombreCompleto?.trim() || !areaId || !pin) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
+  const nombreNormalizado = nombreCompleto.trim().toUpperCase();
   if (!/^\d{6}$/.test(pin)) {
     return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
   }
@@ -42,12 +43,12 @@ export async function POST(req: Request) {
 
   const nuevo = await db.usuario.create({
     data: {
-      nombre: nombreCompleto,
+      nombre: nombreNormalizado,
       pinHash,
       rol: "COLABORADOR",
       colaborador: {
         create: {
-          nombreCompleto,
+          nombreCompleto: nombreNormalizado,
           sitioId: area.sitioId,
           areaId: area.id,
           esSupervisor: !!esSupervisor,

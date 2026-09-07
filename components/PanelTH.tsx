@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import Paginacion from "./Paginacion";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
+import { useToast } from "./Toast";
 
 type Pendiente = {
   id: string;
@@ -33,6 +34,7 @@ export default function PanelTH({
   pendientes: Pendiente[];
 }) {
   const router = useRouter();
+  const toast = useToast();
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
@@ -108,8 +110,10 @@ export default function PanelTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo aprobar");
+      toast.error(data.error ?? "No se pudo aprobar la solicitud");
       return;
     }
+    toast.exito("Solicitud aprobada");
     router.refresh();
   };
 
@@ -127,8 +131,10 @@ export default function PanelTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo aprobar el lote");
+      toast.error(data.error ?? "No se pudo aprobar el lote");
       return;
     }
+    toast.exito("Solicitudes aprobadas");
     setSeleccionadas(new Set());
     router.refresh();
   };
@@ -157,8 +163,10 @@ export default function PanelTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo devolver la solicitud");
+      toast.error(data.error ?? "No se pudo devolver la solicitud");
       return;
     }
+    toast.exito("Solicitud devuelta para corrección");
     setIdADevolver(null);
     router.refresh();
   };
@@ -357,7 +365,7 @@ export default function PanelTH({
             </div>
             <textarea
               value={comentarioDevolucion}
-              onChange={(e) => setComentarioDevolucion(e.target.value)}
+              onChange={(e) => setComentarioDevolucion(e.target.value.toUpperCase())}
               rows={3}
               autoFocus
               className="w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"

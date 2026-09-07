@@ -30,7 +30,7 @@ export async function PATCH(
   }
 
   const notaExistente = solicitud.observaciones ? `${solicitud.observaciones} | ` : "";
-  const nuevaObservacion = `${notaExistente}Corrección solicitada: ${comentario.trim()}`;
+  const nuevaObservacion = `${notaExistente}CORRECCIÓN SOLICITADA: ${comentario.trim().toUpperCase()}`;
 
   const actualizada = await db.solicitudPasaje.update({
     where: { id },

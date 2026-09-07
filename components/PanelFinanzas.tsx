@@ -11,6 +11,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
+import { useToast } from "./Toast";
 
 type Aprobada = {
   id: string;
@@ -48,6 +49,7 @@ export default function PanelFinanzas({
   aprobadas: Aprobada[];
 }) {
   const router = useRouter();
+  const toast = useToast();
 
   const [busqueda, setBusqueda] = useState("");
   const [empresaId, setEmpresaId] = useState("");
@@ -161,8 +163,10 @@ export default function PanelFinanzas({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo marcar como pagada");
+      toast.error(data.error ?? "No se pudo marcar como pagada");
       return;
     }
+    toast.exito("Solicitud marcada como pagada");
     router.refresh();
   };
 
@@ -179,8 +183,10 @@ export default function PanelFinanzas({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo pagar el lote");
+      toast.error(data.error ?? "No se pudo pagar el lote");
       return;
     }
+    toast.exito("Solicitudes marcadas como pagadas");
     setSeleccionadas(new Set());
     router.refresh();
   };

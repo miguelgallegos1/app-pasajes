@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Spinner from "./Spinner";
+import { useToast } from "./Toast";
 
 type Asignacion = { id: string; etiqueta: string };
 type Usuario = { id: string; nombre: string; rol: string; activo: boolean; asignaciones: Asignacion[] };
@@ -31,6 +32,7 @@ export default function PanelUsuariosAdmin({
   empresas: Empresa[];
 }) {
   const router = useRouter();
+  const toast = useToast();
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -85,9 +87,11 @@ export default function PanelUsuariosAdmin({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo guardar");
+      toast.error(data.error ?? "No se pudo guardar el usuario");
       return;
     }
     setModalAbierto(false);
+    toast.exito(editandoId ? "Usuario actualizado" : "Usuario creado");
     router.refresh();
   };
 
@@ -109,8 +113,10 @@ export default function PanelUsuariosAdmin({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorGestion(data.error ?? "No se pudo actualizar");
+      toast.error(data.error ?? "No se pudo actualizar el usuario");
       return;
     }
+    toast.exito(nuevoActivo ? "Usuario reactivado" : "Usuario desactivado");
     setGestionando(null);
     router.refresh();
   };
@@ -124,8 +130,10 @@ export default function PanelUsuariosAdmin({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorGestion(data.error ?? "No se pudo eliminar");
+      toast.error(data.error ?? "No se pudo eliminar el usuario");
       return;
     }
+    toast.exito("Usuario eliminado");
     setGestionando(null);
     router.refresh();
   };
@@ -226,9 +234,9 @@ export default function PanelUsuariosAdmin({
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Nombre</label>
               <input
                 value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
+                onChange={(e) => setNombre(e.target.value.toUpperCase())}
                 className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                placeholder="Ej: Ana Rodríguez"
+                placeholder="Ej: ANA RODRÍGUEZ"
               />
             </div>
 
@@ -366,6 +374,7 @@ function ModalAreasTH({
   onCerrar: () => void;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [empresaId, setEmpresaId] = useState("");
   const [sitioId, setSitioId] = useState("");
   const [areaId, setAreaId] = useState("");
@@ -395,8 +404,10 @@ function ModalAreasTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo guardar");
+      toast.error(data.error ?? "No se pudo agregar la asignación");
       return;
     }
+    toast.exito("Asignación agregada");
     setEmpresaId("");
     setSitioId("");
     setAreaId("");
@@ -409,7 +420,12 @@ function ModalAreasTH({
     const res = await fetch(`/api/admin/asignaciones-th/${idAQuitar}`, { method: "DELETE" });
     setQuitando(false);
     setIdAQuitar(null);
-    if (res.ok) router.refresh();
+    if (res.ok) {
+      toast.exito("Asignación quitada");
+      router.refresh();
+    } else {
+      toast.error("No se pudo quitar la asignación");
+    }
   };
 
   return (

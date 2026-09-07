@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   try {
     const ruta = await db.ruta.create({
       data: {
-        nombre: nombre.trim(),
+        nombre: nombre.trim().toUpperCase(),
         empresaId: area.sitio.empresaId,
         sitioId: area.sitioId,
         areaId: area.id,

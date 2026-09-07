@@ -31,7 +31,7 @@ export async function PATCH(
   }
 
   const data: Record<string, unknown> = {};
-  if (nombreCompleto) data.nombreCompleto = nombreCompleto;
+  if (nombreCompleto?.trim()) data.nombreCompleto = nombreCompleto.trim().toUpperCase();
   if (typeof esSupervisor === "boolean") data.esSupervisor = esSupervisor;
   if (supervisorId !== undefined) data.supervisorId = supervisorId || null;
   if (estado === "ACTIVO" || estado === "INACTIVO") data.estado = estado;
