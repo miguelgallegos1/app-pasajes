@@ -1,10 +1,16 @@
 // proxy.ts
 // Protege las rutas por rol ANTES de que la página se cargue.
 // (En Next.js 16, esto reemplaza al antiguo "middleware.ts".)
+//
+// También implementa el cierre de sesión por inactividad: cada visita a
+// una ruta protegida renueva el token con una nueva expiración. Si el
+// usuario no genera ninguna visita durante DURACION_SESION_SEGUNDOS, el
+// token vencido deja de validar y se le pide iniciar sesión de nuevo.
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { jwtVerify, SignJWT } from "jose";
+import { DURACION_SESION_SEGUNDOS } from "./lib/config";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
@@ -22,6 +28,28 @@ const INICIO_POR_ROL: Record<string, string> = {
   FINANZAS: "/dashboard",
   SUPER_ADMIN: "/dashboard",
 };
+
+// Reemite la cookie de sesión con una expiración fresca de
+// DURACION_SESION_SEGUNDOS a partir de AHORA (ventana deslizante).
+async function renovarSesion(
+  res: NextResponse,
+  payload: { id: string; rol: string }
+) {
+  const token = await new SignJWT({ id: payload.id, rol: payload.rol })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(`${DURACION_SESION_SEGUNDOS}s`)
+    .sign(secret);
+
+  res.cookies.set("session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: DURACION_SESION_SEGUNDOS,
+    path: "/",
+  });
+
+  return res;
+}
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -53,7 +81,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL(INICIO_POR_ROL[payload.rol] ?? "/login", req.url));
   }
 
-  return NextResponse.next();
+  return renovarSesion(NextResponse.next(), payload);
 }
 
 export const config = {

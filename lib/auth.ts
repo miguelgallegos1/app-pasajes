@@ -3,6 +3,7 @@
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { DURACION_SESION_SEGUNDOS } from "./config";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
@@ -15,7 +16,7 @@ export type SesionUsuario = {
 export async function crearToken(payload: SesionUsuario) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("8h")
+    .setExpirationTime(`${DURACION_SESION_SEGUNDOS}s`)
     .sign(secret);
 }
 
