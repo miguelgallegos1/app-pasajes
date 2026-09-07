@@ -65,27 +65,17 @@ export async function obtenerAreasPermitidasTH(usuarioId: string, rol: string): 
   const asignaciones = await db.asignacionTH.findMany({ where: { usuarioId } });
   if (asignaciones.length === 0) return [];
 
-  const vistas = new Set<string>();
-  const resultado: AreaPermitida[] = [];
+  // Una sola consulta con todas las condiciones combinadas (antes eran N
+  // consultas secuenciales, una por cada asignación).
+  const condiciones = asignaciones.map((a) => {
+    if (a.areaId) return { id: a.areaId };
+    if (a.sitioId) return { sitioId: a.sitioId };
+    return { sitio: { empresaId: a.empresaId! } };
+  });
 
-  for (const a of asignaciones) {
-    let areas: AreaPermitida[];
-    if (a.areaId) {
-      areas = await db.area.findMany({ where: { id: a.areaId }, select: SELECT_AREA_PERMITIDA });
-    } else if (a.sitioId) {
-      areas = await db.area.findMany({ where: { sitioId: a.sitioId }, select: SELECT_AREA_PERMITIDA });
-    } else {
-      areas = await db.area.findMany({
-        where: { sitio: { empresaId: a.empresaId! } },
-        select: SELECT_AREA_PERMITIDA,
-      });
-    }
-    for (const ar of areas) {
-      if (!vistas.has(ar.id)) {
-        vistas.add(ar.id);
-        resultado.push(ar);
-      }
-    }
-  }
-  return resultado;
+  return db.area.findMany({
+    where: { OR: condiciones },
+    select: SELECT_AREA_PERMITIDA,
+    orderBy: { nombre: "asc" },
+  });
 }

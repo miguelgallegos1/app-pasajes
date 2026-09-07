@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
 import { obtenerAreasPermitidasTH } from "../../../lib/alcanceTH";
+import { calcularPinLookup } from "../../../lib/pin";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -31,9 +32,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Esa área no está en tu alcance" }, { status: 403 });
   }
 
-  // El PIN debe ser único en TODO el sistema (se compara contra cada hash)
-  const usuarios = await db.usuario.findMany({ select: { pinHash: true } });
-  for (const u of usuarios) {
+  // El PIN debe ser único en TODO el sistema. Primero la vía rápida
+  // (indexada); luego, solo por las cuentas aún no migradas, con bcrypt.
+  const pinLookup = calcularPinLookup(pin);
+  const yaExiste = await db.usuario.findFirst({ where: { pinLookup } });
+  if (yaExiste) {
+    return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
+  }
+  const usuariosSinMigrar = await db.usuario.findMany({ where: { pinLookup: null }, select: { pinHash: true } });
+  for (const u of usuariosSinMigrar) {
     if (await bcrypt.compare(pin, u.pinHash)) {
       return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
     }
@@ -45,6 +52,7 @@ export async function POST(req: Request) {
     data: {
       nombre: nombreNormalizado,
       pinHash,
+      pinLookup,
       rol: "COLABORADOR",
       colaborador: {
         create: {

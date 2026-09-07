@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
 import { crearToken } from "../../../../lib/auth";
 import { DURACION_SESION_SEGUNDOS } from "../../../../lib/config";
+import { calcularPinLookup } from "../../../../lib/pin";
 
 export async function POST(req: Request) {
   const { pin } = await req.json();
@@ -20,13 +21,28 @@ export async function POST(req: Request) {
     );
   }
 
-  const usuarios = await db.usuario.findMany({ where: { activo: true } });
+  const pinLookup = calcularPinLookup(pin);
 
-  let usuarioEncontrado = null;
-  for (const usuario of usuarios) {
-    if (await bcrypt.compare(pin, usuario.pinHash)) {
-      usuarioEncontrado = usuario;
-      break;
+  // Camino rápido: la huella del PIN ya identifica al candidato con una
+  // consulta indexada (sin comparar con bcrypt contra todos los usuarios).
+  let usuarioEncontrado = await db.usuario.findFirst({ where: { pinLookup, activo: true } });
+  if (usuarioEncontrado && !(await bcrypt.compare(pin, usuarioEncontrado.pinHash))) {
+    usuarioEncontrado = null; // huella improbable pero no confiamos ciegamente en ella
+  }
+
+  if (!usuarioEncontrado) {
+    // Camino de respaldo: solo para cuentas creadas antes de este cambio,
+    // que todavía no tienen su huella calculada. Se migran solas al
+    // encontrarlas, así que esto se vuelve cada vez más raro con el tiempo.
+    const usuariosSinMigrar = await db.usuario.findMany({ where: { activo: true, pinLookup: null } });
+    for (const usuario of usuariosSinMigrar) {
+      if (await bcrypt.compare(pin, usuario.pinHash)) {
+        usuarioEncontrado = usuario;
+        break;
+      }
+    }
+    if (usuarioEncontrado) {
+      await db.usuario.update({ where: { id: usuarioEncontrado.id }, data: { pinLookup } }).catch(() => {});
     }
   }
 
