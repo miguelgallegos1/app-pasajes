@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
 import { crearToken } from "../../../../lib/auth";
+import { DURACION_SESION_SEGUNDOS } from "../../../../lib/config";
 
 export async function POST(req: Request) {
   const { pin } = await req.json();
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 8,
+    maxAge: DURACION_SESION_SEGUNDOS,
     path: "/",
   });
 
