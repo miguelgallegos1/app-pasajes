@@ -1,6 +1,8 @@
 // app/api/auth/login/route.ts
-// Endpoint que valida el PIN (el PIN por sí solo identifica al usuario,
-// por eso cada PIN debe ser único en todo el sistema) y crea la sesión.
+// Endpoint que valida el PIN (el PIN por sí solo identifica al usuario).
+// Si el usuario es un Colaborador SIN rol de Supervisor y YA tiene un
+// supervisor asignado, se bloquea su acceso: sus pasajes ahora los
+// registra el supervisor, no él directamente.
 
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -17,10 +19,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Como el PIN está hasheado (nunca en texto plano), no podemos buscarlo
-  // directo en la base de datos. Comparamos contra cada usuario activo
-  // hasta encontrar coincidencia. Para el tamaño de una empresa esto es
-  // rápido y seguro.
   const usuarios = await db.usuario.findMany({ where: { activo: true } });
 
   let usuarioEncontrado = null;
@@ -33,6 +31,26 @@ export async function POST(req: Request) {
 
   if (!usuarioEncontrado) {
     return NextResponse.json({ error: "PIN incorrecto" }, { status: 401 });
+  }
+
+  // Si es Colaborador (no Supervisor) y tiene un supervisor asignado,
+  // bloqueamos su acceso individual.
+  if (usuarioEncontrado.rol === "COLABORADOR") {
+    const colaborador = await db.colaborador.findUnique({
+      where: { usuarioId: usuarioEncontrado.id },
+      include: { supervisor: { select: { nombreCompleto: true } } },
+    });
+
+    if (colaborador && !colaborador.esSupervisor && colaborador.supervisorId) {
+      return NextResponse.json(
+        {
+          error: `No puedes ingresar: tus pasajes ahora los gestiona tu supervisor, ${
+            colaborador.supervisor?.nombreCompleto ?? "asignado"
+          }.`,
+        },
+        { status: 403 }
+      );
+    }
   }
 
   const token = await crearToken({
