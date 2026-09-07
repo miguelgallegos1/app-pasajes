@@ -1,18 +1,14 @@
-// app/th/rutas/page.tsx
+// app/(app)/th/rutas/page.tsx
 import { redirect } from "next/navigation";
-import { db } from "../../../lib/db";
-import { getSession } from "../../../lib/auth";
-import { obtenerAreasPermitidasTH } from "../../../lib/alcanceTH";
-import AppShell from "../../../components/AppShell";
-import PanelRutasTH from "../../../components/PanelRutasTH";
+import { db } from "../../../../lib/db";
+import { getSession } from "../../../../lib/auth";
+import { obtenerAreasPermitidasTH } from "../../../../lib/alcanceTH";
+import PanelRutasTH from "../../../../components/PanelRutasTH";
 
 export default async function RutasPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) redirect("/login");
-
-  const usuario = await db.usuario.findUnique({ where: { id: session.id } });
-  if (!usuario) redirect("/login");
 
   const areasPermitidas = await obtenerAreasPermitidasTH(session.id, session.rol);
   const areaIds = areasPermitidas.map((a) => a.id);
@@ -43,12 +39,10 @@ export default async function RutasPage() {
   }));
 
   return (
-    <AppShell rol={session.rol} nombreCompleto={usuario.nombre} fotoUrl={null}>
-      <PanelRutasTH
-        rutas={rutasSerializadas}
-        areasDisponibles={areasSerializadas}
-        sinAsignaciones={areasPermitidas.length === 0}
-      />
-    </AppShell>
+    <PanelRutasTH
+      rutas={rutasSerializadas}
+      areasDisponibles={areasSerializadas}
+      sinAsignaciones={areasPermitidas.length === 0}
+    />
   );
 }

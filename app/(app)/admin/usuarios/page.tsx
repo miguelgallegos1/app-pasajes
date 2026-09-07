@@ -1,17 +1,13 @@
-// app/admin/usuarios/page.tsx
+// app/(app)/admin/usuarios/page.tsx
 import { redirect } from "next/navigation";
-import { db } from "../../../lib/db";
-import { getSession } from "../../../lib/auth";
-import AppShell from "../../../components/AppShell";
-import PanelUsuariosAdmin from "../../../components/PanelUsuariosAdmin";
+import { db } from "../../../../lib/db";
+import { getSession } from "../../../../lib/auth";
+import PanelUsuariosAdmin from "../../../../components/PanelUsuariosAdmin";
 
 export default async function AdminUsuariosPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.rol !== "SUPER_ADMIN") redirect("/login");
-
-  const usuario = await db.usuario.findUnique({ where: { id: session.id } });
-  if (!usuario) redirect("/login");
 
   const usuarios = await db.usuario.findMany({
     where: { rol: { in: ["ADMIN_TH", "FINANZAS", "SUPER_ADMIN"] } },
@@ -56,9 +52,5 @@ export default async function AdminUsuariosPage() {
     })),
   }));
 
-  return (
-    <AppShell rol={session.rol} nombreCompleto={usuario.nombre} fotoUrl={null}>
-      <PanelUsuariosAdmin usuarios={usuariosSerializados} empresas={empresasSerializadas} />
-    </AppShell>
-  );
+  return <PanelUsuariosAdmin usuarios={usuariosSerializados} empresas={empresasSerializadas} />;
 }

@@ -1,17 +1,13 @@
-// app/finanzas/historial/page.tsx
+// app/(app)/finanzas/historial/page.tsx
 import { redirect } from "next/navigation";
-import { db } from "../../../lib/db";
-import { getSession } from "../../../lib/auth";
-import AppShell from "../../../components/AppShell";
-import PanelHistorialFinanzas from "../../../components/PanelHistorialFinanzas";
+import { db } from "../../../../lib/db";
+import { getSession } from "../../../../lib/auth";
+import PanelHistorialFinanzas from "../../../../components/PanelHistorialFinanzas";
 
 export default async function HistorialFinanzasPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["FINANZAS", "SUPER_ADMIN"].includes(session.rol)) redirect("/login");
-
-  const usuario = await db.usuario.findUnique({ where: { id: session.id } });
-  if (!usuario) redirect("/login");
 
   const [empresas, sitios, areas, colaboradores] = await Promise.all([
     db.empresa.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
@@ -26,9 +22,5 @@ export default async function HistorialFinanzasPage() {
     }),
   ]);
 
-  return (
-    <AppShell rol={session.rol} nombreCompleto={usuario.nombre} fotoUrl={null}>
-      <PanelHistorialFinanzas empresas={empresas} sitios={sitios} areas={areas} colaboradores={colaboradores} />
-    </AppShell>
-  );
+  return <PanelHistorialFinanzas empresas={empresas} sitios={sitios} areas={areas} colaboradores={colaboradores} />;
 }

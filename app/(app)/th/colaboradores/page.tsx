@@ -1,18 +1,14 @@
-// app/th/colaboradores/page.tsx
+// app/(app)/th/colaboradores/page.tsx
 import { redirect } from "next/navigation";
-import { db } from "../../../lib/db";
-import { getSession } from "../../../lib/auth";
-import { obtenerCondicionColaboradorTH, obtenerAreasPermitidasTH } from "../../../lib/alcanceTH";
-import AppShell from "../../../components/AppShell";
-import PanelColaboradoresTH from "../../../components/PanelColaboradoresTH";
+import { db } from "../../../../lib/db";
+import { getSession } from "../../../../lib/auth";
+import { obtenerCondicionColaboradorTH, obtenerAreasPermitidasTH } from "../../../../lib/alcanceTH";
+import PanelColaboradoresTH from "../../../../components/PanelColaboradoresTH";
 
 export default async function ColaboradoresPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) redirect("/login");
-
-  const usuario = await db.usuario.findUnique({ where: { id: session.id } });
-  if (!usuario) redirect("/login");
 
   const { sinRestriccion, condicion } = await obtenerCondicionColaboradorTH(session.id, session.rol);
   const sinAsignaciones = condicion === null;
@@ -41,7 +37,7 @@ export default async function ColaboradoresPage() {
     areaLabel: `${c.area.sitio.empresa.nombre} · ${c.area.sitio.nombre} · ${c.area.nombre}`,
     tieneSolicitudes: c._count.solicitudes > 0,
   }));
-  
+
   const areasSerializadas = areasPermitidas.map((a) => ({
     id: a.id,
     label: `${a.sitio.empresa.nombre} · ${a.sitio.nombre} · ${a.nombre}`,
@@ -52,13 +48,11 @@ export default async function ColaboradoresPage() {
     .map((c) => ({ id: c.id, label: c.nombreCompleto }));
 
   return (
-    <AppShell rol={session.rol} nombreCompleto={usuario.nombre} fotoUrl={null}>
-      <PanelColaboradoresTH
-        colaboradores={colaboradoresSerializados}
-        areasDisponibles={areasSerializadas}
-        supervisoresDisponibles={supervisoresDisponibles}
-        sinAsignaciones={sinAsignaciones}
-      />
-    </AppShell>
+    <PanelColaboradoresTH
+      colaboradores={colaboradoresSerializados}
+      areasDisponibles={areasSerializadas}
+      supervisoresDisponibles={supervisoresDisponibles}
+      sinAsignaciones={sinAsignaciones}
+    />
   );
 }

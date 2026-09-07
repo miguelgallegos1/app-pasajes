@@ -4,6 +4,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { DURACION_SESION_SEGUNDOS } from "./config";
+import { db } from "./db";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
@@ -31,4 +32,21 @@ export async function getSession(): Promise<SesionUsuario | null> {
   } catch {
     return null;
   }
+}
+
+// Nombre y foto a mostrar en el AppShell (sidebar/header), sin importar
+// el rol. Se usa una sola vez desde el layout compartido de las pantallas
+// internas, en vez de que cada página vuelva a consultarlo por su cuenta.
+export async function obtenerPerfilSesion(
+  session: SesionUsuario
+): Promise<{ nombre: string; fotoUrl: string | null }> {
+  if (session.rol === "COLABORADOR") {
+    const colaborador = await db.colaborador.findUnique({
+      where: { usuarioId: session.id },
+      select: { nombreCompleto: true, fotoUrl: true },
+    });
+    return { nombre: colaborador?.nombreCompleto ?? "", fotoUrl: colaborador?.fotoUrl ?? null };
+  }
+  const usuario = await db.usuario.findUnique({ where: { id: session.id }, select: { nombre: true } });
+  return { nombre: usuario?.nombre ?? "", fotoUrl: null };
 }
