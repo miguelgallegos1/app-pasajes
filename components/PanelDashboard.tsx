@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import CalendarioSelector from "./CalendarioSelector";
 import Spinner from "./Spinner";
 
@@ -16,21 +16,18 @@ type Datos = {
   gastoPorArea: { area: string; total: number }[];
 };
 
-export default function PanelDashboard({
-  desdeDefecto,
-  hastaDefecto,
-}: {
-  desdeDefecto: string;
-  hastaDefecto: string;
-}) {
-  const [desde, setDesde] = useState(desdeDefecto);
-  const [hasta, setHasta] = useState(hastaDefecto);
+export default function PanelDashboard() {
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
   const buscar = async () => {
-    if (!desde || !hasta) return;
+    if (!desde || !hasta) {
+      setError("Selecciona ambas fechas");
+      return;
+    }
     setCargando(true);
     setError("");
     const res = await fetch(`/api/dashboard/kpis?desde=${desde}&hasta=${hasta}`);
@@ -42,11 +39,6 @@ export default function PanelDashboard({
     }
     setDatos(await res.json());
   };
-
-  useEffect(() => {
-    buscar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const maxGasto = datos ? Math.max(...datos.gastoPorArea.map((g) => g.total), 1) : 1;
 
@@ -76,6 +68,10 @@ export default function PanelDashboard({
         </button>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
+
+      {!datos && !error && (
+        <p className="text-sm text-neutral-400">Elige un rango de fechas y presiona Actualizar para ver los datos.</p>
+      )}
 
       {datos && (
         <>

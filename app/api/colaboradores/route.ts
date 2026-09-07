@@ -15,12 +15,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { nombreCompleto, areaId, pin, esSupervisor, supervisorId } = await req.json();
+  const { nombreCompleto, codigoNomina, areaId, pin, esSupervisor, supervisorId } = await req.json();
 
-  if (!nombreCompleto?.trim() || !areaId || !pin) {
+  if (!nombreCompleto?.trim() || !codigoNomina?.trim() || !areaId || !pin) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
   const nombreNormalizado = nombreCompleto.trim().toUpperCase();
+  const codigoNormalizado = codigoNomina.trim().toUpperCase();
   if (!/^\d{6}$/.test(pin)) {
     return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
   }
@@ -30,6 +31,11 @@ export async function POST(req: Request) {
   const area = areasPermitidas.find((a) => a.id === areaId);
   if (!area) {
     return NextResponse.json({ error: "Esa área no está en tu alcance" }, { status: 403 });
+  }
+
+  const codigoEnUso = await db.colaborador.findFirst({ where: { codigoNomina: codigoNormalizado } });
+  if (codigoEnUso) {
+    return NextResponse.json({ error: "Ese código de nómina ya está en uso por otro colaborador" }, { status: 400 });
   }
 
   // El PIN debe ser único en TODO el sistema. Primero la vía rápida
@@ -48,24 +54,31 @@ export async function POST(req: Request) {
 
   const pinHash = await bcrypt.hash(pin, 10);
 
-  const nuevo = await db.usuario.create({
-    data: {
-      nombre: nombreNormalizado,
-      pinHash,
-      pinLookup,
-      rol: "COLABORADOR",
-      colaborador: {
-        create: {
-          nombreCompleto: nombreNormalizado,
-          sitioId: area.sitioId,
-          areaId: area.id,
-          esSupervisor: !!esSupervisor,
-          supervisorId: supervisorId || null,
+  try {
+    const nuevo = await db.usuario.create({
+      data: {
+        nombre: nombreNormalizado,
+        pinHash,
+        pinLookup,
+        rol: "COLABORADOR",
+        colaborador: {
+          create: {
+            nombreCompleto: nombreNormalizado,
+            codigoNomina: codigoNormalizado,
+            sitioId: area.sitioId,
+            areaId: area.id,
+            esSupervisor: !!esSupervisor,
+            supervisorId: supervisorId || null,
+          },
         },
       },
-    },
-    include: { colaborador: true },
-  });
-
-  return NextResponse.json(nuevo, { status: 201 });
+      include: { colaborador: true },
+    });
+    return NextResponse.json(nuevo, { status: 201 });
+  } catch (e: any) {
+    if (e.code === "P2002") {
+      return NextResponse.json({ error: "Ese código de nómina ya está en uso por otro colaborador" }, { status: 400 });
+    }
+    throw e;
+  }
 }

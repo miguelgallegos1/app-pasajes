@@ -18,7 +18,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombreCompleto, areaId, esSupervisor, supervisorId, estado } = await req.json();
+  const { nombreCompleto, codigoNomina, areaId, esSupervisor, supervisorId, estado } = await req.json();
 
   const colaborador = await db.colaborador.findUnique({ where: { id } });
   if (!colaborador) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -30,8 +30,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Ese colaborador no está en tu alcance" }, { status: 403 });
   }
 
+  if (codigoNomina !== undefined && !codigoNomina?.trim()) {
+    return NextResponse.json({ error: "El código de nómina es obligatorio" }, { status: 400 });
+  }
+
   const data: Record<string, unknown> = {};
   if (nombreCompleto?.trim()) data.nombreCompleto = nombreCompleto.trim().toUpperCase();
+  if (codigoNomina?.trim()) data.codigoNomina = codigoNomina.trim().toUpperCase();
   if (typeof esSupervisor === "boolean") data.esSupervisor = esSupervisor;
   if (supervisorId !== undefined) data.supervisorId = supervisorId || null;
   if (estado === "ACTIVO" || estado === "INACTIVO") data.estado = estado;
@@ -45,8 +50,15 @@ export async function PATCH(
     data.sitioId = nuevaArea.sitioId;
   }
 
-  const actualizado = await db.colaborador.update({ where: { id }, data });
-  return NextResponse.json(actualizado);
+  try {
+    const actualizado = await db.colaborador.update({ where: { id }, data });
+    return NextResponse.json(actualizado);
+  } catch (e: any) {
+    if (e.code === "P2002") {
+      return NextResponse.json({ error: "Ese código de nómina ya está en uso por otro colaborador" }, { status: 400 });
+    }
+    throw e;
+  }
 }
 
 export async function DELETE(
