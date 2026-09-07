@@ -16,6 +16,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Sitio y nombre son obligatorios" }, { status: 400 });
   }
 
-  const area = await db.area.create({ data: { sitioId, nombre: nombre.trim() } });
+  const area = await db.area.create({ data: { sitioId, nombre: nombre.trim().toUpperCase() } });
   return NextResponse.json(area, { status: 201 });
 }

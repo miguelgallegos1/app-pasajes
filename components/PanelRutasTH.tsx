@@ -10,6 +10,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Spinner from "./Spinner";
+import { useToast } from "./Toast";
 
 type Ruta = {
   id: string;
@@ -33,6 +34,7 @@ export default function PanelRutasTH({
   sinAsignaciones: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [busqueda, setBusqueda] = useState("");
   const [soloActivas, setSoloActivas] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
@@ -112,9 +114,11 @@ export default function PanelRutasTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo guardar");
+      toast.error(data.error ?? "No se pudo guardar la ruta");
       return;
     }
     setModalAbierto(false);
+    toast.exito(editandoId ? "Ruta actualizada" : "Ruta creada");
     router.refresh();
   };
 
@@ -133,9 +137,11 @@ export default function PanelRutasTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorGestion(data.error ?? "No se pudo actualizar");
+      toast.error(data.error ?? "No se pudo actualizar la ruta");
       return;
     }
     setIdGestionar(null);
+    toast.exito(nuevoActivo ? "Ruta reactivada" : "Ruta desactivada");
     router.refresh();
   };
 
@@ -148,9 +154,11 @@ export default function PanelRutasTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorGestion(data.error ?? "No se pudo eliminar");
+      toast.error(data.error ?? "No se pudo eliminar la ruta");
       return;
     }
     setIdGestionar(null);
+    toast.exito("Ruta eliminada");
     router.refresh();
   };
 
@@ -277,9 +285,9 @@ export default function PanelRutasTH({
               </label>
               <input
                 value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
+                onChange={(e) => setNombre(e.target.value.toUpperCase())}
                 className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                placeholder="Ej: El Yaznán - Cayambe - Tabacundo"
+                placeholder="Ej: EL YAZNÁN - CAYAMBE - TABACUNDO"
               />
             </div>
 

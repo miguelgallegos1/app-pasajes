@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Spinner from "./Spinner";
+import { useToast } from "./Toast";
 
 type Area = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; direccion: string | null; areas: Area[] };
@@ -35,6 +36,7 @@ const ETIQUETA_HIJOS: Record<ElementoGestion["tipo"], string> = {
 
 export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
   const router = useRouter();
+  const toast = useToast();
 
   const [empresaId, setEmpresaId] = useState<string | null>(empresas[0]?.id ?? null);
   const [sitioId, setSitioId] = useState<string | null>(null);
@@ -93,8 +95,12 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo guardar");
+      toast.error(data.error ?? "No se pudo guardar");
       return;
     }
+    const ETIQUETAS: Record<string, string> = { empresa: "Empresa", sitio: "Sitio", area: "Área" };
+    const TERMINACION: Record<string, string> = { empresa: "a", sitio: "o", area: "a" };
+    toast.exito(`${ETIQUETAS[modal!.tipo]} ${modal!.id ? "actualizad" : "cread"}${TERMINACION[modal!.tipo]}`);
     setModal(null);
     router.refresh();
   };
@@ -117,8 +123,10 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorGestion(data.error ?? "No se pudo actualizar");
+      toast.error(data.error ?? "No se pudo actualizar la empresa");
       return;
     }
+    toast.exito(nuevoActivo ? "Empresa reactivada" : "Empresa desactivada");
     setGestionando(null);
     router.refresh();
   };
@@ -133,12 +141,15 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorGestion(data.error ?? "No se pudo eliminar");
+      toast.error(data.error ?? "No se pudo eliminar");
       return;
     }
 
     if (gestionando.tipo === "empresa" && gestionando.id === empresaId) { setEmpresaId(null); setSitioId(null); }
     if (gestionando.tipo === "sitio" && gestionando.id === sitioId) setSitioId(null);
 
+    const ETIQUETAS: Record<string, string> = { empresa: "Empresa", sitio: "Sitio", area: "Área" };
+    toast.exito(`${ETIQUETAS[gestionando.tipo]} eliminada`);
     setGestionando(null);
     router.refresh();
   };
@@ -303,7 +314,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Nombre</label>
               <input
                 value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
+                onChange={(e) => setNombre(e.target.value.toUpperCase())}
                 className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 autoFocus
               />
@@ -314,7 +325,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                 <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">RUC (opcional)</label>
                 <input
                   value={extra}
-                  onChange={(e) => setExtra(e.target.value)}
+                  onChange={(e) => setExtra(e.target.value.toUpperCase())}
                   className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 />
               </div>
@@ -325,7 +336,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                 <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Dirección (opcional)</label>
                 <input
                   value={extra}
-                  onChange={(e) => setExtra(e.target.value)}
+                  onChange={(e) => setExtra(e.target.value.toUpperCase())}
                   className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 />
               </div>

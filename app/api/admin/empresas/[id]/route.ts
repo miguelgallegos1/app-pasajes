@@ -18,8 +18,8 @@ export async function PATCH(
   const { nombre, ruc, activo } = await req.json();
 
   const data: Record<string, unknown> = {};
-  if (nombre?.trim()) data.nombre = nombre.trim();
-  if (ruc !== undefined) data.ruc = ruc?.trim() || null;
+  if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
+  if (ruc !== undefined) data.ruc = ruc?.trim() ? ruc.trim().toUpperCase() : null;
   if (typeof activo === "boolean") data.activo = activo;
 
   const actualizada = await db.empresa.update({ where: { id }, data });

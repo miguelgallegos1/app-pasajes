@@ -17,7 +17,11 @@ export async function POST(req: Request) {
   }
 
   const sitio = await db.sitioProductivo.create({
-    data: { empresaId, nombre: nombre.trim(), direccion: direccion?.trim() || null },
+    data: {
+      empresaId,
+      nombre: nombre.trim().toUpperCase(),
+      direccion: direccion?.trim() ? direccion.trim().toUpperCase() : null,
+    },
   });
   return NextResponse.json(sitio, { status: 201 });
 }

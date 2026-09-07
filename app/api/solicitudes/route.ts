@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       rutaId: ruta.id,
       fecha: new Date(fecha),
       montoTotal: ruta.valor, // se copia el valor de la ruta al momento de crear (snapshot)
-      observaciones: observaciones || null,
+      observaciones: observaciones?.trim() ? observaciones.trim().toUpperCase() : null,
       estado: "PENDIENTE",
       creadoPorUsuarioId: creadaPorSupervisor ? session.id : null,
     },

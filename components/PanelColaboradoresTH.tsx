@@ -11,6 +11,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Spinner from "./Spinner";
+import { useToast } from "./Toast";
 
 type Colaborador = {
   id: string;
@@ -39,6 +40,7 @@ export default function PanelColaboradoresTH({
   sinAsignaciones: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
 
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(true); // arranca mostrando solo Activos
@@ -137,9 +139,11 @@ export default function PanelColaboradoresTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo guardar");
+      toast.error(data.error ?? "No se pudo guardar el colaborador");
       return;
     }
     setModalAbierto(false);
+    toast.exito(editandoId ? "Colaborador actualizado" : "Colaborador creado");
     router.refresh();
   };
 
@@ -158,9 +162,11 @@ export default function PanelColaboradoresTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorGestion(data.error ?? "No se pudo actualizar");
+      toast.error(data.error ?? "No se pudo actualizar el colaborador");
       return;
     }
     setIdGestionar(null);
+    toast.exito(nuevoEstado === "ACTIVO" ? "Colaborador reactivado" : "Colaborador desactivado");
     router.refresh();
   };
 
@@ -173,9 +179,11 @@ export default function PanelColaboradoresTH({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setErrorGestion(data.error ?? "No se pudo eliminar");
+      toast.error(data.error ?? "No se pudo eliminar el colaborador");
       return;
     }
     setIdGestionar(null);
+    toast.exito("Colaborador eliminado");
     router.refresh();
   };
 
@@ -296,9 +304,9 @@ export default function PanelColaboradoresTH({
               </label>
               <input
                 value={nombreCompleto}
-                onChange={(e) => setNombreCompleto(e.target.value)}
+                onChange={(e) => setNombreCompleto(e.target.value.toUpperCase())}
                 className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                placeholder="Ej: Pedro Sánchez"
+                placeholder="Ej: PEDRO SÁNCHEZ"
               />
             </div>
 

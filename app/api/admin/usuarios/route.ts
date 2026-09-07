@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
   const { nombre, email, pin, rol } = await req.json();
 
-  if (!nombre || !pin || !rol) {
+  if (!nombre?.trim() || !pin || !rol) {
     return NextResponse.json({ error: "Nombre, PIN y rol son obligatorios" }, { status: 400 });
   }
   if (!ROLES_PERMITIDOS.includes(rol)) {
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const pinHash = await bcrypt.hash(pin, 10);
 
   const nuevo = await db.usuario.create({
-    data: { nombre, email: email || null, pinHash, rol },
+    data: { nombre: nombre.trim().toUpperCase(), email: email || null, pinHash, rol },
   });
 
   return NextResponse.json(nuevo, { status: 201 });

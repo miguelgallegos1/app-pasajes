@@ -18,6 +18,6 @@ export async function PATCH(
   const { nombre } = await req.json();
   if (!nombre?.trim()) return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 });
 
-  const actualizada = await db.area.update({ where: { id }, data: { nombre: nombre.trim() } });
+  const actualizada = await db.area.update({ where: { id }, data: { nombre: nombre.trim().toUpperCase() } });
   return NextResponse.json(actualizada);
 }

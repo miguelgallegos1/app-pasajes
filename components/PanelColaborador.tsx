@@ -13,6 +13,7 @@ import ModalHistorial from "./ModalHistorial";
 import Paginacion from "./Paginacion";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
+import { useToast } from "./Toast";
 
 type Solicitud = {
   id: string;
@@ -59,6 +60,7 @@ export default function PanelColaborador({
   solicitudes: Solicitud[];
 }) {
   const router = useRouter();
+  const toast = useToast();
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
@@ -190,12 +192,14 @@ export default function PanelColaborador({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo guardar la solicitud");
+      toast.error(data.error ?? "No se pudo guardar la solicitud");
       setConfirmando(false);
       return;
     }
     setConfirmando(false);
     setModalAbierto(false);
     setModoEdicionId(null);
+    toast.exito(modoEdicionId ? "Solicitud actualizada" : "Solicitud registrada");
     router.refresh();
   };
 
@@ -209,8 +213,10 @@ export default function PanelColaborador({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "No se pudo eliminar");
+      toast.error(data.error ?? "No se pudo eliminar la solicitud");
       return;
     }
+    toast.exito("Solicitud eliminada");
     router.refresh();
   };
 
@@ -401,7 +407,7 @@ export default function PanelColaborador({
               </label>
               <textarea
                 value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value)}
+                onChange={(e) => setObservaciones(e.target.value.toUpperCase())}
                 rows={2}
                 className={`${CLASE_CAMPO} resize-none`}
                 placeholder="Algún comentario adicional..."
