@@ -129,6 +129,12 @@ model Colaborador {
   usuario        Usuario           @relation(fields: [usuarioId], references: [id])
   usuarioId      String            @unique
   nombreCompleto String
+  // Código con el que el colaborador está registrado en nómina, para
+  // poder cruzar los datos entre ambos sistemas. Nullable en el esquema
+  // porque los colaboradores creados antes de este campo no tienen uno
+  // todavía (se les puede agregar luego editándolos); el formulario de
+  // "Nuevo colaborador" sí lo exige siempre.
+  codigoNomina   String?           @unique
   fotoUrl        String?
   sitio          SitioProductivo   @relation(fields: [sitioId], references: [id])
   sitioId        String

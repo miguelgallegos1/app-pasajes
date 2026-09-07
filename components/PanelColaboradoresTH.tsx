@@ -16,6 +16,7 @@ import { useToast } from "./Toast";
 type Colaborador = {
   id: string;
   nombreCompleto: string;
+  codigoNomina: string | null;
   estado: string;
   esSupervisor: boolean;
   supervisorNombre: string | null;
@@ -51,7 +52,11 @@ export default function PanelColaboradoresTH({
     return colaboradores.filter((c) => {
       if (soloActivos && c.estado !== "ACTIVO") return false;
       if (!texto) return true;
-      return c.nombreCompleto.toLowerCase().includes(texto) || c.areaLabel.toLowerCase().includes(texto);
+      return (
+        c.nombreCompleto.toLowerCase().includes(texto) ||
+        c.areaLabel.toLowerCase().includes(texto) ||
+        (c.codigoNomina ?? "").toLowerCase().includes(texto)
+      );
     });
   }, [colaboradores, busqueda, soloActivos]);
 
@@ -74,6 +79,7 @@ export default function PanelColaboradoresTH({
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nombreCompleto, setNombreCompleto] = useState("");
+  const [codigoNomina, setCodigoNomina] = useState("");
   const [areaId, setAreaId] = useState("");
   const [pin, setPin] = useState("");
   const [esSupervisor, setEsSupervisor] = useState(false);
@@ -89,6 +95,7 @@ export default function PanelColaboradoresTH({
   const abrirCrear = () => {
     setEditandoId(null);
     setNombreCompleto("");
+    setCodigoNomina("");
     setAreaId("");
     setPin("");
     setEsSupervisor(false);
@@ -101,6 +108,7 @@ export default function PanelColaboradoresTH({
   const abrirEditar = (c: Colaborador) => {
     setEditandoId(c.id);
     setNombreCompleto(c.nombreCompleto);
+    setCodigoNomina(c.codigoNomina ?? "");
     setAreaId(c.areaId);
     setPin("");
     setEsSupervisor(c.esSupervisor);
@@ -111,8 +119,8 @@ export default function PanelColaboradoresTH({
   };
 
   const guardar = async () => {
-    if (!nombreCompleto || !areaId) {
-      setError("Nombre y Área son obligatorios");
+    if (!nombreCompleto || !codigoNomina.trim() || !areaId) {
+      setError("Nombre, Código de nómina y Área son obligatorios");
       return;
     }
     if (!editandoId && !/^\d{6}$/.test(pin)) {
@@ -126,8 +134,8 @@ export default function PanelColaboradoresTH({
     const url = editandoId ? `/api/colaboradores/${editandoId}` : "/api/colaboradores";
     const method = editandoId ? "PATCH" : "POST";
     const body = editandoId
-      ? { nombreCompleto, areaId, esSupervisor, supervisorId: supervisorId || null, estado: estadoEdicion }
-      : { nombreCompleto, areaId, pin, esSupervisor, supervisorId: supervisorId || null };
+      ? { nombreCompleto, codigoNomina, areaId, esSupervisor, supervisorId: supervisorId || null, estado: estadoEdicion }
+      : { nombreCompleto, codigoNomina, areaId, pin, esSupervisor, supervisorId: supervisorId || null };
 
     const res = await fetch(url, {
       method,
@@ -212,7 +220,7 @@ export default function PanelColaboradoresTH({
           <input
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por nombre o área..."
+            placeholder="Buscar por nombre, área o código..."
             className="w-full rounded-xl border border-neutral-700 bg-neutral-900 text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
           />
         </div>
@@ -227,6 +235,7 @@ export default function PanelColaboradoresTH({
             <thead className="bg-neutral-100/70 text-neutral-500 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Nombre</th>
+                <th className="px-4 py-3 font-medium">Código</th>
                 <th className="px-4 py-3 font-medium">Área</th>
                 <th className="px-4 py-3 font-medium">Supervisor</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
@@ -243,6 +252,9 @@ export default function PanelColaboradoresTH({
                         SUPERVISOR
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-neutral-500">
+                    {c.codigoNomina ?? <span className="text-amber-600">Sin código</span>}
                   </td>
                   <td className="px-4 py-3 text-neutral-600">{c.areaLabel}</td>
                   <td className="px-4 py-3 text-neutral-500">{c.supervisorNombre ?? "—"}</td>
@@ -275,7 +287,7 @@ export default function PanelColaboradoresTH({
               ))}
               {colaboradoresFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-neutral-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
                     {busqueda
                       ? "Sin resultados para esa búsqueda"
                       : soloActivos
@@ -308,6 +320,19 @@ export default function PanelColaboradoresTH({
                 className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: PEDRO SÁNCHEZ"
               />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Código de nómina
+              </label>
+              <input
+                value={codigoNomina}
+                onChange={(e) => setCodigoNomina(e.target.value.toUpperCase())}
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                placeholder="Ej: EMP-00123"
+              />
+              <p className="text-xs text-neutral-400 mt-1">El mismo código con el que está registrado en nómina</p>
             </div>
 
             <div>
