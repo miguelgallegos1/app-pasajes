@@ -1,9 +1,8 @@
-// app/mis-pasajes/page.tsx
+// app/(app)/mis-pasajes/page.tsx
 import { redirect } from "next/navigation";
-import { db } from "../../lib/db";
-import { getSession } from "../../lib/auth";
-import AppShell from "../../components/AppShell";
-import PanelColaborador from "../../components/PanelColaborador";
+import { db } from "../../../lib/db";
+import { getSession } from "../../../lib/auth";
+import PanelColaborador from "../../../components/PanelColaborador";
 
 export default async function MisPasajesPage() {
   const session = await getSession();
@@ -61,15 +60,13 @@ export default async function MisPasajesPage() {
   }));
 
   return (
-    <AppShell rol={session.rol} nombreCompleto={colaborador.nombreCompleto} fotoUrl={colaborador.fotoUrl}>
-      <PanelColaborador
-        colaboradorId={colaborador.id}
-        nombreCompleto={colaborador.nombreCompleto}
-        esSupervisor={colaborador.esSupervisor}
-        equipo={equipo}
-        rutasPropias={rutasPropiasSerializadas}
-        solicitudes={solicitudesSerializadas}
-      />
-    </AppShell>
+    <PanelColaborador
+      colaboradorId={colaborador.id}
+      nombreCompleto={colaborador.nombreCompleto}
+      esSupervisor={colaborador.esSupervisor}
+      equipo={equipo}
+      rutasPropias={rutasPropiasSerializadas}
+      solicitudes={solicitudesSerializadas}
+    />
   );
 }

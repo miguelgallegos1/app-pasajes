@@ -1,17 +1,13 @@
-// app/finanzas/pagos/page.tsx
+// app/(app)/finanzas/pagos/page.tsx
 import { redirect } from "next/navigation";
-import { db } from "../../../lib/db";
-import { getSession } from "../../../lib/auth";
-import AppShell from "../../../components/AppShell";
-import PanelFinanzas from "../../../components/PanelFinanzas";
+import { db } from "../../../../lib/db";
+import { getSession } from "../../../../lib/auth";
+import PanelFinanzas from "../../../../components/PanelFinanzas";
 
 export default async function PagosPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!["FINANZAS", "SUPER_ADMIN"].includes(session.rol)) redirect("/login");
-
-  const usuario = await db.usuario.findUnique({ where: { id: session.id } });
-  if (!usuario) redirect("/login");
 
   const aprobadas = await db.solicitudPasaje.findMany({
     where: { estado: "APROBADA" },
@@ -38,9 +34,5 @@ export default async function PagosPage() {
     rutaNombre: s.ruta.nombre,
   }));
 
-  return (
-    <AppShell rol={session.rol} nombreCompleto={usuario.nombre} fotoUrl={null}>
-      <PanelFinanzas esSuperAdmin={session.rol === "SUPER_ADMIN"} aprobadas={aprobadasSerializadas} />
-    </AppShell>
-  );
+  return <PanelFinanzas esSuperAdmin={session.rol === "SUPER_ADMIN"} aprobadas={aprobadasSerializadas} />;
 }
