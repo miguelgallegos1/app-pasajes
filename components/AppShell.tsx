@@ -106,9 +106,9 @@ export default function AppShell({
       {/* ---------- Sidebar (solo escritorio) ---------- */}
       <aside className="hidden md:flex md:flex-col w-60 bg-neutral-950 border-r border-neutral-800 shrink-0">
         <div className="flex items-center gap-2 px-5 py-4 border-b border-neutral-800">
-          <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-black shrink-0">
-            <IconoBuseta className="w-5 h-5" />
-          </div>
+        <div className="w-9 h-9 flex items-center justify-center shrink-0 rounded-lg border border-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.4)] bg-neutral-900 p-1">
+          <img src="/logo.png" alt={APP_NOMBRE} className="w-full h-full object-contain" />
+        </div>
           <span className="font-bold text-sm">{APP_NOMBRE}</span>
         </div>
         <nav className="flex-1 py-3 px-2 space-y-1">
