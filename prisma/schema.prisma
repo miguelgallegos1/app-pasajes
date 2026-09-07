@@ -92,6 +92,12 @@ model Usuario {
   nombre       String
   email        String?       @unique
   pinHash      String
+  // Huella HMAC del PIN (determinística, a diferencia de pinHash que va
+  // salado). Permite encontrar al usuario por PIN con una consulta indexada
+  // en vez de comparar con bcrypt contra todos los usuarios uno por uno.
+  // Nullable porque las cuentas creadas antes de este campo se migran solas
+  // (ver lib/pin.ts) la primera vez que inician sesión después del cambio.
+  pinLookup    String?       @unique
   rol          Rol
   activo       Boolean       @default(true)
   createdAt    DateTime      @default(now())

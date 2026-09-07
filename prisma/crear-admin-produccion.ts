@@ -8,6 +8,7 @@ import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { calcularPinLookup } from "../lib/pin";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
@@ -19,7 +20,7 @@ async function main() {
   const pinHash = await bcrypt.hash(pin, 10);
 
   const admin = await db.usuario.create({
-    data: { nombre, pinHash, rol: "SUPER_ADMIN" },
+    data: { nombre, pinHash, pinLookup: calcularPinLookup(pin), rol: "SUPER_ADMIN" },
   });
 
   console.log("✅ Super Admin creado:", admin.nombre);

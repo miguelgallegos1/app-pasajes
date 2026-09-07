@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { calcularPinLookup } from "../../../../lib/pin";
 
 const ROLES_PERMITIDOS = ["ADMIN_TH", "FINANZAS", "SUPER_ADMIN"];
 
@@ -27,8 +28,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
   }
 
-  const usuarios = await db.usuario.findMany({ select: { pinHash: true } });
-  for (const u of usuarios) {
+  const pinLookup = calcularPinLookup(pin);
+  const yaExiste = await db.usuario.findFirst({ where: { pinLookup } });
+  if (yaExiste) {
+    return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
+  }
+  const usuariosSinMigrar = await db.usuario.findMany({ where: { pinLookup: null }, select: { pinHash: true } });
+  for (const u of usuariosSinMigrar) {
     if (await bcrypt.compare(pin, u.pinHash)) {
       return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
     }
@@ -37,7 +43,7 @@ export async function POST(req: Request) {
   const pinHash = await bcrypt.hash(pin, 10);
 
   const nuevo = await db.usuario.create({
-    data: { nombre: nombre.trim().toUpperCase(), email: email || null, pinHash, rol },
+    data: { nombre: nombre.trim().toUpperCase(), email: email || null, pinHash, pinLookup, rol },
   });
 
   return NextResponse.json(nuevo, { status: 201 });

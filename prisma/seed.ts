@@ -2,6 +2,7 @@
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { calcularPinLookup } from "../lib/pin";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
@@ -40,6 +41,7 @@ async function main() {
       nombre: "Miguel Gallegos (Super Admin)",
       email: "superadmin@empresa.com",
       pinHash: pinHashAdmin,
+      pinLookup: calcularPinLookup("123456"),
       rol: "SUPER_ADMIN",
     },
   });
@@ -51,6 +53,7 @@ async function main() {
       nombre: "María Torres (TH)",
       email: "th@empresa.com",
       pinHash: pinHashTH,
+      pinLookup: calcularPinLookup("111111"),
       rol: "ADMIN_TH",
     },
   });
@@ -66,6 +69,7 @@ async function main() {
       nombre: "Carlos Pago (Finanzas)",
       email: "finanzas@empresa.com",
       pinHash: pinHashFin,
+      pinLookup: calcularPinLookup("333333"),
       rol: "FINANZAS",
     },
   });
@@ -75,6 +79,7 @@ async function main() {
       nombre: "Ana Rodríguez (Supervisora)",
       email: "supervisor@empresa.com",
       pinHash: pinHashSupervisor,
+      pinLookup: calcularPinLookup("444444"),
       rol: "COLABORADOR",
       colaborador: {
         create: {
@@ -93,6 +98,7 @@ async function main() {
       nombre: "Juan Pérez",
       email: "juan.perez@empresa.com",
       pinHash: pinHashColab,
+      pinLookup: calcularPinLookup("222222"),
       rol: "COLABORADOR",
       colaborador: {
         create: {
