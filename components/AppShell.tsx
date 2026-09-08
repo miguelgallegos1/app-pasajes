@@ -90,7 +90,9 @@ export default function AppShell({
           href={item.href}
           onClick={onClickItem}
           className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-            activo ? "bg-orange-500 text-black" : "text-neutral-300 hover:bg-neutral-900"
+            activo
+              ? "bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.5)]"
+              : "text-neutral-300 hover:bg-neutral-900"
           }`}
         >
           <Icono className="w-4 h-4 shrink-0" />
