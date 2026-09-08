@@ -23,7 +23,7 @@ export default async function AprobacionesPage() {
         orderBy: { fecha: "asc" },
         include: {
           colaborador: { select: { nombreCompleto: true } },
-          ruta: { include: { area: true } }, // el área da contexto de dónde es la solicitud
+          ruta: { select: { nombre: true } },
         },
       });
 
@@ -35,7 +35,7 @@ export default async function AprobacionesPage() {
     montoTotal: Number(s.montoTotal),
     observaciones: s.observaciones,
     nombreColaborador: s.colaborador.nombreCompleto,
-    rutaLabel: `${s.ruta.nombre} — ${s.ruta.area.nombre}`,
+    rutaLabel: s.ruta.nombre,
   }));
 
   return (
