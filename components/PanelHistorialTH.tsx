@@ -10,6 +10,9 @@ import CalendarioSelector from "./CalendarioSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
+import Modal from "./Modal";
+import Spinner from "./Spinner";
+import { useToast } from "./Toast";
 import { formatearFecha } from "../lib/fechas";
 
 type Fila = {
@@ -43,6 +46,12 @@ export default function PanelHistorialTH({
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const toast = useToast();
+
+  const [idARevertir, setIdARevertir] = useState<string | null>(null);
+  const [motivoRevertir, setMotivoRevertir] = useState("");
+  const [revirtiendo, setRevirtiendo] = useState(false);
+  const [errorRevertir, setErrorRevertir] = useState("");
 
   const opcionesColaborador = [
     { id: "", label: "Todos los colaboradores" },
@@ -72,6 +81,38 @@ export default function PanelHistorialTH({
     setTotalMonto(data.totalMonto);
     setTotalPaginas(data.totalPaginas);
     setPagina(paginaNueva);
+  };
+
+  const abrirRevertir = (id: string) => {
+    setIdARevertir(id);
+    setMotivoRevertir("");
+    setErrorRevertir("");
+  };
+
+  const confirmarRevertir = async () => {
+    if (!idARevertir) return;
+    if (motivoRevertir.trim().length < 3) {
+      setErrorRevertir("Escribe el motivo de la corrección (mínimo 3 caracteres)");
+      return;
+    }
+    setRevirtiendo(true);
+    setErrorRevertir("");
+    const res = await fetch(`/api/solicitudes/${idARevertir}/revertir`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ motivo: motivoRevertir }),
+    });
+    setRevirtiendo(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErrorRevertir(data.error ?? "No se pudo revertir la solicitud");
+      toast.error(data.error ?? "No se pudo revertir la solicitud");
+      return;
+    }
+    setIdARevertir(null);
+    toast.exito("Solicitud devuelta a Pendiente");
+    buscar(pagina);
   };
 
   return (
@@ -149,6 +190,7 @@ export default function PanelHistorialTH({
                   <th className="px-4 py-3 font-medium">Ruta</th>
                   <th className="px-4 py-3 font-medium">Valor</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -163,11 +205,21 @@ export default function PanelHistorialTH({
                         {s.estado}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      {s.estado === "APROBADA" && (
+                        <button
+                          onClick={() => abrirRevertir(s.id)}
+                          className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
+                        >
+                          Revertir a pendiente
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
                       No hay resultados en ese rango
                     </td>
                   </tr>
@@ -177,7 +229,7 @@ export default function PanelHistorialTH({
                 <tfoot>
                   <tr className="border-t border-neutral-200 bg-neutral-50 font-semibold">
                     <td className="px-4 py-3" colSpan={3}>Total del rango</td>
-                    <td className="px-4 py-3" colSpan={2}>${totalMonto.toFixed(2)}</td>
+                    <td className="px-4 py-3" colSpan={3}>${totalMonto.toFixed(2)}</td>
                   </tr>
                 </tfoot>
               )}
@@ -186,6 +238,41 @@ export default function PanelHistorialTH({
           <Paginacion paginaActual={pagina} totalPaginas={totalPaginas} onCambiarPagina={buscar} />
         </div>
       )}
+
+      <Modal abierto={!!idARevertir} className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl">
+        <div>
+          <h2 className="font-semibold text-neutral-900">Revertir a Pendiente</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            La solicitud vuelve a la cola de aprobación. Usalo solo para corregir un error de control.
+          </p>
+        </div>
+        <textarea
+          value={motivoRevertir}
+          onChange={(e) => setMotivoRevertir(e.target.value.toUpperCase())}
+          rows={3}
+          autoFocus
+          className="w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
+          placeholder="Ej: Se aprobó por error, ruta incorrecta..."
+        />
+        {errorRevertir && <p className="text-sm text-red-600">{errorRevertir}</p>}
+        <div className="flex gap-2 justify-end pt-1">
+          <button
+            onClick={() => setIdARevertir(null)}
+            disabled={revirtiendo}
+            className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmarRevertir}
+            disabled={revirtiendo}
+            className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+          >
+            {revirtiendo && <Spinner className="w-4 h-4" />}
+            {revirtiendo ? "Guardando..." : "Revertir"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
