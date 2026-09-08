@@ -79,6 +79,8 @@ export default function PanelColaboradoresTH({
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nombreCompleto, setNombreCompleto] = useState("");
+  const [apellidos, setApellidos] = useState("");
+  const [nombres, setNombres] = useState("");
   const [codigoNomina, setCodigoNomina] = useState("");
   const [areaId, setAreaId] = useState("");
   const [pin, setPin] = useState("");
@@ -95,6 +97,8 @@ export default function PanelColaboradoresTH({
   const abrirCrear = () => {
     setEditandoId(null);
     setNombreCompleto("");
+    setApellidos("");
+    setNombres("");
     setCodigoNomina("");
     setAreaId("");
     setPin("");
@@ -119,8 +123,16 @@ export default function PanelColaboradoresTH({
   };
 
   const guardar = async () => {
-    if (!nombreCompleto || !codigoNomina.trim() || !areaId) {
-      setError("Nombre, Código de nómina y Área son obligatorios");
+    if (!codigoNomina.trim() || !areaId) {
+      setError("Código de nómina y Área son obligatorios");
+      return;
+    }
+    if (!editandoId && (!apellidos.trim() || !nombres.trim())) {
+      setError("Apellidos y Nombres son obligatorios");
+      return;
+    }
+    if (editandoId && !nombreCompleto) {
+      setError("El nombre es obligatorio");
       return;
     }
     if (!editandoId && !/^\d{6}$/.test(pin)) {
@@ -133,9 +145,10 @@ export default function PanelColaboradoresTH({
 
     const url = editandoId ? `/api/colaboradores/${editandoId}` : "/api/colaboradores";
     const method = editandoId ? "PATCH" : "POST";
+    const nombreParaCrear = `${apellidos.trim()} ${nombres.trim()}`.trim();
     const body = editandoId
       ? { nombreCompleto, codigoNomina, areaId, esSupervisor, supervisorId: supervisorId || null, estado: estadoEdicion }
-      : { nombreCompleto, codigoNomina, areaId, pin, esSupervisor, supervisorId: supervisorId || null };
+      : { nombreCompleto: nombreParaCrear, codigoNomina, areaId, pin, esSupervisor, supervisorId: supervisorId || null };
 
     const res = await fetch(url, {
       method,
@@ -312,18 +325,6 @@ export default function PanelColaboradoresTH({
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Nombre completo
-              </label>
-              <input
-                value={nombreCompleto}
-                onChange={(e) => setNombreCompleto(e.target.value.toUpperCase())}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                placeholder="Ej: PEDRO SÁNCHEZ"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 Código de nómina
               </label>
               <input
@@ -331,9 +332,50 @@ export default function PanelColaboradoresTH({
                 onChange={(e) => setCodigoNomina(e.target.value.toUpperCase())}
                 className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: EMP-00123"
+                autoFocus
               />
               <p className="text-xs text-neutral-400 mt-1">El mismo código con el que está registrado en nómina</p>
             </div>
+
+            {!editandoId ? (
+              <>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Apellidos
+                  </label>
+                  <input
+                    value={apellidos}
+                    onChange={(e) => setApellidos(e.target.value.toUpperCase())}
+                    className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                    placeholder="Ej: SÁNCHEZ PÉREZ"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Nombres
+                  </label>
+                  <input
+                    value={nombres}
+                    onChange={(e) => setNombres(e.target.value.toUpperCase())}
+                    className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                    placeholder="Ej: PEDRO"
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Nombre completo
+                </label>
+                <input
+                  value={nombreCompleto}
+                  onChange={(e) => setNombreCompleto(e.target.value.toUpperCase())}
+                  className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  placeholder="Ej: PEDRO SÁNCHEZ"
+                />
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Área</label>
