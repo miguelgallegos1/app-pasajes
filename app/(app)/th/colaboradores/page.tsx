@@ -29,6 +29,7 @@ export default async function ColaboradoresPage() {
 
   const colaboradoresSerializados = colaboradores.map((c) => ({
     id: c.id,
+    numero: c.numero,
     nombreCompleto: c.nombreCompleto,
     apellidos: c.apellidos,
     nombres: c.nombres,

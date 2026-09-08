@@ -15,6 +15,7 @@ import { useToast } from "./Toast";
 
 type Colaborador = {
   id: string;
+  numero: number;
   nombreCompleto: string;
   apellidos: string;
   nombres: string;
@@ -239,6 +240,7 @@ export default function PanelColaboradoresTH({
           <table className="w-full text-sm min-w-[680px]">
             <thead className="bg-neutral-100/70 text-neutral-500 text-left">
               <tr>
+                <th className="px-4 py-3 font-medium w-12">N°</th>
                 <th className="px-4 py-3 font-medium">Nombre</th>
                 <th className="px-4 py-3 font-medium">Código</th>
                 <th className="px-4 py-3 font-medium">Área</th>
@@ -250,6 +252,7 @@ export default function PanelColaboradoresTH({
             <tbody>
               {colaboradoresPagina.map((c) => (
                 <tr key={c.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                  <td className="px-4 py-3 text-neutral-400">{c.numero}</td>
                   <td className="px-4 py-3">
                     {c.nombreCompleto}
                     {c.esSupervisor && (
@@ -292,7 +295,7 @@ export default function PanelColaboradoresTH({
               ))}
               {colaboradoresFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
+                  <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
                     {busqueda
                       ? "Sin resultados para esa búsqueda"
                       : soloActivos
