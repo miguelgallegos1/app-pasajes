@@ -122,6 +122,7 @@ async function main() {
   await db.solicitudPasaje.createMany({
     data: [
       {
+        codigo: "DEM2",
         colaboradorId: usuarioColaborador.colaborador!.id,
         rutaId: rutaProduccion.id,
         fecha: ayer,
@@ -130,6 +131,7 @@ async function main() {
         observaciones: "Turno extendido por inventario",
       },
       {
+        codigo: "DEM3",
         colaboradorId: usuarioColaborador.colaborador!.id,
         rutaId: rutaProduccion.id,
         fecha: new Date(),

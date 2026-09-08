@@ -200,6 +200,10 @@ model Colaborador {
 
 model SolicitudPasaje {
   id            String          @id @default(cuid())
+  // Código corto (4 caracteres alfanuméricos, sin 0/O/1/I para no
+  // confundirlos al leerlos) para identificar la solicitud sin tener que
+  // describirla por nombre de ruta/fecha/colaborador.
+  codigo        String          @unique
   colaborador   Colaborador     @relation(fields: [colaboradorId], references: [id])
   colaboradorId String
 

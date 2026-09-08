@@ -29,6 +29,7 @@ export default async function AprobacionesPage() {
 
   const pendientesSerializadas = pendientes.map((s) => ({
     id: s.id,
+    codigo: s.codigo,
     fecha: s.fecha.toISOString(),
     fechaSolicitud: s.fechaSolicitud.toISOString(),
     montoTotal: Number(s.montoTotal),

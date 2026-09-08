@@ -16,6 +16,7 @@ import { useToast } from "./Toast";
 
 type Aprobada = {
   id: string;
+  codigo: string;
   fecha: string;
   fechaAprobacion: string | null;
   montoTotal: number;
@@ -99,6 +100,7 @@ export default function PanelFinanzas({
       if (colaboradorId && a.colaboradorId !== colaboradorId) return false;
       if (!texto) return true;
       return (
+        a.codigo.toLowerCase().includes(texto) ||
         a.nombreColaborador.toLowerCase().includes(texto) ||
         a.rutaNombre.toLowerCase().includes(texto)
       );
@@ -230,7 +232,7 @@ export default function PanelFinanzas({
         <input
           value={busqueda}
           onChange={(e) => cambiarBusqueda(e.target.value)}
-          placeholder="Buscar por colaborador o ruta..."
+          placeholder="Buscar por código, colaborador o ruta..."
           className="w-full max-w-sm rounded-xl border border-neutral-200 px-4 py-2.5 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
         />
       </div>
@@ -274,6 +276,7 @@ export default function PanelFinanzas({
                     className="w-4 h-4 accent-orange-500 rounded"
                   />
                 </th>
+                <th className="px-4 py-3 font-medium">Código</th>
                 <th className="px-4 py-3 font-medium">Fecha del pasaje</th>
                 <th className="px-4 py-3 font-medium">Colaborador</th>
                 <th className="px-4 py-3 font-medium">Empresa · Sitio · Área</th>
@@ -293,6 +296,7 @@ export default function PanelFinanzas({
                       className="w-4 h-4 accent-orange-500 rounded"
                     />
                   </td>
+                  <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{a.codigo}</td>
                   <td className="px-4 py-3">
                     <p className="font-medium">{formatearFecha(a.fecha)}</p>
                     {a.fechaAprobacion && (
@@ -319,7 +323,7 @@ export default function PanelFinanzas({
               ))}
               {aprobadasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
+                  <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
                     Sin resultados con esos filtros
                   </td>
                 </tr>

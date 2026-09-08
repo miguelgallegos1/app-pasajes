@@ -20,6 +20,7 @@ export default async function PagosPage() {
 
   const aprobadasSerializadas = aprobadas.map((s) => ({
     id: s.id,
+    codigo: s.codigo,
     fecha: s.fecha.toISOString(),
     fechaAprobacion: s.fechaAprobacion?.toISOString() ?? null,
     montoTotal: Number(s.montoTotal),

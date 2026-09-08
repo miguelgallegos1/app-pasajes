@@ -17,6 +17,7 @@ import { formatearFecha } from "../lib/fechas";
 
 type Fila = {
   id: string;
+  codigo: string;
   fecha: string;
   montoTotal: number;
   estado: string;
@@ -185,6 +186,7 @@ export default function PanelHistorialTH({
             <table className="w-full text-sm">
               <thead className="bg-neutral-100 text-neutral-500 text-left">
                 <tr>
+                  <th className="px-4 py-3 font-medium">Código</th>
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   <th className="px-4 py-3 font-medium">Colaborador</th>
                   <th className="px-4 py-3 font-medium">Ruta</th>
@@ -196,6 +198,7 @@ export default function PanelHistorialTH({
               <tbody>
                 {items.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-100 hover:bg-neutral-50 transition">
+                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
                     <td className="px-4 py-3">{s.nombreColaborador}</td>
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
@@ -219,7 +222,7 @@ export default function PanelHistorialTH({
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
                       No hay resultados en ese rango
                     </td>
                   </tr>
@@ -228,7 +231,7 @@ export default function PanelHistorialTH({
               {items.length > 0 && (
                 <tfoot>
                   <tr className="border-t border-neutral-200 bg-neutral-50 font-semibold">
-                    <td className="px-4 py-3" colSpan={3}>Total del rango</td>
+                    <td className="px-4 py-3" colSpan={4}>Total del rango</td>
                     <td className="px-4 py-3" colSpan={3}>${totalMonto.toFixed(2)}</td>
                   </tr>
                 </tfoot>

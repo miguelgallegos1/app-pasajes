@@ -43,6 +43,7 @@ export default async function MisPasajesPage() {
 
   const solicitudesSerializadas = solicitudes.map((s) => ({
     id: s.id,
+    codigo: s.codigo,
     colaboradorId: s.colaboradorId,
     rutaId: s.rutaId,
     fecha: s.fecha.toISOString(),

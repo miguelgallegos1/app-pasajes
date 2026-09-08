@@ -18,6 +18,7 @@ import { useToast } from "./Toast";
 
 type Solicitud = {
   id: string;
+  codigo: string;
   colaboradorId: string;
   rutaId: string;
   fecha: string;
@@ -71,6 +72,7 @@ export default function PanelColaborador({
     if (!texto) return solicitudes;
     return solicitudes.filter(
       (s) =>
+        s.codigo.toLowerCase().includes(texto) ||
         s.rutaLabel.toLowerCase().includes(texto) ||
         s.nombreColaborador.toLowerCase().includes(texto) ||
         (s.observaciones ?? "").toLowerCase().includes(texto)
@@ -250,7 +252,7 @@ export default function PanelColaborador({
           <input
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por ruta, colaborador u observación..."
+            placeholder="Buscar por código, ruta, colaborador u observación..."
             className="w-full rounded-xl border border-neutral-700 bg-neutral-900 text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
           />
         </div>
@@ -260,6 +262,7 @@ export default function PanelColaborador({
             <table className="w-full text-sm min-w-[760px]">
               <thead className="bg-neutral-100/70 text-neutral-500 text-left">
                 <tr>
+                  <th className="px-4 py-3 font-medium">Código</th>
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   {esSupervisor && <th className="px-4 py-3 font-medium">Colaborador</th>}
                   <th className="px-4 py-3 font-medium">Ruta</th>
@@ -272,6 +275,7 @@ export default function PanelColaborador({
               <tbody>
                 {solicitudesPagina.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(s.fecha)}</p>
                       <p className="text-[11px] text-neutral-400">
@@ -320,7 +324,7 @@ export default function PanelColaborador({
                 ))}
                 {solicitudesFiltradas.length === 0 && (
                   <tr>
-                    <td colSpan={esSupervisor ? 7 : 6} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={esSupervisor ? 8 : 7} className="px-4 py-10 text-center text-neutral-400">
                       {busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"}
                     </td>
                   </tr>
@@ -330,7 +334,7 @@ export default function PanelColaborador({
               {solicitudesFiltradas.length > 0 && (
                 <tfoot>
                   <tr className="border-t border-neutral-200 bg-neutral-100/70 font-semibold">
-                    <td className="px-4 py-3" colSpan={esSupervisor ? 3 : 2}>
+                    <td className="px-4 py-3" colSpan={esSupervisor ? 4 : 3}>
                       Total ({solicitudesFiltradas.length} {solicitudesFiltradas.length === 1 ? "solicitud" : "solicitudes"})
                     </td>
                     <td className="px-4 py-3">${totalGeneral.toFixed(2)}</td>
