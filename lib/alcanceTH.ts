@@ -3,13 +3,18 @@
 // según sus filas en AsignacionTH. Se reutiliza en aprobaciones, historial
 // y en el CRUD de colaboradores.
 
+import { cache } from "react";
 import { db } from "./db";
 
-async function obtenerAsignaciones(usuarioId: string, rol: string) {
+// cache() de React memoiza por la duración de UNA sola petición: si en la
+// misma página se llama a obtenerCondicionColaboradorTH y a
+// obtenerAreasPermitidasTH (como pasa en /th/colaboradores), esta consulta
+// se ejecuta una sola vez en vez de dos.
+const obtenerAsignaciones = cache(async (usuarioId: string, rol: string) => {
   if (rol === "SUPER_ADMIN") return { sinRestriccion: true as const, asignaciones: [] };
   const asignaciones = await db.asignacionTH.findMany({ where: { usuarioId } });
   return { sinRestriccion: false as const, asignaciones };
-}
+});
 
 export async function obtenerCondicionRutaTH(usuarioId: string, rol: string) {
   const { sinRestriccion, asignaciones } = await obtenerAsignaciones(usuarioId, rol);
@@ -62,7 +67,7 @@ export async function obtenerAreasPermitidasTH(usuarioId: string, rol: string): 
     });
   }
 
-  const asignaciones = await db.asignacionTH.findMany({ where: { usuarioId } });
+  const { asignaciones } = await obtenerAsignaciones(usuarioId, rol);
   if (asignaciones.length === 0) return [];
 
   // Una sola consulta con todas las condiciones combinadas (antes eran N
