@@ -181,6 +181,31 @@ export default function LoginPage() {
     }
   };
 
+  const handlePaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    // maxLength={1} hace que el navegador trunque un pegado normal a un
+    // solo carácter antes de disparar onChange, por eso lo interceptamos
+    // acá y repartimos los dígitos pegados entre las cajitas restantes.
+    const soloNumeros = e.clipboardData.getData("text").replace(/[^0-9]/g, "");
+    if (!soloNumeros) return;
+    e.preventDefault();
+
+    const nuevosDigitos = [...digitos];
+    let cursor = index;
+    for (const caracter of soloNumeros) {
+      if (cursor > 5) break;
+      nuevosDigitos[cursor] = caracter;
+      cursor++;
+    }
+    setDigitos(nuevosDigitos);
+
+    const siguienteVacio = nuevosDigitos.findIndex((d) => d === "");
+    inputsRef.current[siguienteVacio === -1 ? 5 : siguienteVacio]?.focus();
+
+    if (nuevosDigitos.every((d) => d !== "")) {
+      enviarPin(nuevosDigitos.join(""));
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-black px-4 relative">
       <div className={`w-full max-w-sm transition-opacity ${loading ? "opacity-40 pointer-events-none" : ""}`}>
@@ -206,6 +231,7 @@ export default function LoginPage() {
               disabled={loading}
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
+              onPaste={(e) => handlePaste(index, e)}
               className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl font-bold rounded-xl
                         bg-neutral-900 border-2 border-neutral-700 text-white
                         focus:border-orange-500 focus:shadow-[0_0_20px_rgba(249,115,22,0.5)]
