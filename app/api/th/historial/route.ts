@@ -46,7 +46,7 @@ export async function GET(req: Request) {
   const [items, total, suma] = await Promise.all([
     db.solicitudPasaje.findMany({
       where: filtro,
-      include: { ruta: { include: { area: true } }, colaborador: { select: { nombreCompleto: true } } },
+      include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true } } },
       orderBy: { fecha: "desc" },
       skip: (pagina - 1) * POR_PAGINA,
       take: POR_PAGINA,
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
       fecha: s.fecha.toISOString(),
       montoTotal: Number(s.montoTotal),
       estado: s.estado,
-      rutaLabel: `${s.ruta.nombre} — ${s.ruta.area.nombre}`,
+      rutaLabel: s.ruta.nombre,
       nombreColaborador: s.colaborador.nombreCompleto,
     })),
     total,

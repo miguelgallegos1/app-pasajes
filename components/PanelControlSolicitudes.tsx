@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import CalendarioSelector from "./CalendarioSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -82,11 +82,6 @@ export default function PanelControlSolicitudes({
     setTotalPaginas(data.totalPaginas);
     setPagina(paginaNueva);
   };
-
-  useEffect(() => {
-    buscar(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const [idAEliminar, setIdAEliminar] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
@@ -179,10 +174,18 @@ export default function PanelControlSolicitudes({
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
-      <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3">
-        <p className="text-[11px] text-neutral-400 uppercase tracking-wide">Total con estos filtros</p>
-        <p className="text-lg font-bold text-white">{total} {total === 1 ? "solicitud" : "solicitudes"}</p>
-      </div>
+      {items && (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3">
+          <p className="text-[11px] text-neutral-400 uppercase tracking-wide">Total con estos filtros</p>
+          <p className="text-lg font-bold text-white">{total} {total === 1 ? "solicitud" : "solicitudes"}</p>
+        </div>
+      )}
+
+      {!items && !cargando && (
+        <div className="bg-neutral-50 border border-dashed border-neutral-300 rounded-2xl px-5 py-10 text-center text-sm text-neutral-500">
+          Filtra por código, estado, colaborador o fecha y haz clic en "Buscar" para consultar las solicitudes.
+        </div>
+      )}
 
       {items && (
         <div className="bg-white text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">

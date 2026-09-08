@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       where: filtro,
       include: {
         colaborador: { select: { nombreCompleto: true } },
-        ruta: { include: { area: { include: { sitio: { include: { empresa: true } } } } } },
+        ruta: { select: { nombre: true } },
       },
       orderBy: { fecha: "desc" },
       skip: (pagina - 1) * POR_PAGINA,
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
       montoTotal: Number(s.montoTotal),
       estado: s.estado,
       nombreColaborador: s.colaborador.nombreCompleto,
-      rutaLabel: `${s.ruta.nombre} — ${s.ruta.area.sitio.empresa.nombre} · ${s.ruta.area.sitio.nombre} · ${s.ruta.area.nombre}`,
+      rutaLabel: s.ruta.nombre,
     })),
     total,
     totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),
