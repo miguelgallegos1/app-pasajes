@@ -10,7 +10,7 @@ export default async function EmpresasPage() {
   if (session.rol !== "SUPER_ADMIN") redirect("/login");
 
   const empresas = await db.empresa.findMany({
-    orderBy: { nombre: "asc" },
+    orderBy: { numero: "asc" },
     include: {
       sitios: {
         orderBy: { nombre: "asc" },
