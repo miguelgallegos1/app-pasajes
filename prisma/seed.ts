@@ -84,6 +84,8 @@ async function main() {
       colaborador: {
         create: {
           nombreCompleto: "Ana Rodríguez",
+          apellidos: "Rodríguez",
+          nombres: "Ana",
           sitioId: sitio.id,
           areaId: areaProduccion.id,
           esSupervisor: true,
@@ -103,6 +105,8 @@ async function main() {
       colaborador: {
         create: {
           nombreCompleto: "Juan Pérez",
+          apellidos: "Pérez",
+          nombres: "Juan",
           sitioId: sitio.id,
           areaId: areaProduccion.id,
           supervisorId: usuarioSupervisor.colaborador!.id,
