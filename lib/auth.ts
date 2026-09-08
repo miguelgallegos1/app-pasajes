@@ -3,6 +3,7 @@
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import type { NextResponse } from "next/server";
 import { DURACION_SESION_SEGUNDOS } from "./config";
 import { db } from "./db";
 
@@ -49,4 +50,39 @@ export async function obtenerPerfilSesion(
   }
   const usuario = await db.usuario.findUnique({ where: { id: session.id }, select: { nombre: true } });
   return { nombre: usuario?.nombre ?? "", fotoUrl: null };
+}
+
+// Firma el token de la sesión y lo deja puesto en la cookie de la respuesta.
+// Centralizado para que el login por PIN y el login biométrico usen
+// exactamente la misma configuración de cookie.
+export async function establecerCookieSesion(res: NextResponse, usuario: SesionUsuario) {
+  const token = await crearToken(usuario);
+  res.cookies.set("session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: DURACION_SESION_SEGUNDOS,
+    path: "/",
+  });
+}
+
+// Si es un Colaborador (no Supervisor) con un supervisor asignado, sus
+// pasajes ahora los gestiona el supervisor y se le bloquea el acceso
+// individual. Devuelve el mensaje de error, o null si puede entrar.
+// Compartido entre el login por PIN y el login biométrico.
+export async function verificarAccesoColaborador(usuario: {
+  id: string;
+  rol: string;
+}): Promise<string | null> {
+  if (usuario.rol !== "COLABORADOR") return null;
+  const colaborador = await db.colaborador.findUnique({
+    where: { usuarioId: usuario.id },
+    include: { supervisor: { select: { nombreCompleto: true } } },
+  });
+  if (colaborador && !colaborador.esSupervisor && colaborador.supervisorId) {
+    return `No puedes ingresar: tus pasajes ahora los gestiona tu supervisor, ${
+      colaborador.supervisor?.nombreCompleto ?? "asignado"
+    }.`;
+  }
+  return null;
 }

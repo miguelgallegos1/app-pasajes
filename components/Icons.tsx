@@ -17,6 +17,23 @@ export function IconoBuseta({ className = "w-7 h-7" }: { className?: string }) {
   );
 }
 
+export function IconoHuella({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path
+        d="M7 15.5c.8-1.4 1.3-3 1.3-4.7A3.7 3.7 0 0 1 12 7a3.7 3.7 0 0 1 3.7 3.8c0 .6-.05 1.2-.15 1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M4.5 12a7.5 7.5 0 0 1 14.9-1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.5 18a8 8 0 0 1-1.8-3.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 21c-2-1.4-3.5-3-4.3-5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15.2 20a12 12 0 0 1-2.4-6.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17.5 17.5a10.5 10.5 0 0 1-1.8-6.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconoSalir({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>

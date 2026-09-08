@@ -108,8 +108,32 @@ model Usuario {
   createdAt    DateTime      @default(now())
   colaborador  Colaborador?
   asignaciones AsignacionTH[]
+  credencialesBiometricas CredencialBiometrica[]
 
   @@index([rol])
+}
+
+// Passkey (WebAuthn) registrada en un dispositivo del usuario, para
+// login biométrico (Face ID / Touch ID / Windows Hello / huella).
+// Complementa al PIN, nunca lo reemplaza.
+model CredencialBiometrica {
+  id           String    @id @default(cuid())
+  usuario      Usuario   @relation(fields: [usuarioId], references: [id])
+  usuarioId    String
+
+  // Identificador de la credencial que devuelve el navegador (base64url)
+  credentialId String    @unique
+  // Clave pública en formato COSE, codificada en base64url
+  publicKey    String
+  // Contador de firmas del autenticador; si llega uno menor al guardado,
+  // es señal de clonación y se debe rechazar el login.
+  contador     Int       @default(0)
+  dispositivo  String?   // nombre amigable, ej. "iPhone de Miguel"
+
+  creadoEn     DateTime  @default(now())
+  ultimoUso    DateTime?
+
+  @@index([usuarioId])
 }
 
 model AsignacionTH {
