@@ -8,6 +8,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Paginacion from "./Paginacion";
+import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
@@ -300,9 +301,7 @@ export default function PanelTH({
         </div>
       </div>
 
-      {idAAprobar && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={!!idAAprobar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto text-2xl">✓</div>
             <p className="font-semibold text-neutral-900">¿Aprobar esta solicitud?</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -323,13 +322,9 @@ export default function PanelTH({
                 {aprobando ? "Aprobando..." : "Aprobar"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-      {confirmandoLote && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={confirmandoLote} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto text-2xl">✓</div>
             <p className="font-semibold text-neutral-900">¿Aprobar {seleccionadas.size} solicitudes?</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -350,13 +345,9 @@ export default function PanelTH({
                 {aprobandoLote ? "Aprobando..." : "Aprobar todas"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-      {idADevolver && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={!!idADevolver} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900">Devolver para corrección</h2>
               <p className="text-xs text-neutral-500 mt-0.5">
@@ -389,9 +380,7 @@ export default function PanelTH({
                 {devolviendo ? "Enviando..." : "Devolver"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }
