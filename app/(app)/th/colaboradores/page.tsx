@@ -22,7 +22,7 @@ export default async function ColaboradoresPage() {
           supervisor: { select: { nombreCompleto: true } },
           _count: { select: { solicitudes: true } },
         },
-        orderBy: { nombreCompleto: "asc" },
+        orderBy: { numero: "asc" },
       });
 
   const areasPermitidas = await obtenerAreasPermitidasTH(session.id, session.rol);

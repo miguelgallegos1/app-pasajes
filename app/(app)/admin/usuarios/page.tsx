@@ -11,7 +11,7 @@ export default async function AdminUsuariosPage() {
 
   const usuarios = await db.usuario.findMany({
     where: { rol: { in: ["ADMIN_TH", "FINANZAS", "SUPER_ADMIN"] } },
-    orderBy: [{ rol: "asc" }, { nombre: "asc" }],
+    orderBy: { numero: "asc" },
     include: {
       asignaciones: { include: { empresa: true, sitio: true, area: true } },
     },

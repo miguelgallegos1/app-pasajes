@@ -20,7 +20,7 @@ export default async function RutasPage() {
           area: { include: { sitio: { include: { empresa: true } } } },
           _count: { select: { solicitudes: true } },
         },
-        orderBy: { nombre: "asc" },
+        orderBy: { numero: "asc" },
       })
     : [];
 
