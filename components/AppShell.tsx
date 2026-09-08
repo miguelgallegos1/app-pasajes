@@ -8,10 +8,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { APP_NOMBRE, APP_VERSION, APP_DESARROLLADOR } from "../lib/config";
 import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico } from "./Icons";
-import ModalBiometria from "./ModalBiometria";
+
+// Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
+// primera vez que alguien abre el modal, no en cada página de la app.
+const ModalBiometria = dynamic(() => import("./ModalBiometria"), { ssr: false });
 
 type ItemMenu = { label: string; href: string; icono: (props: { className?: string }) => React.ReactElement };
 
@@ -55,6 +59,13 @@ export default function AppShell({
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [biometriaAbierta, setBiometriaAbierta] = useState(false);
+  // Recién montamos (y con eso, descargamos) el modal la primera vez que
+  // alguien lo pide — así el código de WebAuthn no viaja en cada página.
+  const [biometriaMontada, setBiometriaMontada] = useState(false);
+  const abrirBiometria = () => {
+    setBiometriaMontada(true);
+    setBiometriaAbierta(true);
+  };
   const pathname = usePathname();
   const router = useRouter();
   const items = MENU_POR_ROL[rol] ?? [];
@@ -122,7 +133,7 @@ export default function AppShell({
           <Avatar />
           <span className="text-xs text-neutral-300 truncate flex-1">{nombreCompleto}</span>
           <button
-            onClick={() => setBiometriaAbierta(true)}
+            onClick={abrirBiometria}
             title="Acceso biométrico"
             className="text-neutral-400 hover:text-orange-400 p-1.5 rounded-lg hover:bg-neutral-800 transition"
           >
@@ -180,7 +191,7 @@ export default function AppShell({
               <ItemsMenu onClickItem={() => setMenuAbierto(false)} />
             </nav>
             <button
-              onClick={() => { setMenuAbierto(false); setBiometriaAbierta(true); }}
+              onClick={() => { setMenuAbierto(false); abrirBiometria(); }}
               className="flex items-center gap-2 text-sm text-neutral-400 hover:text-orange-400 hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
             >
               <IconoHuella className="w-4 h-4" /> Acceso biométrico
@@ -202,7 +213,9 @@ export default function AppShell({
         </main>
       </div>
 
-      <ModalBiometria abierto={biometriaAbierta} onCerrar={() => setBiometriaAbierta(false)} />
+      {biometriaMontada && (
+        <ModalBiometria abierto={biometriaAbierta} onCerrar={() => setBiometriaAbierta(false)} />
+      )}
     </div>
   );
 }

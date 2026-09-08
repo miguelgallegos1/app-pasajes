@@ -7,7 +7,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { startAuthentication, browserSupportsWebAuthn, platformAuthenticatorIsAvailable } from "@simplewebauthn/browser";
 import { APP_NOMBRE } from "../../lib/config";
 import Spinner from "../../components/Spinner";
 import { IconoHuella } from "../../components/Icons";
@@ -35,8 +34,12 @@ export default function LoginPage() {
   }, [error, loading]);
 
   useEffect(() => {
+    // Import diferido: el código de WebAuthn (~16KB) no viaja con el
+    // bundle inicial del login, se pide en paralelo sin bloquear las
+    // cajitas del PIN, que deben quedar usables de inmediato.
     (async () => {
       try {
+        const { browserSupportsWebAuthn, platformAuthenticatorIsAvailable } = await import("@simplewebauthn/browser");
         const disponible = browserSupportsWebAuthn() && (await platformAuthenticatorIsAvailable());
         setBiometriaDisponible(disponible);
       } catch {
@@ -80,7 +83,10 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const optsRes = await fetch("/api/auth/webauthn/login-opciones", { method: "POST" });
+      const [{ startAuthentication }, optsRes] = await Promise.all([
+        import("@simplewebauthn/browser"),
+        fetch("/api/auth/webauthn/login-opciones", { method: "POST" }),
+      ]);
       if (!optsRes.ok) throw new Error("No se pudo iniciar la verificación");
       const opciones = await optsRes.json();
 
