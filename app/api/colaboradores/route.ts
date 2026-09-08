@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId } = await req.json();
+  const { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId, rutaIds } = await req.json();
 
   if (!apellidos?.trim() || !nombres?.trim() || !codigoNomina?.trim() || !areaId || !pin) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
@@ -54,6 +54,13 @@ export async function POST(req: Request) {
     }
   }
 
+  // Las rutas exclusivas elegidas deben pertenecer a la misma área
+  const rutaIdsValidos: string[] = Array.isArray(rutaIds)
+    ? (await db.ruta.findMany({ where: { id: { in: rutaIds }, areaId: area.id }, select: { id: true } })).map(
+        (r) => r.id
+      )
+    : [];
+
   const pinHash = await bcrypt.hash(pin, 10);
 
   try {
@@ -78,6 +85,14 @@ export async function POST(req: Request) {
       },
       include: { colaborador: true },
     });
+
+    if (rutaIdsValidos.length > 0) {
+      await db.ruta.updateMany({
+        where: { id: { in: rutaIdsValidos } },
+        data: { colaboradorExclusivoId: nuevo.colaborador!.id },
+      });
+    }
+
     return NextResponse.json(nuevo, { status: 201 });
   } catch (e: any) {
     if (e.code === "P2002") {

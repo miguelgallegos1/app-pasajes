@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
+import { condicionRutasVisibles } from "../../../lib/rutas";
 import PanelColaborador from "../../../components/PanelColaborador";
 
 export default async function MisPasajesPage() {
@@ -36,7 +37,7 @@ export default async function MisPasajesPage() {
   });
 
   const rutasPropias = await db.ruta.findMany({
-    where: { sitioId: colaborador.sitioId, areaId: colaborador.areaId, activo: true },
+    where: condicionRutasVisibles(colaborador),
     orderBy: { nombre: "asc" },
   });
 

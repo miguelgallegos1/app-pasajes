@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
+import { condicionRutasVisibles } from "../../../lib/rutas";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -33,7 +34,7 @@ export async function GET(req: Request) {
   }
 
   const rutas = await db.ruta.findMany({
-    where: { sitioId: colaboradorObjetivo.sitioId, areaId: colaboradorObjetivo.areaId, activo: true },
+    where: condicionRutasVisibles(colaboradorObjetivo),
     orderBy: { nombre: "asc" },
   });
 

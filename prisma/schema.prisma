@@ -84,11 +84,17 @@ model Ruta {
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  // Si es null, la ruta es de toda el área (como siempre). Si apunta a un
+  // colaborador, esa ruta puntual solo la ve él/ella, no el resto del área.
+  colaboradorExclusivo   Colaborador? @relation("RutaExclusiva", fields: [colaboradorExclusivoId], references: [id])
+  colaboradorExclusivoId String?
+
   solicitudes SolicitudPasaje[]
   colaboradoresConEstaRutaHabitual Colaborador[] @relation("RutaHabitual")
 
   @@unique([areaId, nombre]) // evita 2 rutas con el mismo nombre en la misma área
   @@index([sitioId, areaId, activo])
+  @@index([colaboradorExclusivoId])
 }
 
 model Usuario {
@@ -175,6 +181,7 @@ model Colaborador {
 
   rutaHabitualId String?
   rutaHabitual   Ruta?             @relation("RutaHabitual", fields: [rutaHabitualId], references: [id])
+  rutasExclusivas Ruta[]           @relation("RutaExclusiva")
 
   esSupervisor   Boolean           @default(false)
   supervisorId   String?

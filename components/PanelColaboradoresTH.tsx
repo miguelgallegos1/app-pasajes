@@ -8,6 +8,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
+import MultiSelectBuscable from "./MultiSelectBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
@@ -27,9 +28,11 @@ type Colaborador = {
   areaId: string;
   areaLabel: string;
   tieneSolicitudes: boolean;
+  rutaIdsExclusivas: string[];
 };
 
 type Opcion = { id: string; label: string };
+type RutaOpcion = { id: string; nombre: string; areaId: string };
 
 const POR_PAGINA = 10;
 
@@ -37,11 +40,13 @@ export default function PanelColaboradoresTH({
   colaboradores,
   areasDisponibles,
   supervisoresDisponibles,
+  rutasDisponibles,
   sinAsignaciones,
 }: {
   colaboradores: Colaborador[];
   areasDisponibles: Opcion[];
   supervisoresDisponibles: Opcion[];
+  rutasDisponibles: RutaOpcion[];
   sinAsignaciones: boolean;
 }) {
   const router = useRouter();
@@ -86,7 +91,10 @@ export default function PanelColaboradoresTH({
   const [nombres, setNombres] = useState("");
   const [codigoNomina, setCodigoNomina] = useState("");
   const [areaId, setAreaId] = useState("");
+  const [rutaIdsExclusivas, setRutaIdsExclusivas] = useState<string[]>([]);
   const [pin, setPin] = useState("");
+  const [generandoPin, setGenerandoPin] = useState(false);
+  const [pinCopiado, setPinCopiado] = useState(false);
   const [esSupervisor, setEsSupervisor] = useState(false);
   const [supervisorId, setSupervisorId] = useState("");
   const [estadoEdicion, setEstadoEdicion] = useState("ACTIVO");
@@ -97,18 +105,48 @@ export default function PanelColaboradoresTH({
   const [procesando, setProcesando] = useState(false);
   const [errorGestion, setErrorGestion] = useState("");
 
+  const rutasDelAreaSeleccionada = useMemo(
+    () => rutasDisponibles.filter((r) => r.areaId === areaId).map((r) => ({ id: r.id, label: r.nombre })),
+    [rutasDisponibles, areaId]
+  );
+
+  const generarPin = async () => {
+    setGenerandoPin(true);
+    setPinCopiado(false);
+    const res = await fetch("/api/auth/generar-pin", { method: "POST" });
+    setGenerandoPin(false);
+    if (res.ok) {
+      const data = await res.json();
+      setPin(data.pin);
+    } else {
+      toast.error("No se pudo generar un PIN, intenta de nuevo");
+    }
+  };
+
+  const copiarPin = async () => {
+    try {
+      await navigator.clipboard.writeText(pin);
+      setPinCopiado(true);
+      setTimeout(() => setPinCopiado(false), 2000);
+    } catch {
+      toast.error("No se pudo copiar, cópialo manualmente");
+    }
+  };
+
   const abrirCrear = () => {
     setEditandoId(null);
     setApellidos("");
     setNombres("");
     setCodigoNomina("");
     setAreaId("");
+    setRutaIdsExclusivas([]);
     setPin("");
     setEsSupervisor(false);
     setSupervisorId("");
     setEstadoEdicion("ACTIVO");
     setError("");
     setModalAbierto(true);
+    generarPin();
   };
 
   const abrirEditar = (c: Colaborador) => {
@@ -117,6 +155,7 @@ export default function PanelColaboradoresTH({
     setNombres(c.nombres);
     setCodigoNomina(c.codigoNomina ?? "");
     setAreaId(c.areaId);
+    setRutaIdsExclusivas(c.rutaIdsExclusivas);
     setPin("");
     setEsSupervisor(c.esSupervisor);
     setSupervisorId("");
@@ -141,8 +180,17 @@ export default function PanelColaboradoresTH({
     const url = editandoId ? `/api/colaboradores/${editandoId}` : "/api/colaboradores";
     const method = editandoId ? "PATCH" : "POST";
     const body = editandoId
-      ? { apellidos, nombres, codigoNomina, areaId, esSupervisor, supervisorId: supervisorId || null, estado: estadoEdicion }
-      : { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId: supervisorId || null };
+      ? {
+          apellidos,
+          nombres,
+          codigoNomina,
+          areaId,
+          esSupervisor,
+          supervisorId: supervisorId || null,
+          estado: estadoEdicion,
+          rutaIds: rutaIdsExclusivas,
+        }
+      : { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId: supervisorId || null, rutaIds: rutaIdsExclusivas };
 
     const res = await fetch(url, {
       method,
@@ -364,24 +412,63 @@ export default function PanelColaboradoresTH({
                 <ComboboxBuscable
                   opciones={areasDisponibles}
                   value={areaId}
-                  onChange={setAreaId}
+                  onChange={(v) => { setAreaId(v); setRutaIdsExclusivas([]); }}
                   placeholder="Selecciona un área"
                 />
               </div>
             </div>
 
+            {areaId && (
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  Rutas exclusivas (opcional)
+                </label>
+                <div className="mt-1.5">
+                  <MultiSelectBuscable
+                    opciones={rutasDelAreaSeleccionada}
+                    value={rutaIdsExclusivas}
+                    onChange={setRutaIdsExclusivas}
+                    placeholder="Buscar ruta..."
+                  />
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">
+                  Si no elegís ninguna, sigue viendo todas las rutas del área (como siempre)
+                </p>
+              </div>
+            )}
+
             {!editandoId && (
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                  PIN (6 dígitos)
+                  PIN (6 dígitos) — generado automáticamente
                 </label>
-                <input
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  inputMode="numeric"
-                  className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm tracking-widest focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                  placeholder="••••••"
-                />
+                <div className="mt-1.5 flex gap-1.5">
+                  <input
+                    value={generandoPin ? "" : pin}
+                    readOnly
+                    placeholder={generandoPin ? "Generando..." : "······"}
+                    className="flex-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={copiarPin}
+                    disabled={!pin || generandoPin}
+                    title="Copiar PIN"
+                    className="px-3.5 rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                  >
+                    {pinCopiado ? "✓" : "Copiar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generarPin}
+                    disabled={generandoPin}
+                    title="Generar otro PIN"
+                    className="px-3.5 rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                  >
+                    ↻
+                  </button>
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">Copialo y comunícaselo al colaborador para su primer ingreso</p>
               </div>
             )}
 
