@@ -9,6 +9,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
+import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
@@ -329,12 +330,10 @@ export default function PanelFinanzas({
         <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
       </div>
 
-      {idAPagar && aprobadaAPagar && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={!!idAPagar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl">$</div>
             <p className="font-semibold text-neutral-900">¿Marcar esta solicitud como pagada?</p>
-            <p className="text-sm text-neutral-500">{aprobadaAPagar.nombreColaborador} · ${aprobadaAPagar.montoTotal.toFixed(2)}</p>
+            <p className="text-sm text-neutral-500">{aprobadaAPagar?.nombreColaborador} · ${aprobadaAPagar?.montoTotal.toFixed(2)}</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
@@ -353,13 +352,9 @@ export default function PanelFinanzas({
                 {pagando ? "Guardando..." : "Confirmar"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-      {confirmandoLote && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={confirmandoLote} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl">$</div>
             <p className="font-semibold text-neutral-900">¿Marcar {seleccionadas.size} solicitudes como pagadas?</p>
             <p className="text-sm text-neutral-500">Total a pagar: ${totalSeleccionado.toFixed(2)}</p>
@@ -381,9 +376,7 @@ export default function PanelFinanzas({
                 {pagandoLote ? "Guardando..." : "Confirmar todas"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

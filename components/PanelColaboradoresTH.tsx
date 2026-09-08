@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
+import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 
@@ -311,9 +312,10 @@ export default function PanelColaboradoresTH({
         <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
       </div>
 
-      {modalAbierto && (
-        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal
+        abierto={modalAbierto}
+        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
+      >
             <h2 className="text-lg font-bold text-neutral-900">
               {editandoId ? "Editar colaborador" : "Nuevo colaborador"}
             </h2>
@@ -453,22 +455,18 @@ export default function PanelColaboradoresTH({
                 {guardando ? "Guardando..." : "Guardar"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-      {idGestionar && colaboradorGestionar && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={!!idGestionar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">{colaboradorGestionar.nombreCompleto}</h2>
+              <h2 className="font-semibold text-neutral-900">{colaboradorGestionar?.nombreCompleto}</h2>
               <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer con este colaborador</p>
             </div>
 
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
 
             <div className="space-y-2">
-              {colaboradorGestionar.estado === "ACTIVO" ? (
+              {colaboradorGestionar?.estado === "ACTIVO" ? (
                 <button
                   onClick={() => cambiarEstado("INACTIVO")}
                   disabled={procesando}
@@ -490,12 +488,12 @@ export default function PanelColaboradoresTH({
 
               <button
                 onClick={eliminarPermanente}
-                disabled={procesando || colaboradorGestionar.tieneSolicitudes}
+                disabled={procesando || colaboradorGestionar?.tieneSolicitudes}
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
                 <p className="text-xs text-neutral-500">
-                  {colaboradorGestionar.tieneSolicitudes
+                  {colaboradorGestionar?.tieneSolicitudes
                     ? "No disponible: tiene solicitudes registradas en su historial."
                     : "Borra su cuenta y perfil por completo. No se puede deshacer."}
                 </p>
@@ -509,9 +507,7 @@ export default function PanelColaboradoresTH({
             >
               Cancelar
             </button>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

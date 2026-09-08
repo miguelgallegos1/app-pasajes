@@ -82,3 +82,24 @@ body {
     transform: translateY(0) scale(1);
   }
 }
+
+/* Salida de los mismos overlays/paneles (ver components/Modal.tsx) */
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}

@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import CalendarioSelector from "./CalendarioSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ModalHistorial from "./ModalHistorial";
+import Modal from "./Modal";
 import Paginacion from "./Paginacion";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
@@ -344,9 +345,10 @@ export default function PanelColaborador({
         </div>
       </div>
 
-      {modalAbierto && !confirmando && (
-        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal
+        abierto={modalAbierto && !confirmando}
+        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl"
+      >
             <div>
               <h2 className="text-lg font-bold text-neutral-900">
                 {modoEdicionId ? "Editar solicitud" : "Registrar pasaje del día"}
@@ -433,13 +435,9 @@ export default function PanelColaborador({
                 {modoEdicionId ? "Guardar cambios" : "Guardar"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-      {confirmando && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={confirmando} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl">?</div>
             <p className="font-semibold text-neutral-900">
               {modoEdicionId ? "¿Guardar los cambios?" : "¿Seguro que quieres registrar este pasaje?"}
@@ -462,13 +460,9 @@ export default function PanelColaborador({
                   {enviando ? "Guardando..." : "Confirmar"}
                 </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-      {idAEliminar && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={!!idAEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
             <p className="font-semibold text-neutral-900">¿Eliminar esta solicitud?</p>
             <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
@@ -489,11 +483,9 @@ export default function PanelColaborador({
                 {eliminando ? "Eliminando..." : "Eliminar"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
-      {historialAbierto && <ModalHistorial onCerrar={() => setHistorialAbierto(false)} />}
+      <ModalHistorial abierto={historialAbierto} onCerrar={() => setHistorialAbierto(false)} />
     </div>
   );
 }

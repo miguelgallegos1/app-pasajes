@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 
@@ -305,12 +306,13 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       </div>
 
       {/* Modal: Crear/Editar */}
-      {modal && (
-        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal
+        abierto={!!modal}
+        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
+      >
             <h2 className="text-lg font-bold text-neutral-900">
-              {modal.id ? "Editar" : "Nueva"}{" "}
-              {modal.tipo === "empresa" ? "Empresa" : modal.tipo === "sitio" ? "Sitio" : "Área"}
+              {modal?.id ? "Editar" : "Nueva"}{" "}
+              {modal?.tipo === "empresa" ? "Empresa" : modal?.tipo === "sitio" ? "Sitio" : "Área"}
             </h2>
 
             <div>
@@ -323,7 +325,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
               />
             </div>
 
-            {modal.tipo === "empresa" && (
+            {modal?.tipo === "empresa" && (
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">RUC (opcional)</label>
                 <input
@@ -334,7 +336,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
               </div>
             )}
 
-            {modal.tipo === "sitio" && (
+            {modal?.tipo === "sitio" && (
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Dirección (opcional)</label>
                 <input
@@ -363,24 +365,20 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                 {guardando ? "Guardando..." : "Guardar"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Modal: Gestionar (Desactivar/Reactivar solo Empresa, + Eliminar en los 3) */}
-      {gestionando && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
+      <Modal abierto={!!gestionando} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">{gestionando.nombre}</h2>
+              <h2 className="font-semibold text-neutral-900">{gestionando?.nombre}</h2>
               <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer</p>
             </div>
 
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
 
             <div className="space-y-2">
-              {gestionando.tipo === "empresa" && (
-                gestionando.activo ? (
+              {gestionando?.tipo === "empresa" && (
+                gestionando?.activo ? (
                   <button
                     onClick={() => cambiarEstadoEmpresa(false)}
                     disabled={procesando}
@@ -403,13 +401,13 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
 
               <button
                 onClick={eliminar}
-                disabled={procesando || gestionando.tieneHijos}
+                disabled={procesando || gestionando?.tieneHijos}
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
                 <p className="text-xs text-neutral-500">
-                  {gestionando.tieneHijos
-                    ? `No disponible: tiene ${ETIQUETA_HIJOS[gestionando.tipo]} asociados.`
+                  {gestionando?.tieneHijos
+                    ? `No disponible: tiene ${ETIQUETA_HIJOS[gestionando!.tipo]} asociados.`
                     : "La borra por completo. No se puede deshacer."}
                 </p>
               </button>
@@ -422,9 +420,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
             >
               Cancelar
             </button>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }
