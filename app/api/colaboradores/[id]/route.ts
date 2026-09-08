@@ -18,7 +18,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombreCompleto, codigoNomina, areaId, esSupervisor, supervisorId, estado } = await req.json();
+  const { apellidos, nombres, codigoNomina, areaId, esSupervisor, supervisorId, estado } = await req.json();
 
   const colaborador = await db.colaborador.findUnique({ where: { id } });
   if (!colaborador) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -33,9 +33,18 @@ export async function PATCH(
   if (codigoNomina !== undefined && !codigoNomina?.trim()) {
     return NextResponse.json({ error: "El código de nómina es obligatorio" }, { status: 400 });
   }
+  if ((apellidos !== undefined || nombres !== undefined) && (!apellidos?.trim() || !nombres?.trim())) {
+    return NextResponse.json({ error: "Apellidos y Nombres son obligatorios" }, { status: 400 });
+  }
 
   const data: Record<string, unknown> = {};
-  if (nombreCompleto?.trim()) data.nombreCompleto = nombreCompleto.trim().toUpperCase();
+  if (apellidos?.trim() && nombres?.trim()) {
+    const apellidosNormalizados = apellidos.trim().toUpperCase();
+    const nombresNormalizados = nombres.trim().toUpperCase();
+    data.apellidos = apellidosNormalizados;
+    data.nombres = nombresNormalizados;
+    data.nombreCompleto = `${apellidosNormalizados} ${nombresNormalizados}`;
+  }
   if (codigoNomina?.trim()) data.codigoNomina = codigoNomina.trim().toUpperCase();
   if (typeof esSupervisor === "boolean") data.esSupervisor = esSupervisor;
   if (supervisorId !== undefined) data.supervisorId = supervisorId || null;

@@ -15,12 +15,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { nombreCompleto, codigoNomina, areaId, pin, esSupervisor, supervisorId } = await req.json();
+  const { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId } = await req.json();
 
-  if (!nombreCompleto?.trim() || !codigoNomina?.trim() || !areaId || !pin) {
+  if (!apellidos?.trim() || !nombres?.trim() || !codigoNomina?.trim() || !areaId || !pin) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
-  const nombreNormalizado = nombreCompleto.trim().toUpperCase();
+  const apellidosNormalizados = apellidos.trim().toUpperCase();
+  const nombresNormalizados = nombres.trim().toUpperCase();
+  const nombreCompletoNormalizado = `${apellidosNormalizados} ${nombresNormalizados}`;
   const codigoNormalizado = codigoNomina.trim().toUpperCase();
   if (!/^\d{6}$/.test(pin)) {
     return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
@@ -57,13 +59,15 @@ export async function POST(req: Request) {
   try {
     const nuevo = await db.usuario.create({
       data: {
-        nombre: nombreNormalizado,
+        nombre: nombreCompletoNormalizado,
         pinHash,
         pinLookup,
         rol: "COLABORADOR",
         colaborador: {
           create: {
-            nombreCompleto: nombreNormalizado,
+            nombreCompleto: nombreCompletoNormalizado,
+            apellidos: apellidosNormalizados,
+            nombres: nombresNormalizados,
             codigoNomina: codigoNormalizado,
             sitioId: area.sitioId,
             areaId: area.id,
