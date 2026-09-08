@@ -13,7 +13,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 
 type Asignacion = { id: string; etiqueta: string };
-type Usuario = { id: string; nombre: string; rol: string; activo: boolean; asignaciones: Asignacion[] };
+type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; asignaciones: Asignacion[] };
 type Area = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; areas: Area[] };
 type Empresa = { id: string; nombre: string; sitios: Sitio[] };
@@ -160,6 +160,7 @@ export default function PanelUsuariosAdmin({
           <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-neutral-100/70 text-neutral-500 text-left">
               <tr>
+                <th className="px-4 py-3 font-medium w-12">N°</th>
                 <th className="px-4 py-3 font-medium">Nombre</th>
                 <th className="px-4 py-3 font-medium">Rol</th>
                 <th className="px-4 py-3 font-medium">Áreas asignadas</th>
@@ -170,6 +171,7 @@ export default function PanelUsuariosAdmin({
             <tbody>
               {usuarios.map((u) => (
                 <tr key={u.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                  <td className="px-4 py-3 text-neutral-400">{u.numero}</td>
                   <td className="px-4 py-3">{u.nombre}</td>
                   <td className="px-4 py-3 text-neutral-600">{ETIQUETAS_ROL[u.rol] ?? u.rol}</td>
                   <td className="px-4 py-3 text-neutral-500">
@@ -212,7 +214,7 @@ export default function PanelUsuariosAdmin({
               ))}
               {usuarios.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-neutral-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
                     Aún no hay usuarios administrativos creados
                   </td>
                 </tr>

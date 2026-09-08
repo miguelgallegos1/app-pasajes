@@ -14,6 +14,7 @@ import { useToast } from "./Toast";
 
 type Ruta = {
   id: string;
+  numero: number;
   nombre: string;
   valor: number;
   activo: boolean;
@@ -203,6 +204,7 @@ export default function PanelRutasTH({
           <table className="w-full text-sm min-w-[680px]">
             <thead className="bg-neutral-100/70 text-neutral-500 text-left">
               <tr>
+                <th className="px-4 py-3 font-medium w-12">N°</th>
                 <th className="px-4 py-3 font-medium">Área</th>
                 <th className="px-4 py-3 font-medium">Ruta</th>
                 <th className="px-4 py-3 font-medium">Valor</th>
@@ -213,6 +215,7 @@ export default function PanelRutasTH({
             <tbody>
               {rutasPagina.map((r) => (
                 <tr key={r.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                  <td className="px-4 py-3 text-neutral-400">{r.numero}</td>
                   <td className="px-4 py-3 font-medium">{r.areaLabel}</td>
                   <td className="px-4 py-3 text-neutral-600">{r.nombre}</td>
                   <td className="px-4 py-3">${r.valor.toFixed(2)}</td>
@@ -245,7 +248,7 @@ export default function PanelRutasTH({
               ))}
               {rutasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-neutral-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
                     {busqueda
                       ? "Sin resultados para esa búsqueda"
                       : soloActivas

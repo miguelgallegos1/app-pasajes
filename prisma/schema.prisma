@@ -32,6 +32,9 @@ enum EstadoSolicitud {
 
 model Empresa {
   id           String            @id @default(cuid())
+  // Correlativo numérico (1, 2, 3...) solo para mostrar y contar cuántas
+  // se han creado — el id real sigue siendo el cuid de arriba.
+  numero       Int               @unique @default(autoincrement())
   nombre       String
   ruc          String?           @unique
   activo       Boolean           @default(true)
@@ -69,6 +72,7 @@ model Area {
 
 model Ruta {
   id        String   @id @default(cuid())
+  numero    Int      @unique @default(autoincrement())
   nombre    String   @default("Ruta sin nombre") // ej: "El Yaznán - Cayambe - Tabacundo"
   empresa   Empresa  @relation(fields: [empresaId], references: [id])
   empresaId String
@@ -89,6 +93,7 @@ model Ruta {
 
 model Usuario {
   id           String        @id @default(cuid())
+  numero       Int           @unique @default(autoincrement())
   nombre       String
   email        String?       @unique
   pinHash      String
@@ -126,6 +131,7 @@ model AsignacionTH {
 
 model Colaborador {
   id             String            @id @default(cuid())
+  numero         Int               @unique @default(autoincrement())
   usuario        Usuario           @relation(fields: [usuarioId], references: [id])
   usuarioId      String            @unique
   nombreCompleto String

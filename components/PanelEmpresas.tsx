@@ -12,7 +12,7 @@ import { useToast } from "./Toast";
 
 type Area = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; direccion: string | null; areas: Area[] };
-type Empresa = { id: string; nombre: string; ruc: string | null; activo: boolean; sitios: Sitio[] };
+type Empresa = { id: string; numero: number; nombre: string; ruc: string | null; activo: boolean; sitios: Sitio[] };
 
 type ElementoGestion = {
   tipo: "empresa" | "sitio" | "area";
@@ -181,7 +181,10 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium truncate">{e.nombre}</span>
+                  <span className="text-sm font-medium truncate">
+                    <span className={e.id === empresaId ? "text-black/60" : "text-neutral-400"}>{e.numero}.</span>{" "}
+                    {e.nombre}
+                  </span>
                   {!e.activo && (
                     <span className="text-[10px] font-semibold bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded shrink-0">
                       INACTIVA

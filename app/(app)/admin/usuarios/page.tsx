@@ -29,6 +29,7 @@ export default async function AdminUsuariosPage() {
 
   const usuariosSerializados = usuarios.map((u) => ({
     id: u.id,
+    numero: u.numero,
     nombre: u.nombre,
     rol: u.rol,
     activo: u.activo,

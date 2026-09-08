@@ -26,6 +26,7 @@ export default async function RutasPage() {
 
   const rutasSerializadas = rutas.map((r) => ({
     id: r.id,
+    numero: r.numero,
     nombre: r.nombre,
     valor: Number(r.valor),
     activo: r.activo,
