@@ -9,7 +9,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { APP_NOMBRE, APP_VERSION, APP_DESARROLLADOR } from "../lib/config";
 import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl } from "./Icons";
 
@@ -68,7 +68,6 @@ export default function AppShell({
     setBiometriaAbierta(true);
   };
   const pathname = usePathname();
-  const router = useRouter();
   const items = MENU_POR_ROL[rol] ?? [];
 
   const iniciales = nombreCompleto
@@ -79,9 +78,18 @@ export default function AppShell({
     .toUpperCase();
 
   const cerrarSesion = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    try {
+      const controlador = new AbortController();
+      const limite = setTimeout(() => controlador.abort(), 2000);
+      await fetch("/api/auth/logout", { method: "POST", signal: controlador.signal });
+      clearTimeout(limite);
+    } catch {
+      // Si el pedido falla o se cuelga, igual sacamos al usuario abajo.
+    }
+    // Navegación dura (no router.push): así el próximo login arranca
+    // desde cero, sin arrastrar caché del cliente de esta sesión que
+    // ya cerró — eso era lo que a veces dejaba colgado el login siguiente.
+    window.location.href = "/login";
   };
 
   const Avatar = () =>

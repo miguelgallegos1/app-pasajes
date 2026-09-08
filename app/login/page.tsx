@@ -18,6 +18,20 @@ const DESTINO_POR_ROL: Record<string, string> = {
   FINANZAS: "/dashboard",
 };
 
+const TIEMPO_LIMITE_MS = 2000;
+
+// fetch con límite de 2s: si el pedido se cuelga (red inestable, sesión
+// previa dejando algo trabado, etc.) abortamos en vez de esperar para siempre.
+async function fetchConLimite(input: RequestInfo, init?: RequestInit) {
+  const controlador = new AbortController();
+  const limite = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_MS);
+  try {
+    return await fetch(input, { ...init, signal: controlador.signal });
+  } finally {
+    clearTimeout(limite);
+  }
+}
+
 export default function LoginPage() {
   const [digitos, setDigitos] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
@@ -26,6 +40,15 @@ export default function LoginPage() {
   const [biometriaDisponible, setBiometriaDisponible] = useState(false);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const router = useRouter();
+  // Guarda el temporizador de respaldo de irADestino(); si la navegación
+  // ocurre a tiempo este componente se desmonta y el cleanup lo cancela.
+  const respaldoNavegacionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (respaldoNavegacionRef.current) clearTimeout(respaldoNavegacionRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (error && !loading) {
@@ -52,19 +75,41 @@ export default function LoginPage() {
     // Dejamos "loading" en true a propósito — la pantalla se queda mostrando
     // el overlay de carga hasta que router.push() navegue de verdad,
     // evitando el "parpadeo" de volver al formulario justo antes de cambiar.
-    router.push(DESTINO_POR_ROL[rol] ?? "/");
+    const destino = DESTINO_POR_ROL[rol] ?? "/";
+    // Red de seguridad: si la navegación de Next se queda colgada (caché
+    // del router de una sesión anterior, etc.) forzamos una recarga dura.
+    // Si router.push() sí funciona, este componente se desmonta y el
+    // cleanup del useEffect de arriba cancela este temporizador.
+    respaldoNavegacionRef.current = setTimeout(() => {
+      window.location.href = destino;
+    }, 2500);
+    router.push(destino);
   };
 
-  const enviarPin = async (pinCompleto: string) => {
-    setMensajeCarga("Verificando tu PIN...");
+  const enviarPin = async (pinCompleto: string, esReintento = false) => {
+    setMensajeCarga(esReintento ? "Reintentando..." : "Verificando tu PIN...");
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pin: pinCompleto }),
-    });
+    let res: Response;
+    try {
+      res = await fetchConLimite("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: pinCompleto }),
+      });
+    } catch {
+      // Se agotaron los 2 segundos o falló la red: reintentamos una sola
+      // vez automáticamente antes de pedirle al usuario que lo intente él.
+      if (!esReintento) {
+        enviarPin(pinCompleto, true);
+        return;
+      }
+      setError("No se pudo conectar. Intenta de nuevo.");
+      setDigitos(["", "", "", "", "", ""]);
+      setLoading(false);
+      return;
+    }
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -85,14 +130,14 @@ export default function LoginPage() {
     try {
       const [{ startAuthentication }, optsRes] = await Promise.all([
         import("@simplewebauthn/browser"),
-        fetch("/api/auth/webauthn/login-opciones", { method: "POST" }),
+        fetchConLimite("/api/auth/webauthn/login-opciones", { method: "POST" }),
       ]);
       if (!optsRes.ok) throw new Error("No se pudo iniciar la verificación");
       const opciones = await optsRes.json();
 
       const respuesta = await startAuthentication({ optionsJSON: opciones });
 
-      const verRes = await fetch("/api/auth/webauthn/login-verificar", {
+      const verRes = await fetchConLimite("/api/auth/webauthn/login-verificar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(respuesta),
@@ -106,7 +151,9 @@ export default function LoginPage() {
       const { rol } = await verRes.json();
       irADestino(rol);
     } catch (e: any) {
-      if (e?.name !== "NotAllowedError") {
+      if (e?.name === "AbortError") {
+        setError("No se pudo conectar. Intenta de nuevo.");
+      } else if (e?.name !== "NotAllowedError") {
         setError(e?.message || "No se pudo verificar tu identidad");
       }
       setLoading(false);
