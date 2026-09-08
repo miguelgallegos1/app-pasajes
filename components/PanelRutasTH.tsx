@@ -21,6 +21,7 @@ type Ruta = {
   activo: boolean;
   areaLabel: string;
   tieneSolicitudes: boolean;
+  colaboradorExclusivoNombre: string | null;
 };
 type Opcion = { id: string; label: string };
 
@@ -218,7 +219,14 @@ export default function PanelRutasTH({
                 <tr key={r.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
                   <td className="px-4 py-3 text-neutral-400">{r.numero}</td>
                   <td className="px-4 py-3 font-medium">{r.areaLabel}</td>
-                  <td className="px-4 py-3 text-neutral-600">{r.nombre}</td>
+                  <td className="px-4 py-3 text-neutral-600">
+                    {r.nombre}
+                    {r.colaboradorExclusivoNombre && (
+                      <span className="block text-[10px] font-semibold text-orange-600 mt-0.5">
+                        Exclusiva de {r.colaboradorExclusivoNombre}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">${r.valor.toFixed(2)}</td>
                   <td className="px-4 py-3">
                     <span

@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
+import { condicionRutasVisibles } from "../../../lib/rutas";
 
 
 export async function POST(req: Request) {
@@ -56,12 +57,7 @@ export async function POST(req: Request) {
   // objetivo (evita que, manipulando la petición, alguien asigne una
   // ruta de otra área).
   const ruta = await db.ruta.findFirst({
-    where: {
-      id: rutaId,
-      sitioId: colaboradorObjetivo.sitioId,
-      areaId: colaboradorObjetivo.areaId,
-      activo: true,
-    },
+    where: { id: rutaId, ...condicionRutasVisibles(colaboradorObjetivo) },
   });
 
   if (!ruta) {

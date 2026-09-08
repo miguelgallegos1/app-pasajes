@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { condicionRutasVisibles } from "../../../../lib/rutas";
 
 async function obtenerPermiso(solicitudId: string, sessionId: string) {
   const solicitud = await db.solicitudPasaje.findUnique({
@@ -45,12 +46,7 @@ export async function PATCH(
   }
 
   const ruta = await db.ruta.findFirst({
-    where: {
-      id: rutaId,
-      sitioId: solicitud.colaborador.sitioId,
-      areaId: solicitud.colaborador.areaId,
-      activo: true,
-    },
+    where: { id: rutaId, ...condicionRutasVisibles(solicitud.colaborador) },
   });
   if (!ruta) {
     return NextResponse.json({ error: "Esa ruta no es válida para este colaborador" }, { status: 400 });

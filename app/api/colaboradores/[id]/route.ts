@@ -18,7 +18,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { apellidos, nombres, codigoNomina, areaId, esSupervisor, supervisorId, estado } = await req.json();
+  const { apellidos, nombres, codigoNomina, areaId, esSupervisor, supervisorId, estado, rutaIds } = await req.json();
 
   const colaborador = await db.colaborador.findUnique({ where: { id } });
   if (!colaborador) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -59,8 +59,35 @@ export async function PATCH(
     data.sitioId = nuevaArea.sitioId;
   }
 
+  const areaFinalId = (data.areaId as string | undefined) ?? colaborador.areaId;
+
   try {
     const actualizado = await db.colaborador.update({ where: { id }, data });
+
+    // Solo tocamos las rutas exclusivas si el formulario mandó la lista
+    // (las llamadas parciales, como cambiar solo el estado, no la incluyen).
+    if (Array.isArray(rutaIds)) {
+      const rutaIdsValidos = (
+        await db.ruta.findMany({ where: { id: { in: rutaIds }, areaId: areaFinalId }, select: { id: true } })
+      ).map((r) => r.id);
+
+      // Libera las que ya eran suyas y se desmarcaron; asigna las nuevas.
+      await db.$transaction([
+        db.ruta.updateMany({
+          where: { colaboradorExclusivoId: id, id: { notIn: rutaIdsValidos } },
+          data: { colaboradorExclusivoId: null },
+        }),
+        ...(rutaIdsValidos.length > 0
+          ? [
+              db.ruta.updateMany({
+                where: { id: { in: rutaIdsValidos } },
+                data: { colaboradorExclusivoId: id },
+              }),
+            ]
+          : []),
+      ]);
+    }
+
     return NextResponse.json(actualizado);
   } catch (e: any) {
     if (e.code === "P2002") {
