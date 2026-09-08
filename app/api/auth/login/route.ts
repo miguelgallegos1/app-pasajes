@@ -7,8 +7,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
-import { crearToken } from "../../../../lib/auth";
-import { DURACION_SESION_SEGUNDOS } from "../../../../lib/config";
+import { establecerCookieSesion, verificarAccesoColaborador } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
 
 export async function POST(req: Request) {
@@ -52,40 +51,16 @@ export async function POST(req: Request) {
 
   // Si es Colaborador (no Supervisor) y tiene un supervisor asignado,
   // bloqueamos su acceso individual.
-  if (usuarioEncontrado.rol === "COLABORADOR") {
-    const colaborador = await db.colaborador.findUnique({
-      where: { usuarioId: usuarioEncontrado.id },
-      include: { supervisor: { select: { nombreCompleto: true } } },
-    });
-
-    if (colaborador && !colaborador.esSupervisor && colaborador.supervisorId) {
-      return NextResponse.json(
-        {
-          error: `No puedes ingresar: tus pasajes ahora los gestiona tu supervisor, ${
-            colaborador.supervisor?.nombreCompleto ?? "asignado"
-          }.`,
-        },
-        { status: 403 }
-      );
-    }
+  const errorAcceso = await verificarAccesoColaborador(usuarioEncontrado);
+  if (errorAcceso) {
+    return NextResponse.json({ error: errorAcceso }, { status: 403 });
   }
-
-  const token = await crearToken({
-    id: usuarioEncontrado.id,
-    rol: usuarioEncontrado.rol,
-  });
 
   const res = NextResponse.json({
     rol: usuarioEncontrado.rol,
     nombre: usuarioEncontrado.nombre,
   });
-  res.cookies.set("session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: DURACION_SESION_SEGUNDOS,
-    path: "/",
-  });
+  await establecerCookieSesion(res, { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol });
 
   return res;
 }

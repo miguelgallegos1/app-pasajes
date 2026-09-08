@@ -10,7 +10,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { APP_NOMBRE, APP_VERSION, APP_DESARROLLADOR } from "../lib/config";
-import { IconoBuseta, IconoSalir, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico } from "./Icons";
+import ModalBiometria from "./ModalBiometria";
 
 type ItemMenu = { label: string; href: string; icono: (props: { className?: string }) => React.ReactElement };
 
@@ -53,6 +54,7 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [biometriaAbierta, setBiometriaAbierta] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const items = MENU_POR_ROL[rol] ?? [];
@@ -120,6 +122,13 @@ export default function AppShell({
           <Avatar />
           <span className="text-xs text-neutral-300 truncate flex-1">{nombreCompleto}</span>
           <button
+            onClick={() => setBiometriaAbierta(true)}
+            title="Acceso biométrico"
+            className="text-neutral-400 hover:text-orange-400 p-1.5 rounded-lg hover:bg-neutral-800 transition"
+          >
+            <IconoHuella className="w-4 h-4" />
+          </button>
+          <button
             onClick={cerrarSesion}
             title="Cerrar sesión"
             className="text-neutral-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-neutral-800 transition"
@@ -171,6 +180,12 @@ export default function AppShell({
               <ItemsMenu onClickItem={() => setMenuAbierto(false)} />
             </nav>
             <button
+              onClick={() => { setMenuAbierto(false); setBiometriaAbierta(true); }}
+              className="flex items-center gap-2 text-sm text-neutral-400 hover:text-orange-400 hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
+            >
+              <IconoHuella className="w-4 h-4" /> Acceso biométrico
+            </button>
+            <button
               onClick={cerrarSesion}
               className="flex items-center gap-2 text-sm text-neutral-400 hover:text-red-400 hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
             >
@@ -186,6 +201,8 @@ export default function AppShell({
           </footer>
         </main>
       </div>
+
+      <ModalBiometria abierto={biometriaAbierta} onCerrar={() => setBiometriaAbierta(false)} />
     </div>
   );
 }
