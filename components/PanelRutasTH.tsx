@@ -264,8 +264,8 @@ export default function PanelRutasTH({
       </div>
 
       {modalAbierto && (
-        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[overlay-in_0.2s_ease-out]">
+          <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
             <h2 className="text-lg font-bold text-neutral-900">{editandoId ? "Editar ruta" : "Nueva ruta"}</h2>
 
             {!editandoId && (
@@ -333,8 +333,8 @@ export default function PanelRutasTH({
       )}
 
       {idGestionar && rutaGestionar && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
+          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
             <div>
               <h2 className="font-semibold text-neutral-900">{rutaGestionar.nombre}</h2>
               <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer con esta ruta</p>

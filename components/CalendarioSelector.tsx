@@ -80,7 +80,7 @@ export default function CalendarioSelector({
       </button>
 
       {abierto && (
-        <div className="absolute z-50 mt-2 bg-white ring-1 ring-black/5 rounded-2xl shadow-2xl p-4 w-72">
+        <div className="absolute z-50 mt-2 bg-white ring-1 ring-black/5 rounded-2xl shadow-2xl p-4 w-72 origin-top animate-[dropdown-in_0.15s_ease-out]">
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
