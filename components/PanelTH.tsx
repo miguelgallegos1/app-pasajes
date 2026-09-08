@@ -15,6 +15,7 @@ import { useToast } from "./Toast";
 
 type Pendiente = {
   id: string;
+  codigo: string;
   fecha: string;
   fechaSolicitud: string;
   montoTotal: number;
@@ -45,6 +46,7 @@ export default function PanelTH({
     if (!texto) return pendientes;
     return pendientes.filter(
       (p) =>
+        p.codigo.toLowerCase().includes(texto) ||
         p.nombreColaborador.toLowerCase().includes(texto) ||
         p.rutaLabel.toLowerCase().includes(texto) ||
         (p.observaciones ?? "").toLowerCase().includes(texto)
@@ -201,7 +203,7 @@ export default function PanelTH({
           <input
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por colaborador, ruta u observación..."
+            placeholder="Buscar por código, colaborador, ruta u observación..."
             className="w-full rounded-xl border border-neutral-700 bg-neutral-900 text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
           />
         </div>
@@ -219,6 +221,7 @@ export default function PanelTH({
                       className="w-4 h-4 accent-orange-500 rounded"
                     />
                   </th>
+                  <th className="px-4 py-3 font-medium">Código</th>
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   <th className="px-4 py-3 font-medium">Colaborador</th>
                   <th className="px-4 py-3 font-medium">Ruta</th>
@@ -238,6 +241,7 @@ export default function PanelTH({
                         className="w-4 h-4 accent-orange-500 rounded"
                       />
                     </td>
+                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(s.fecha)}</p>
                       <p className="text-[11px] text-neutral-400">
@@ -272,7 +276,7 @@ export default function PanelTH({
                 ))}
                 {pendientesFiltradas.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
+                    <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
                       {busqueda
                         ? "Sin resultados para esa búsqueda"
                         : sinAsignaciones
@@ -286,7 +290,7 @@ export default function PanelTH({
               {pendientesFiltradas.length > 0 && (
                 <tfoot>
                   <tr className="border-t border-neutral-200 bg-neutral-100/70 font-semibold">
-                    <td className="px-4 py-3" colSpan={4}>
+                    <td className="px-4 py-3" colSpan={5}>
                       Total ({pendientesFiltradas.length} {pendientesFiltradas.length === 1 ? "solicitud" : "solicitudes"})
                     </td>
                     <td className="px-4 py-3">${totalGeneral.toFixed(2)}</td>

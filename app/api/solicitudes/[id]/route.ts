@@ -77,13 +77,18 @@ export async function DELETE(
   const { solicitud, puede } = await obtenerPermiso(id, session.id);
   if (!solicitud) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
+  // El Super Admin puede eliminar una solicitud sin importar su estado
+  // (control de errores). El dueño o su supervisor solo si sigue
+  // Pendiente o Rechazada, igual que antes.
   const esSuperAdmin = session.rol === "SUPER_ADMIN";
-  const puedeEliminar = solicitud.estado === "PENDIENTE" || solicitud.estado === "RECHAZADA";
-  if (!(puede || esSuperAdmin) || !puedeEliminar) {
-    return NextResponse.json(
-      { error: "Solo puedes eliminar solicitudes pendientes o rechazadas" },
-      { status: 403 }
-    );
+  if (!esSuperAdmin) {
+    const puedeEliminar = solicitud.estado === "PENDIENTE" || solicitud.estado === "RECHAZADA";
+    if (!puede || !puedeEliminar) {
+      return NextResponse.json(
+        { error: "Solo puedes eliminar solicitudes pendientes o rechazadas" },
+        { status: 403 }
+      );
+    }
   }
 
   await db.solicitudPasaje.delete({ where: { id } });

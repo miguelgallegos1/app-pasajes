@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
 import { condicionRutasVisibles } from "../../../lib/rutas";
+import { generarCodigoSolicitud } from "../../../lib/codigoSolicitud";
 
 
 export async function POST(req: Request) {
@@ -82,8 +83,11 @@ export async function POST(req: Request) {
   //   );
   // }
 
+  const codigo = await generarCodigoSolicitud();
+
   const solicitud = await db.solicitudPasaje.create({
     data: {
+      codigo,
       colaboradorId: colaboradorObjetivo.id,
       rutaId: ruta.id,
       fecha: new Date(fecha),

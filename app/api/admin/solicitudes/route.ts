@@ -1,54 +1,55 @@
-// app/api/finanzas/historial/route.ts
-// GET: historial de solicitudes PAGADAS, filtrable por fecha, Empresa,
-// Sitio, Área y Colaborador (en cascada, sin mezclar). Paginado.
+// app/api/admin/solicitudes/route.ts
+// GET: listado paginado de TODAS las solicitudes (cualquier estado), solo
+// para Super Admin. Se puede filtrar por código, estado, colaborador y
+// rango de fechas, pero ninguno es obligatorio — a diferencia de los
+// historiales de TH/Finanzas, esta pantalla está pensada para poder
+// buscar una solicitud puntual por su código sin tener que acotar fechas
+// primero.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 
-const POR_PAGINA = 15;
+const POR_PAGINA = 20;
+const ESTADOS_VALIDOS = ["PENDIENTE", "APROBADA", "RECHAZADA", "PAGADA"] as const;
 
 export async function GET(req: Request) {
   const session = await getSession();
-  if (!session || !["FINANZAS", "SUPER_ADMIN"].includes(session.rol)) {
+  if (!session || session.rol !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
+  const codigo = searchParams.get("codigo")?.trim().toUpperCase();
+  const estadoParam = searchParams.get("estado");
+  const colaboradorId = searchParams.get("colaboradorId");
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
-  const empresaId = searchParams.get("empresaId");
-  const sitioId = searchParams.get("sitioId");
-  const areaId = searchParams.get("areaId");
-  const colaboradorId = searchParams.get("colaboradorId");
   const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1"));
 
-  if (!desde || !hasta) {
-    return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
+  const filtro: Record<string, unknown> = {};
+  if (codigo) filtro.codigo = { contains: codigo };
+  if (estadoParam && (ESTADOS_VALIDOS as readonly string[]).includes(estadoParam)) filtro.estado = estadoParam;
+  if (colaboradorId) filtro.colaboradorId = colaboradorId;
+  if (desde || hasta) {
+    filtro.fecha = {
+      ...(desde ? { gte: new Date(desde) } : {}),
+      ...(hasta ? { lte: new Date(hasta) } : {}),
+    };
   }
 
-  const filtro: Record<string, unknown> = {
-    estado: "PAGADA",
-    fecha: { gte: new Date(desde), lte: new Date(hasta) },
-  };
-  if (colaboradorId) filtro.colaboradorId = colaboradorId;
-  else if (areaId) filtro.ruta = { areaId };
-  else if (sitioId) filtro.ruta = { sitioId };
-  else if (empresaId) filtro.ruta = { empresaId };
-
-  const [items, total, suma] = await Promise.all([
+  const [items, total] = await Promise.all([
     db.solicitudPasaje.findMany({
       where: filtro,
       include: {
         colaborador: { select: { nombreCompleto: true } },
         ruta: { include: { area: { include: { sitio: { include: { empresa: true } } } } } },
       },
-      orderBy: { fechaPago: "desc" },
+      orderBy: { fecha: "desc" },
       skip: (pagina - 1) * POR_PAGINA,
       take: POR_PAGINA,
     }),
     db.solicitudPasaje.count({ where: filtro }),
-    db.solicitudPasaje.aggregate({ where: filtro, _sum: { montoTotal: true } }),
   ]);
 
   return NextResponse.json({
@@ -56,14 +57,13 @@ export async function GET(req: Request) {
       id: s.id,
       codigo: s.codigo,
       fecha: s.fecha.toISOString(),
-      fechaPago: s.fechaPago?.toISOString() ?? null,
       montoTotal: Number(s.montoTotal),
+      estado: s.estado,
       nombreColaborador: s.colaborador.nombreCompleto,
       rutaLabel: `${s.ruta.nombre} — ${s.ruta.area.sitio.empresa.nombre} · ${s.ruta.area.sitio.nombre} · ${s.ruta.area.nombre}`,
     })),
     total,
     totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),
-    totalMonto: Number(suma._sum?.montoTotal ?? 0),
     pagina,
   });
 }

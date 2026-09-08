@@ -58,6 +58,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     items: items.map((s) => ({
       id: s.id,
+      codigo: s.codigo,
       fecha: s.fecha.toISOString(),
       montoTotal: Number(s.montoTotal),
       estado: s.estado,

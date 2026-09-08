@@ -11,7 +11,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { APP_NOMBRE, APP_VERSION, APP_DESARROLLADOR } from "../lib/config";
-import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl } from "./Icons";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -43,6 +43,7 @@ const MENU_POR_ROL: Record<string, ItemMenu[]> = {
     { label: "Historial Pagos", href: "/finanzas/historial", icono: IconoReloj },
     { label: "Empresas", href: "/admin/empresas", icono: IconoEdificio },
     { label: "Usuarios", href: "/admin/usuarios", icono: IconoUsuario },
+    { label: "Control de Solicitudes", href: "/admin/solicitudes", icono: IconoControl },
   ],
 };
 

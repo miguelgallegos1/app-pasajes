@@ -11,7 +11,7 @@ import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
 
-type Fila = { id: string; fecha: string; montoTotal: number; estado: string; rutaLabel: string };
+type Fila = { id: string; codigo: string; fecha: string; montoTotal: number; estado: string; rutaLabel: string };
 
 const ESTILOS_ESTADO: Record<string, string> = {
   APROBADA: "bg-green-100 text-green-800",
@@ -108,6 +108,7 @@ export default function ModalHistorial({ abierto, onCerrar }: { abierto: boolean
               <table className="w-full text-sm">
                 <thead className="bg-neutral-100 text-neutral-500 text-left">
                   <tr>
+                    <th className="px-3 py-2.5 font-medium">Código</th>
                     <th className="px-3 py-2.5 font-medium">Fecha</th>
                     <th className="px-3 py-2.5 font-medium">Ruta</th>
                     <th className="px-3 py-2.5 font-medium">Valor</th>
@@ -117,6 +118,7 @@ export default function ModalHistorial({ abierto, onCerrar }: { abierto: boolean
                 <tbody>
                   {items.map((s) => (
                     <tr key={s.id} className="border-t border-neutral-100 hover:bg-neutral-50 transition">
+                      <td className="px-3 py-2.5 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
                       <td className="px-3 py-2.5">{formatearFecha(s.fecha)}</td>
                       <td className="px-3 py-2.5">{s.rutaLabel}</td>
                       <td className="px-3 py-2.5">${s.montoTotal.toFixed(2)}</td>
@@ -129,7 +131,7 @@ export default function ModalHistorial({ abierto, onCerrar }: { abierto: boolean
                   ))}
                   {items.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-neutral-400">
+                      <td colSpan={5} className="px-3 py-8 text-center text-neutral-400">
                         No hay resultados en ese rango
                       </td>
                     </tr>
@@ -138,7 +140,7 @@ export default function ModalHistorial({ abierto, onCerrar }: { abierto: boolean
                 {items.length > 0 && (
                   <tfoot>
                     <tr className="border-t border-neutral-200 bg-neutral-50 font-semibold">
-                      <td className="px-3 py-2.5" colSpan={2}>Total del rango</td>
+                      <td className="px-3 py-2.5" colSpan={3}>Total del rango</td>
                       <td className="px-3 py-2.5" colSpan={2}>${totalMonto.toFixed(2)}</td>
                     </tr>
                   </tfoot>
