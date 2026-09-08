@@ -13,6 +13,7 @@ import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
+import { IconoCopiar } from "./Icons";
 import { useToast } from "./Toast";
 
 type Colaborador = {
@@ -368,6 +369,41 @@ export default function PanelColaboradoresTH({
               {editandoId ? "Editar colaborador" : "Nuevo colaborador"}
             </h2>
 
+            {!editandoId && (
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  PIN de acceso
+                </label>
+                <div className="mt-1.5 flex gap-1.5">
+                  <input
+                    value={generandoPin ? "" : pin}
+                    readOnly
+                    placeholder={generandoPin ? "Generando..." : "······"}
+                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={copiarPin}
+                    disabled={!pin || generandoPin}
+                    title="Copiar PIN"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                  >
+                    {pinCopiado ? "✓" : <IconoCopiar className="w-4 h-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generarPin}
+                    disabled={generandoPin}
+                    title="Generar otro PIN"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                  >
+                    ↻
+                  </button>
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">Copialo y comunícaselo al colaborador para su primer ingreso</p>
+              </div>
+            )}
+
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 Código de nómina
@@ -434,41 +470,6 @@ export default function PanelColaboradoresTH({
                 <p className="text-xs text-neutral-400 mt-1">
                   Si no elegís ninguna, sigue viendo todas las rutas del área (como siempre)
                 </p>
-              </div>
-            )}
-
-            {!editandoId && (
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                  PIN (6 dígitos) — generado automáticamente
-                </label>
-                <div className="mt-1.5 flex gap-1.5">
-                  <input
-                    value={generandoPin ? "" : pin}
-                    readOnly
-                    placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={copiarPin}
-                    disabled={!pin || generandoPin}
-                    title="Copiar PIN"
-                    className="px-3.5 rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
-                  >
-                    {pinCopiado ? "✓" : "Copiar"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={generarPin}
-                    disabled={generandoPin}
-                    title="Generar otro PIN"
-                    className="px-3.5 rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
-                  >
-                    ↻
-                  </button>
-                </div>
-                <p className="text-xs text-neutral-400 mt-1">Copialo y comunícaselo al colaborador para su primer ingreso</p>
               </div>
             )}
 
