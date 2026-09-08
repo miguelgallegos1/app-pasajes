@@ -226,8 +226,8 @@ export default function PanelUsuariosAdmin({
 
       {/* Modal: Crear/Editar usuario */}
       {modalAbierto && (
-        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[overlay-in_0.2s_ease-out]">
+          <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
             <h2 className="text-lg font-bold text-neutral-900">
               {editandoId ? "Editar usuario" : "Nuevo usuario"}
             </h2>
@@ -305,8 +305,8 @@ export default function PanelUsuariosAdmin({
 
       {/* Modal: Gestionar (Desactivar/Reactivar + Eliminar) */}
       {gestionando && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
+          <div className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
             <div>
               <h2 className="font-semibold text-neutral-900">{gestionando.nombre}</h2>
               <p className="text-xs text-neutral-500 mt-0.5">{ETIQUETAS_ROL[gestionando.rol] ?? gestionando.rol}</p>
@@ -431,8 +431,8 @@ function ModalAreasTH({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[overlay-in_0.2s_ease-out]">
+      <div className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
         <h2 className="text-lg font-bold text-neutral-900">Áreas de {usuario.nombre}</h2>
 
         <div className="flex flex-wrap gap-2">
@@ -494,8 +494,8 @@ function ModalAreasTH({
         </button>
 
         {idAQuitar && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 animate-[overlay-in_0.2s_ease-out]">
+            <div className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
               <p className="font-semibold text-neutral-900">¿Quitar esta asignación?</p>
               <div className="flex gap-2 justify-center pt-1">
                 <button

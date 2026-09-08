@@ -52,8 +52,8 @@ export default function ModalHistorial({ onCerrar }: { onCerrar: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white text-neutral-800 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-2xl p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[overlay-in_0.2s_ease-out]">
+      <div className="bg-white text-neutral-800 rounded-t-3xl sm:rounded-3xl w-full sm:max-w-2xl p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]">
         <div>
           <h2 className="text-lg font-bold text-neutral-900">Historial</h2>
           <p className="text-xs text-neutral-500 mt-0.5">Solicitudes aprobadas y pagadas, filtradas por fecha</p>

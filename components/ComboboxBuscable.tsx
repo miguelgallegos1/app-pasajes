@@ -77,7 +77,7 @@ export default function ComboboxBuscable({
       </button>
 
       {abierto && (
-        <div className="absolute z-50 mt-2 w-full bg-white ring-1 ring-black/5 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="absolute z-50 mt-2 w-full bg-white ring-1 ring-black/5 rounded-2xl shadow-2xl overflow-hidden origin-top animate-[dropdown-in_0.15s_ease-out]">
           {/* Buscador */}
           <div className="p-2 border-b border-neutral-100">
             <input
