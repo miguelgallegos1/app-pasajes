@@ -107,7 +107,7 @@ export default function PanelControlSolicitudes({
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
       <h1 className="text-lg sm:text-xl font-bold">Control de Solicitudes</h1>
       <p className="text-xs text-orange-400 font-medium">
-        Rol: Super Administrador · buscá por código o filtrá, y podés eliminar cualquier solicitud sin importar su estado
+        Rol: Super Administrador · buscá por código o filtrá, y puedes eliminar cualquier solicitud sin importar su estado
       </p>
 
       <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4">
