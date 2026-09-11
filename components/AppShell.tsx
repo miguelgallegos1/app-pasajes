@@ -178,15 +178,26 @@ function ItemsMenu({
               }`}
             >
               {entrada.grupo}
-              <IconoChevron className={`w-3.5 h-3.5 shrink-0 transition-transform ${abierto ? "rotate-90" : ""}`} />
+              <IconoChevron className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${abierto ? "rotate-90" : ""}`} />
             </button>
-            {abierto && (
-              <div className="space-y-1 mb-1">
-                {entrada.items.map((item) => (
-                  <ItemLink key={item.href} item={item} activo={pathname === item.href} onClick={onClickItem} />
-                ))}
+            {/* Truco de CSS grid (0fr -> 1fr) para animar a "altura automática"
+                sin tener que medirla con JS: el contenido siempre está montado
+                (así el navegador puede calcular su altura real), y es el propio
+                grid el que la anima al abrir/cerrar. */}
+            <div
+              className="grid transition-[grid-template-rows] duration-200 ease-out"
+              style={{ gridTemplateRows: abierto ? "1fr" : "0fr" }}
+            >
+              <div className="overflow-hidden">
+                <div
+                  className={`space-y-1 pb-1 transition-opacity duration-150 ${abierto ? "opacity-100 delay-75" : "opacity-0"}`}
+                >
+                  {entrada.items.map((item) => (
+                    <ItemLink key={item.href} item={item} activo={pathname === item.href} onClick={onClickItem} />
+                  ))}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         );
       })}
