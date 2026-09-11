@@ -52,16 +52,29 @@ export async function GET(req: Request) {
     orderBy: { fecha: "desc" },
   });
 
-  const { filas } = limitarFilasExportacion(
+  const { filas, truncado } = limitarFilasExportacion(
     solicitudes.map((s) => ({
       Código: s.codigo,
       Colaborador: s.colaborador.nombreCompleto,
       Ruta: s.ruta.nombre,
-      Estado: s.estado,
+      Estado: s.estado as string,
       "Fecha del pasaje": formatearFecha(s.fecha),
       Valor: Number(s.montoTotal),
     }))
   );
+  // El tope de filas protege al servidor, pero si se aplicó hay que
+  // avisarlo dentro del propio Excel (el archivo se descarga con un link
+  // directo, no hay forma de mostrar un aviso en pantalla).
+  if (truncado) {
+    filas.push({
+      Código: "Exportación limitada a 5000 filas. Acorta el rango de fechas para ver el resto.",
+      Colaborador: "",
+      Ruta: "",
+      Estado: "",
+      "Fecha del pasaje": "",
+      Valor: 0,
+    });
+  }
 
   const libro = construirLibroExcel(filas, "Historial general");
   return new NextResponse(new Uint8Array(libro), {

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import MultiSelectBuscable from "./MultiSelectBuscable";
@@ -112,11 +112,18 @@ export default function PanelColaboradoresTH({
     [rutasDisponibles, areaId]
   );
 
+  // Evita que una respuesta fuera de orden (Resetear -> Cancelar ->
+  // Resetear de nuevo, muy seguido) termine mostrando un PIN de una
+  // petición vieja como si fuera el actual.
+  const peticionPinRef = useRef(0);
+
   const generarPin = async () => {
+    const idPeticion = ++peticionPinRef.current;
     setGenerandoPin(true);
     setPinCopiado(false);
     try {
       const res = await fetch("/api/auth/generar-pin", { method: "POST" });
+      if (idPeticion !== peticionPinRef.current) return;
       if (res.ok) {
         const data = await res.json();
         setPin(data.pin);
@@ -124,9 +131,11 @@ export default function PanelColaboradoresTH({
         toast.error("No se pudo generar un PIN, intenta de nuevo");
       }
     } catch {
-      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      if (idPeticion === peticionPinRef.current) {
+        toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      }
     } finally {
-      setGenerandoPin(false);
+      if (idPeticion === peticionPinRef.current) setGenerandoPin(false);
     }
   };
 

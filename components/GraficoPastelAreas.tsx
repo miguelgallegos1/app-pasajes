@@ -41,6 +41,10 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
   const contenedorRef = useRef<HTMLDivElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [posTooltip, setPosTooltip] = useState({ x: 0, y: 0 });
+  // Ancho REAL del contenedor (no un valor fijo) para que el tooltip no
+  // se salga de la pantalla en celulares angostos — igual que en
+  // GraficoBarrasMensual.tsx.
+  const [anchoContenedor, setAnchoContenedor] = useState(300);
 
   // Entrada suave (escala + desvanecido) al montar, en vez de aparecer de
   // golpe. El padre le pasa un `key` distinto por cada búsqueda para que
@@ -69,7 +73,19 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
     if (!cont) return;
     const rect = cont.getBoundingClientRect();
     setHoverIdx(idx);
+    setAnchoContenedor(rect.width);
     setPosTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  // En touch no hay "hover": un toque muestra el tooltip de esa porción
+  // (y otro toque sobre la misma la oculta), además de seguir
+  // funcionando con mouse normal.
+  const alternarTooltipTactil = (e: React.MouseEvent, idx: number) => {
+    if (hoverIdx === idx) {
+      setHoverIdx(null);
+      return;
+    }
+    mover(e, idx);
   };
 
   if (datos.length === 0 || totalGeneral === 0) {
@@ -101,6 +117,7 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
               onMouseLeave={() => setHoverIdx(null)}
               onFocus={() => setHoverIdx(c.idx)}
               onBlur={() => setHoverIdx(null)}
+              onClick={(e) => alternarTooltipTactil(e, c.idx)}
               style={{
                 transform: hoverIdx === c.idx ? "scale(1.045)" : "scale(1)",
                 transformOrigin: `${CX}px ${CY}px`,
@@ -139,7 +156,10 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
       {hoverIdx !== null && cunas[hoverIdx] && (
         <div
           className="absolute z-10 pointer-events-none bg-neutral-900 text-white text-xs rounded-lg shadow-xl px-3 py-2 space-y-0.5"
-          style={{ left: Math.min(posTooltip.x + 10, 300), top: Math.max(posTooltip.y - 50, 0) }}
+          style={{
+            left: Math.max(8, Math.min(posTooltip.x + 10, anchoContenedor - 128)),
+            top: Math.max(posTooltip.y - 50, 0),
+          }}
         >
           <p className="font-semibold text-[11px] text-neutral-300">{cunas[hoverIdx].area}</p>
           <p>

@@ -30,8 +30,8 @@ type Area = { id: string; nombre: string; sitioId: string };
 // se ve del mismo color en toda la pantalla (tarjeta, leyenda y barra).
 const TARJETAS_KPI = [
   { clave: "pendientes" as const, label: "Pendientes", color: "#eda100", fondo: "bg-amber-50", texto: "text-amber-800" },
-  { clave: "aprobadas" as const, label: "Aprobadas", color: "#1baf7a", fondo: "bg-emerald-50", texto: "text-emerald-800" },
-  { clave: "revisadas" as const, label: "Revisadas", color: "#2a78d6", fondo: "bg-blue-50", texto: "text-blue-800" },
+  { clave: "aprobadas" as const, label: "Aprobadas", color: "#1baf7a", fondo: "bg-green-50", texto: "text-green-800" },
+  { clave: "revisadas" as const, label: "Revisadas", color: "#2a78d6", fondo: "bg-sky-50", texto: "text-sky-800" },
   { clave: "pagadas" as const, label: "Pagadas", color: "#eb6834", fondo: "bg-orange-50", texto: "text-orange-800" },
 ];
 

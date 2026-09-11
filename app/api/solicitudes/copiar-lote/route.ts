@@ -31,7 +31,9 @@ export async function POST(req: Request) {
   }
 
   const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
-  if (!miColaborador) return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
+  if (!miColaborador || miColaborador.estado !== "ACTIVO") {
+    return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
+  }
 
   const equipo = miColaborador.esSupervisor
     ? await db.colaborador.findMany({ where: { supervisorId: miColaborador.id, estado: "ACTIVO" }, select: { id: true } })
@@ -61,14 +63,30 @@ export async function POST(req: Request) {
     ).map((c) => [c.id, c])
   );
 
+  // Una sola consulta de rutas por colaborador involucrado (no una por
+  // fila a copiar): agrupa primero los rutaId pedidos por cada
+  // colaborador y resuelve cuáles siguen siendo visibles para él.
+  const rutaIdsPorColaborador = new Map<string, Set<string>>();
+  for (const f of fuentesValidas) {
+    if (!rutaIdsPorColaborador.has(f.colaboradorId)) rutaIdsPorColaborador.set(f.colaboradorId, new Set());
+    rutaIdsPorColaborador.get(f.colaboradorId)!.add(f.rutaId);
+  }
+  const rutasVisiblesPorColaborador = new Map<string, Map<string, Awaited<ReturnType<typeof db.ruta.findMany>>[number]>>();
+  for (const [colaboradorId, rutaIds] of rutaIdsPorColaborador) {
+    const colaborador = colaboradorPorId.get(colaboradorId);
+    if (!colaborador) continue;
+    const rutas = await db.ruta.findMany({
+      where: { id: { in: Array.from(rutaIds) }, ...condicionRutasVisibles(colaborador) },
+    });
+    rutasVisiblesPorColaborador.set(colaboradorId, new Map(rutas.map((r) => [r.id, r])));
+  }
+
   let copiadas = 0;
   for (const fuente of fuentesValidas) {
     const colaborador = colaboradorPorId.get(fuente.colaboradorId);
     if (!colaborador) continue;
 
-    const ruta = await db.ruta.findFirst({
-      where: { id: fuente.rutaId, ...condicionRutasVisibles(colaborador) },
-    });
+    const ruta = rutasVisiblesPorColaborador.get(fuente.colaboradorId)?.get(fuente.rutaId);
     if (!ruta) continue; // ruta ya no válida para este colaborador (desactivada, cambio de área, etc.)
 
     const codigo = await generarCodigoSolicitud();
