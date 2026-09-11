@@ -70,18 +70,23 @@ export default function PanelHistorialTH({
     if (estado) params.set("estado", estado);
     if (colaboradorId) params.set("colaboradorId", colaboradorId);
 
-    const res = await fetch(`/api/th/historial?${params.toString()}`);
-    setCargando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo cargar el historial");
-      return;
+    try {
+      const res = await fetch(`/api/th/historial?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo cargar el historial");
+        return;
+      }
+      const data = await res.json();
+      setItems(data.items);
+      setTotalMonto(data.totalMonto);
+      setTotalPaginas(data.totalPaginas);
+      setPagina(paginaNueva);
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargando(false);
     }
-    const data = await res.json();
-    setItems(data.items);
-    setTotalMonto(data.totalMonto);
-    setTotalPaginas(data.totalPaginas);
-    setPagina(paginaNueva);
   };
 
   const abrirRevertir = (id: string) => {
@@ -98,22 +103,28 @@ export default function PanelHistorialTH({
     }
     setRevirtiendo(true);
     setErrorRevertir("");
-    const res = await fetch(`/api/solicitudes/${idARevertir}/revertir`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ motivo: motivoRevertir }),
-    });
-    setRevirtiendo(false);
+    try {
+      const res = await fetch(`/api/solicitudes/${idARevertir}/revertir`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo: motivoRevertir }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorRevertir(data.error ?? "No se pudo revertir la solicitud");
-      toast.error(data.error ?? "No se pudo revertir la solicitud");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorRevertir(data.error ?? "No se pudo revertir la solicitud");
+        toast.error(data.error ?? "No se pudo revertir la solicitud");
+        return;
+      }
+      setIdARevertir(null);
+      toast.exito("Solicitud devuelta a Pendiente");
+      buscar(pagina);
+    } catch {
+      setErrorRevertir("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setRevirtiendo(false);
     }
-    setIdARevertir(null);
-    toast.exito("Solicitud devuelta a Pendiente");
-    buscar(pagina);
   };
 
   return (
@@ -238,7 +249,7 @@ export default function PanelHistorialTH({
               )}
             </table>
           </div>
-          <Paginacion paginaActual={pagina} totalPaginas={totalPaginas} onCambiarPagina={buscar} />
+          <Paginacion paginaActual={pagina} totalPaginas={totalPaginas} onCambiarPagina={buscar} deshabilitado={cargando} />
         </div>
       )}
 

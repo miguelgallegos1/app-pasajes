@@ -10,13 +10,7 @@ import { useRouter } from "next/navigation";
 import { APP_NOMBRE } from "../../lib/config";
 import Spinner from "../../components/Spinner";
 import { IconoHuella } from "../../components/Icons";
-
-const DESTINO_POR_ROL: Record<string, string> = {
-  SUPER_ADMIN: "/dashboard",
-  ADMIN_TH: "/dashboard",
-  COLABORADOR: "/mis-pasajes",
-  FINANZAS: "/dashboard",
-};
+import { INICIO_POR_ROL as DESTINO_POR_ROL } from "../../lib/roles";
 
 const TIEMPO_LIMITE_MS = 2000;
 

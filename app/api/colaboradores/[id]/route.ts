@@ -37,6 +37,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Apellidos y Nombres son obligatorios" }, { status: 400 });
   }
 
+  // Mismo chequeo que al crear: el supervisor debe existir, estar marcado
+  // como supervisor, no ser el propio colaborador, y estar dentro del
+  // alcance de este TH.
+  if (supervisorId) {
+    if (supervisorId === id) {
+      return NextResponse.json({ error: "Un colaborador no puede ser su propio supervisor" }, { status: 400 });
+    }
+    const supervisor = await db.colaborador.findUnique({ where: { id: supervisorId } });
+    if (!supervisor || !supervisor.esSupervisor || !idsPermitidos.has(supervisor.areaId)) {
+      return NextResponse.json({ error: "El supervisor indicado no es válido" }, { status: 400 });
+    }
+  }
+
   const data: Record<string, unknown> = {};
   if (apellidos?.trim() && nombres?.trim()) {
     const apellidosNormalizados = apellidos.trim().toUpperCase();
@@ -134,8 +147,16 @@ export async function DELETE(
     );
   }
 
-  await db.colaborador.delete({ where: { id } });
-  await db.usuario.delete({ where: { id: colaborador.usuarioId } });
+  // Todo en una sola transacción: si el colaborador tiene una passkey
+  // registrada (CredencialBiometrica tiene FK obligatoria hacia Usuario,
+  // sin cascada), borrar colaborador y usuario en pasos separados podía
+  // dejar el borrado a medias (colaborador ya borrado, usuario.delete
+  // fallando por la FK y quedando una cuenta de login huérfana).
+  await db.$transaction([
+    db.credencialBiometrica.deleteMany({ where: { usuarioId: colaborador.usuarioId } }),
+    db.colaborador.delete({ where: { id } }),
+    db.usuario.delete({ where: { id: colaborador.usuarioId } }),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

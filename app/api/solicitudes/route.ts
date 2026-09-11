@@ -7,6 +7,7 @@ import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
 import { condicionRutasVisibles } from "../../../lib/rutas";
 import { generarCodigoSolicitud } from "../../../lib/codigoSolicitud";
+import { fechaValida } from "../../../lib/fechas";
 
 
 export async function POST(req: Request) {
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { colaboradorId, rutaId, fecha, observaciones } = await req.json();
+  const { colaboradorId, rutaId, fecha, observaciones } = await req.json().catch(() => ({}));
 
   if (!rutaId || !fecha) {
     return NextResponse.json(
@@ -23,11 +24,15 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  const fechaSolicitud = fechaValida(fecha);
+  if (!fechaSolicitud) {
+    return NextResponse.json({ error: "La fecha indicada no es válida" }, { status: 400 });
+  }
 
   const miColaborador = await db.colaborador.findUnique({
     where: { usuarioId: session.id },
   });
-  if (!miColaborador) {
+  if (!miColaborador || miColaborador.estado !== "ACTIVO") {
     return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
   }
 
@@ -44,7 +49,7 @@ export async function POST(req: Request) {
       miColaborador.esSupervisor &&
       colaboradorSolicitado?.supervisorId === miColaborador.id;
 
-    if (!colaboradorSolicitado || !esSuSupervisor) {
+    if (!colaboradorSolicitado || colaboradorSolicitado.estado !== "ACTIVO" || !esSuSupervisor) {
       return NextResponse.json(
         { error: "No puedes crear solicitudes para ese colaborador" },
         { status: 403 }
@@ -90,7 +95,7 @@ export async function POST(req: Request) {
       codigo,
       colaboradorId: colaboradorObjetivo.id,
       rutaId: ruta.id,
-      fecha: new Date(fecha),
+      fecha: fechaSolicitud,
       montoTotal: ruta.valor, // se copia el valor de la ruta al momento de crear (snapshot)
       observaciones: observaciones?.trim() ? observaciones.trim().toUpperCase() : null,
       estado: "PENDIENTE",

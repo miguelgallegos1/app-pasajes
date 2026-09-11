@@ -11,22 +11,18 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify, SignJWT } from "jose";
 import { DURACION_SESION_SEGUNDOS } from "./lib/config";
+import { JWT_SECRET } from "./lib/jwtSecret";
+import { INICIO_POR_ROL } from "./lib/roles";
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+const secret = new TextEncoder().encode(JWT_SECRET);
 
 const RUTAS_POR_ROL: Record<string, string[]> = {
   "/mis-pasajes": ["COLABORADOR"],
   "/th": ["ADMIN_TH", "SUPER_ADMIN"],
-  "/finanzas": ["FINANZAS", "SUPER_ADMIN"],
+  "/coordinador": ["COORDINADOR", "SUPER_ADMIN"],
+  "/nomina": ["NOMINA", "SUPER_ADMIN"],
   "/admin": ["SUPER_ADMIN"],
-  "/dashboard": ["ADMIN_TH", "FINANZAS", "SUPER_ADMIN"],
-};
-
-const INICIO_POR_ROL: Record<string, string> = {
-  COLABORADOR: "/mis-pasajes",
-  ADMIN_TH: "/dashboard",
-  FINANZAS: "/dashboard",
-  SUPER_ADMIN: "/dashboard",
+  "/dashboard": ["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"],
 };
 
 // Reemite la cookie de sesión con una expiración fresca de
@@ -88,7 +84,8 @@ export const config = {
   matcher: [
     "/mis-pasajes/:path*",
     "/th/:path*",
-    "/finanzas/:path*",
+    "/coordinador/:path*",
+    "/nomina/:path*",
     "/admin/:path*",
     "/dashboard/:path*",
     "/login",

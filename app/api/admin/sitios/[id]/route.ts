@@ -17,6 +17,9 @@ export async function PATCH(
   const { id } = await params;
   const { nombre, direccion } = await req.json();
 
+  const sitio = await db.sitioProductivo.findUnique({ where: { id } });
+  if (!sitio) return NextResponse.json({ error: "Sitio no encontrado" }, { status: 404 });
+
   const data: Record<string, unknown> = {};
   if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
   if (direccion !== undefined) data.direccion = direccion?.trim() ? direccion.trim().toUpperCase() : null;

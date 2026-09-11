@@ -6,10 +6,11 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
+import { fechaValida } from "../../../../lib/fechas";
 
 export async function GET(req: Request) {
   const session = await getSession();
-  if (!session || !["ADMIN_TH", "SUPER_ADMIN", "FINANZAS"].includes(session.rol)) {
+  if (!session || !["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
@@ -19,11 +20,16 @@ export async function GET(req: Request) {
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
   }
+  const desdeFecha = fechaValida(desde);
+  const hastaFecha = fechaValida(hasta);
+  if (!desdeFecha || !hastaFecha) {
+    return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
+  }
 
-  // Finanzas no tiene asignaciones por área, así que solo restringimos
-  // el alcance cuando el rol es Talento Humano.
+  // Nómina no tiene asignaciones por área, así que solo restringimos el
+  // alcance cuando el rol es Talento Humano o Coordinador.
   const { sinRestriccion, condicion } =
-    session.rol === "ADMIN_TH"
+    session.rol === "ADMIN_TH" || session.rol === "COORDINADOR"
       ? await obtenerCondicionRutaTH(session.id, session.rol)
       : { sinRestriccion: true as const, condicion: {} as Record<string, unknown> };
 
@@ -32,24 +38,38 @@ export async function GET(req: Request) {
   }
 
   const base = {
-    fecha: { gte: new Date(desde), lte: new Date(hasta) },
+    fecha: { gte: desdeFecha, lte: hastaFecha },
     ...(sinRestriccion ? {} : { ruta: condicion }),
   };
 
-  const [pendientes, aprobadas, pagadas, paraGasto] = await Promise.all([
+  const [pendientes, aprobadas, revisadas, pagadas, gastoPorRuta] = await Promise.all([
     db.solicitudPasaje.aggregate({ where: { ...base, estado: "PENDIENTE" }, _count: true, _sum: { montoTotal: true } }),
     db.solicitudPasaje.aggregate({ where: { ...base, estado: "APROBADA" }, _count: true, _sum: { montoTotal: true } }),
+    db.solicitudPasaje.aggregate({ where: { ...base, estado: "REVISADO" }, _count: true, _sum: { montoTotal: true } }),
     db.solicitudPasaje.aggregate({ where: { ...base, estado: "PAGADA" }, _count: true, _sum: { montoTotal: true } }),
-    db.solicitudPasaje.findMany({
-      where: { ...base, estado: { in: ["APROBADA", "PAGADA"] } },
-      include: { ruta: { include: { area: true } } },
+    // Se agrupa por rutaId en la base de datos (en vez de traer cada
+    // solicitud completa con su ruta/área para sumarlas en memoria); el
+    // número de rutas distintas es muchísimo menor que el de solicitudes.
+    db.solicitudPasaje.groupBy({
+      by: ["rutaId"],
+      where: { ...base, estado: { in: ["APROBADA", "REVISADO", "PAGADA"] } },
+      _sum: { montoTotal: true },
     }),
   ]);
 
+  const rutaIds = gastoPorRuta.map((g) => g.rutaId);
+  const rutas = rutaIds.length
+    ? await db.ruta.findMany({
+        where: { id: { in: rutaIds } },
+        select: { id: true, area: { select: { nombre: true } } },
+      })
+    : [];
+  const areaPorRuta = new Map(rutas.map((r) => [r.id, r.area.nombre]));
+
   const mapaGasto = new Map<string, number>();
-  for (const s of paraGasto) {
-    const nombre = s.ruta.area.nombre;
-    mapaGasto.set(nombre, (mapaGasto.get(nombre) ?? 0) + Number(s.montoTotal));
+  for (const g of gastoPorRuta) {
+    const nombre = areaPorRuta.get(g.rutaId) ?? "Desconocida";
+    mapaGasto.set(nombre, (mapaGasto.get(nombre) ?? 0) + Number(g._sum.montoTotal ?? 0));
   }
   const gastoPorArea = Array.from(mapaGasto.entries())
     .map(([area, total]) => ({ area, total }))
@@ -59,6 +79,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     pendientes: { cantidad: pendientes._count, total: Number(pendientes._sum.montoTotal ?? 0) },
     aprobadas: { cantidad: aprobadas._count, total: Number(aprobadas._sum.montoTotal ?? 0) },
+    revisadas: { cantidad: revisadas._count, total: Number(revisadas._sum.montoTotal ?? 0) },
     pagadas: { cantidad: pagadas._count, total: Number(pagadas._sum.montoTotal ?? 0) },
     gastoPorArea,
   });

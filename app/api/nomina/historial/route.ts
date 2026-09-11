@@ -1,16 +1,18 @@
-// app/api/finanzas/historial/route.ts
+// app/api/nomina/historial/route.ts
 // GET: historial de solicitudes PAGADAS, filtrable por fecha, Empresa,
-// Sitio, Área y Colaborador (en cascada, sin mezclar). Paginado.
+// Sitio, Área, Colaborador (en cascada, sin mezclar) y opcionalmente Ruta
+// (para el desglose de la vista agrupada por colaborador). Paginado.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { fechaValida } from "../../../../lib/fechas";
 
 const POR_PAGINA = 15;
 
 export async function GET(req: Request) {
   const session = await getSession();
-  if (!session || !["FINANZAS", "SUPER_ADMIN"].includes(session.rol)) {
+  if (!session || !["NOMINA", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
@@ -21,20 +23,29 @@ export async function GET(req: Request) {
   const sitioId = searchParams.get("sitioId");
   const areaId = searchParams.get("areaId");
   const colaboradorId = searchParams.get("colaboradorId");
+  const rutaId = searchParams.get("rutaId");
   const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1"));
 
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
   }
+  const desdeFecha = fechaValida(desde);
+  const hastaFecha = fechaValida(hasta);
+  if (!desdeFecha || !hastaFecha) {
+    return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
+  }
 
   const filtro: Record<string, unknown> = {
     estado: "PAGADA",
-    fecha: { gte: new Date(desde), lte: new Date(hasta) },
+    fecha: { gte: desdeFecha, lte: hastaFecha },
   };
   if (colaboradorId) filtro.colaboradorId = colaboradorId;
   else if (areaId) filtro.ruta = { areaId };
   else if (sitioId) filtro.ruta = { sitioId };
   else if (empresaId) filtro.ruta = { empresaId };
+  // rutaId se combina con colaboradorId (no es parte de la cascada de
+  // arriba): lo usa la vista agrupada al expandir una ruta puntual.
+  if (rutaId) filtro.rutaId = rutaId;
 
   const [items, total, suma] = await Promise.all([
     db.solicitudPasaje.findMany({

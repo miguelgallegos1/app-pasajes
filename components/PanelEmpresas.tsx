@@ -86,24 +86,30 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       body = modal!.id ? { nombre } : { sitioId, nombre };
     }
 
-    const res = await fetch(url, {
-      method: modal!.id ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setGuardando(false);
+    try {
+      const res = await fetch(url, {
+        method: modal!.id ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo guardar");
-      toast.error(data.error ?? "No se pudo guardar");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo guardar");
+        toast.error(data.error ?? "No se pudo guardar");
+        return;
+      }
+      const ETIQUETAS: Record<string, string> = { empresa: "Empresa", sitio: "Sitio", area: "Área" };
+      const TERMINACION: Record<string, string> = { empresa: "a", sitio: "o", area: "a" };
+      toast.exito(`${ETIQUETAS[modal!.tipo]} ${modal!.id ? "actualizad" : "cread"}${TERMINACION[modal!.tipo]}`);
+      setModal(null);
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setGuardando(false);
     }
-    const ETIQUETAS: Record<string, string> = { empresa: "Empresa", sitio: "Sitio", area: "Área" };
-    const TERMINACION: Record<string, string> = { empresa: "a", sitio: "o", area: "a" };
-    toast.exito(`${ETIQUETAS[modal!.tipo]} ${modal!.id ? "actualizad" : "cread"}${TERMINACION[modal!.tipo]}`);
-    setModal(null);
-    router.refresh();
   };
 
   // ---------- Modal Gestionar (Desactivar/Reactivar + Eliminar) ----------
@@ -115,44 +121,56 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
     if (!gestionando) return;
     setProcesando(true);
     setErrorGestion("");
-    const res = await fetch(`/api/admin/empresas/${gestionando.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ activo: nuevoActivo }),
-    });
-    setProcesando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorGestion(data.error ?? "No se pudo actualizar");
-      toast.error(data.error ?? "No se pudo actualizar la empresa");
-      return;
+    try {
+      const res = await fetch(`/api/admin/empresas/${gestionando.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activo: nuevoActivo }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorGestion(data.error ?? "No se pudo actualizar");
+        toast.error(data.error ?? "No se pudo actualizar la empresa");
+        return;
+      }
+      toast.exito(nuevoActivo ? "Empresa reactivada" : "Empresa desactivada");
+      setGestionando(null);
+      router.refresh();
+    } catch {
+      setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setProcesando(false);
     }
-    toast.exito(nuevoActivo ? "Empresa reactivada" : "Empresa desactivada");
-    setGestionando(null);
-    router.refresh();
   };
 
   const eliminar = async () => {
     if (!gestionando) return;
     setProcesando(true);
     setErrorGestion("");
-    const res = await fetch(`${URLS[gestionando.tipo]}/${gestionando.id}`, { method: "DELETE" });
-    setProcesando(false);
+    try {
+      const res = await fetch(`${URLS[gestionando.tipo]}/${gestionando.id}`, { method: "DELETE" });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorGestion(data.error ?? "No se pudo eliminar");
-      toast.error(data.error ?? "No se pudo eliminar");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorGestion(data.error ?? "No se pudo eliminar");
+        toast.error(data.error ?? "No se pudo eliminar");
+        return;
+      }
+
+      if (gestionando.tipo === "empresa" && gestionando.id === empresaId) { setEmpresaId(null); setSitioId(null); }
+      if (gestionando.tipo === "sitio" && gestionando.id === sitioId) setSitioId(null);
+
+      const ETIQUETAS: Record<string, string> = { empresa: "Empresa", sitio: "Sitio", area: "Área" };
+      toast.exito(`${ETIQUETAS[gestionando.tipo]} eliminada`);
+      setGestionando(null);
+      router.refresh();
+    } catch {
+      setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setProcesando(false);
     }
-
-    if (gestionando.tipo === "empresa" && gestionando.id === empresaId) { setEmpresaId(null); setSitioId(null); }
-    if (gestionando.tipo === "sitio" && gestionando.id === sitioId) setSitioId(null);
-
-    const ETIQUETAS: Record<string, string> = { empresa: "Empresa", sitio: "Sitio", area: "Área" };
-    toast.exito(`${ETIQUETAS[gestionando.tipo]} eliminada`);
-    setGestionando(null);
-    router.refresh();
   };
 
   return (

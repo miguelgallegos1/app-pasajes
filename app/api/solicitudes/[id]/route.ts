@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
+import { fechaValida } from "../../../../lib/fechas";
 
 async function obtenerPermiso(solicitudId: string, sessionId: string) {
   const solicitud = await db.solicitudPasaje.findUnique({
@@ -31,7 +32,18 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const { rutaId, fecha, observaciones } = await req.json();
+  const { rutaId, fecha, observaciones } = await req.json().catch(() => ({}));
+
+  if (!rutaId || !fecha) {
+    return NextResponse.json(
+      { error: "Faltan datos: ruta y fecha son obligatorios" },
+      { status: 400 }
+    );
+  }
+  const fechaEditada = fechaValida(fecha);
+  if (!fechaEditada) {
+    return NextResponse.json({ error: "La fecha indicada no es válida" }, { status: 400 });
+  }
 
   const { solicitud, puede } = await obtenerPermiso(id, session.id);
   if (!solicitud) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
@@ -56,7 +68,7 @@ export async function PATCH(
     where: { id },
     data: {
       rutaId: ruta.id,
-      fecha: new Date(fecha),
+      fecha: fechaEditada,
       montoTotal: ruta.valor,
       observaciones: observaciones?.trim() ? observaciones.trim().toUpperCase() : null,
       estado: "PENDIENTE", // al corregirla, vuelve a la cola de aprobación

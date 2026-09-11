@@ -9,3 +9,11 @@ export function formatearFecha(fecha: string | Date): string {
   const anio = d.getUTCFullYear();
   return `${dia}/${mes}/${anio}`;
 }
+
+// Devuelve el Date parseado, o null si `valor` no es una fecha válida —
+// para no pasarle un Invalid Date a Prisma (lanzaría una excepción no
+// controlada en vez de un 400 claro) en filtros de rango por query param.
+export function fechaValida(valor: string): Date | null {
+  const d = new Date(valor);
+  return Number.isNaN(d.getTime()) ? null : d;
+}

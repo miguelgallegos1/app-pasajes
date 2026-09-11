@@ -1,7 +1,7 @@
 // components/Header.tsx
 // Barra superior reutilizable: nombre de la app a la izquierda,
 // foto + nombre del usuario y botón de cerrar sesión a la derecha.
-// Se usará en TODOS los paneles (colaborador, TH, finanzas, admin).
+// Se usará en TODOS los paneles (colaborador, TH, coordinador, nómina, admin).
 
 "use client";
 

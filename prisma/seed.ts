@@ -32,7 +32,8 @@ async function main() {
 
   const pinHashAdmin = await bcrypt.hash("123456", 10);
   const pinHashTH = await bcrypt.hash("111111", 10);
-  const pinHashFin = await bcrypt.hash("333333", 10);
+  const pinHashNomina = await bcrypt.hash("333333", 10);
+  const pinHashCoordinador = await bcrypt.hash("555555", 10);
   const pinHashSupervisor = await bcrypt.hash("444444", 10);
   const pinHashColab = await bcrypt.hash("222222", 10);
 
@@ -66,12 +67,27 @@ async function main() {
 
   await db.usuario.create({
     data: {
-      nombre: "Carlos Pago (Finanzas)",
-      email: "finanzas@empresa.com",
-      pinHash: pinHashFin,
+      nombre: "Carlos Pago (Nómina)",
+      email: "nomina@empresa.com",
+      pinHash: pinHashNomina,
       pinLookup: calcularPinLookup("333333"),
-      rol: "FINANZAS",
+      rol: "NOMINA",
     },
+  });
+
+  // Coordinador — igual que TH, se le asigna al menos un área para poder
+  // ver/revisar solicitudes dentro de su alcance.
+  const usuarioCoordinador = await db.usuario.create({
+    data: {
+      nombre: "Lucía Ramírez (Coordinadora)",
+      email: "coordinador@empresa.com",
+      pinHash: pinHashCoordinador,
+      pinLookup: calcularPinLookup("555555"),
+      rol: "COORDINADOR",
+    },
+  });
+  await db.asignacionTH.create({
+    data: { usuarioId: usuarioCoordinador.id, areaId: areaProduccion.id },
   });
 
   const usuarioSupervisor = await db.usuario.create({
@@ -146,7 +162,8 @@ async function main() {
   console.log("-----------------------------------");
   console.log("SUPER_ADMIN  → superadmin@empresa.com / PIN: 123456");
   console.log("ADMIN_TH     → th@empresa.com / PIN: 111111 (asignada a Producción y Cultivo)");
-  console.log("FINANZAS     → finanzas@empresa.com / PIN: 333333");
+  console.log("NOMINA       → nomina@empresa.com / PIN: 333333");
+  console.log("COORDINADOR  → coordinador@empresa.com / PIN: 555555 (asignada a Producción)");
   console.log("SUPERVISOR   → Ana Rodríguez / PIN: 444444");
   console.log("COLABORADOR  → Juan Pérez / PIN: 222222 (equipo de Ana)");
   console.log("-----------------------------------");

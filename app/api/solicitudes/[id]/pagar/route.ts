@@ -1,5 +1,5 @@
 // app/api/solicitudes/[id]/pagar/route.ts
-// PATCH: Finanzas (o Super Admin) marca una solicitud APROBADA como PAGADA.
+// PATCH: Nómina (o Super Admin) marca una solicitud REVISADA como PAGADA.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
@@ -10,24 +10,27 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session || !["FINANZAS", "SUPER_ADMIN"].includes(session.rol)) {
+  if (!session || !["NOMINA", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
   const { id } = await params;
 
-  const solicitud = await db.solicitudPasaje.findUnique({ where: { id } });
-  if (!solicitud || solicitud.estado !== "APROBADA") {
+  // Estado exigido dentro del WHERE del UPDATE: verificación atómica para
+  // que un pago no pueda aplicarse sobre una solicitud que otra petición
+  // concurrente (ej. un "devolver-revision") acaba de sacar de REVISADO.
+  const resultado = await db.solicitudPasaje.updateMany({
+    where: { id, estado: "REVISADO" },
+    data: { estado: "PAGADA", fechaPago: new Date(), pagadoPorId: session.id },
+  });
+
+  if (resultado.count === 0) {
     return NextResponse.json(
-      { error: "Solo se pueden pagar solicitudes ya aprobadas" },
+      { error: "Solo se pueden pagar solicitudes ya revisadas" },
       { status: 400 }
     );
   }
 
-  const actualizada = await db.solicitudPasaje.update({
-    where: { id },
-    data: { estado: "PAGADA", fechaPago: new Date(), pagadoPorId: session.id },
-  });
-
+  const actualizada = await db.solicitudPasaje.findUnique({ where: { id } });
   return NextResponse.json(actualizada);
 }

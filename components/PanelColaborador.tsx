@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import CalendarioSelector from "./CalendarioSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -138,15 +138,26 @@ export default function PanelColaborador({
     return `${y}-${m}-${d}`;
   }, []);
 
+  const peticionRutasIdRef = useRef(0);
+
   const cargarRutasDe = async (idColaborador: string) => {
     if (idColaborador === colaboradorId) {
       setRutasDisponibles(rutasPropias);
       return;
     }
+    const idPeticion = ++peticionRutasIdRef.current;
     setCargandoRutas(true);
-    const res = await fetch(`/api/rutas?colaboradorId=${idColaborador}`);
-    setCargandoRutas(false);
-    if (res.ok) setRutasDisponibles(await res.json());
+    try {
+      const res = await fetch(`/api/rutas?colaboradorId=${idColaborador}`);
+      if (idPeticion !== peticionRutasIdRef.current) return;
+      if (res.ok) setRutasDisponibles(await res.json());
+    } catch {
+      if (idPeticion === peticionRutasIdRef.current) {
+        toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      }
+    } finally {
+      if (idPeticion === peticionRutasIdRef.current) setCargandoRutas(false);
+    }
   };
 
   const cambiarColaborador = async (nuevoId: string) => {
@@ -184,43 +195,56 @@ export default function PanelColaborador({
     const url = modoEdicionId ? `/api/solicitudes/${modoEdicionId}` : "/api/solicitudes";
     const method = modoEdicionId ? "PATCH" : "POST";
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ colaboradorId: colaboradorSeleccionado, rutaId, fecha, observaciones }),
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ colaboradorId: colaboradorSeleccionado, rutaId, fecha, observaciones }),
+      });
 
-    setEnviando(false);
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo guardar la solicitud");
-      toast.error(data.error ?? "No se pudo guardar la solicitud");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo guardar la solicitud");
+        toast.error(data.error ?? "No se pudo guardar la solicitud");
+        setConfirmando(false);
+        return;
+      }
       setConfirmando(false);
-      return;
+      setModalAbierto(false);
+      setModoEdicionId(null);
+      toast.exito(modoEdicionId ? "Solicitud actualizada" : "Solicitud registrada");
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      setConfirmando(false);
+    } finally {
+      setEnviando(false);
     }
-    setConfirmando(false);
-    setModalAbierto(false);
-    setModoEdicionId(null);
-    toast.exito(modoEdicionId ? "Solicitud actualizada" : "Solicitud registrada");
-    router.refresh();
   };
 
   const confirmarEliminacion = async () => {
     if (!idAEliminar) return;
     setEliminando(true);
-    const res = await fetch(`/api/solicitudes/${idAEliminar}`, { method: "DELETE" });
-    setEliminando(false);
-    setIdAEliminar(null);
+    try {
+      const res = await fetch(`/api/solicitudes/${idAEliminar}`, { method: "DELETE" });
+      setIdAEliminar(null);
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo eliminar");
-      toast.error(data.error ?? "No se pudo eliminar la solicitud");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo eliminar");
+        toast.error(data.error ?? "No se pudo eliminar la solicitud");
+        return;
+      }
+      toast.exito("Solicitud eliminada");
+      router.refresh();
+    } catch {
+      setIdAEliminar(null);
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setEliminando(false);
     }
-    toast.exito("Solicitud eliminada");
-    router.refresh();
   };
 
   return (

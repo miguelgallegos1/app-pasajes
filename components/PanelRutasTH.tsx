@@ -107,22 +107,28 @@ export default function PanelRutasTH({
     const method = editandoId ? "PATCH" : "POST";
     const body = editandoId ? { nombre, valor: numero } : { areaId, nombre, valor: numero };
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setGuardando(false);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo guardar");
-      toast.error(data.error ?? "No se pudo guardar la ruta");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo guardar");
+        toast.error(data.error ?? "No se pudo guardar la ruta");
+        return;
+      }
+      setModalAbierto(false);
+      toast.exito(editandoId ? "Ruta actualizada" : "Ruta creada");
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setGuardando(false);
     }
-    setModalAbierto(false);
-    toast.exito(editandoId ? "Ruta actualizada" : "Ruta creada");
-    router.refresh();
   };
 
   const rutaGestionar = rutas.find((r) => r.id === idGestionar);
@@ -131,38 +137,50 @@ export default function PanelRutasTH({
     if (!idGestionar) return;
     setProcesando(true);
     setErrorGestion("");
-    const res = await fetch(`/api/th/rutas/${idGestionar}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ activo: nuevoActivo }),
-    });
-    setProcesando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorGestion(data.error ?? "No se pudo actualizar");
-      toast.error(data.error ?? "No se pudo actualizar la ruta");
-      return;
+    try {
+      const res = await fetch(`/api/th/rutas/${idGestionar}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activo: nuevoActivo }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorGestion(data.error ?? "No se pudo actualizar");
+        toast.error(data.error ?? "No se pudo actualizar la ruta");
+        return;
+      }
+      setIdGestionar(null);
+      toast.exito(nuevoActivo ? "Ruta reactivada" : "Ruta desactivada");
+      router.refresh();
+    } catch {
+      setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setProcesando(false);
     }
-    setIdGestionar(null);
-    toast.exito(nuevoActivo ? "Ruta reactivada" : "Ruta desactivada");
-    router.refresh();
   };
 
   const eliminarPermanente = async () => {
     if (!idGestionar) return;
     setProcesando(true);
     setErrorGestion("");
-    const res = await fetch(`/api/th/rutas/${idGestionar}`, { method: "DELETE" });
-    setProcesando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorGestion(data.error ?? "No se pudo eliminar");
-      toast.error(data.error ?? "No se pudo eliminar la ruta");
-      return;
+    try {
+      const res = await fetch(`/api/th/rutas/${idGestionar}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorGestion(data.error ?? "No se pudo eliminar");
+        toast.error(data.error ?? "No se pudo eliminar la ruta");
+        return;
+      }
+      setIdGestionar(null);
+      toast.exito("Ruta eliminada");
+      router.refresh();
+    } catch {
+      setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setProcesando(false);
     }
-    setIdGestionar(null);
-    toast.exito("Ruta eliminada");
-    router.refresh();
   };
 
   return (

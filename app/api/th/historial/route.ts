@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
+import { fechaValida } from "../../../../lib/fechas";
 
 const POR_PAGINA = 15;
 
@@ -25,6 +26,11 @@ export async function GET(req: Request) {
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
   }
+  const desdeFecha = fechaValida(desde);
+  const hastaFecha = fechaValida(hasta);
+  if (!desdeFecha || !hastaFecha) {
+    return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
+  }
 
   const { sinRestriccion, condicion } = await obtenerCondicionRutaTH(session.id, session.rol);
   if (condicion === null) {
@@ -37,7 +43,7 @@ export async function GET(req: Request) {
       : { estado: { in: ["APROBADA", "PAGADA"] as Array<"APROBADA" | "PAGADA"> } };
 
   const filtro = {
-    fecha: { gte: new Date(desde), lte: new Date(hasta) },
+    fecha: { gte: desdeFecha, lte: hastaFecha },
     ...(sinRestriccion ? {} : { ruta: condicion }),
     ...(colaboradorId ? { colaboradorId } : {}),
     ...filtroEstado,

@@ -1,5 +1,5 @@
 // app/api/admin/usuarios/route.ts
-// POST: Super Admin crea un usuario de TH, Finanzas o Super Admin.
+// POST: Super Admin crea un usuario de TH, Coordinador, Nómina o Super Admin.
 // (Los usuarios tipo Colaborador se crean aparte, desde el panel de TH.)
 
 import { NextResponse } from "next/server";
@@ -8,7 +8,7 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
 
-const ROLES_PERMITIDOS = ["ADMIN_TH", "FINANZAS", "SUPER_ADMIN"];
+const ROLES_PERMITIDOS = ["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"];
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -42,9 +42,15 @@ export async function POST(req: Request) {
 
   const pinHash = await bcrypt.hash(pin, 10);
 
-  const nuevo = await db.usuario.create({
-    data: { nombre: nombre.trim().toUpperCase(), email: email || null, pinHash, pinLookup, rol },
-  });
-
-  return NextResponse.json(nuevo, { status: 201 });
+  try {
+    const nuevo = await db.usuario.create({
+      data: { nombre: nombre.trim().toUpperCase(), email: email || null, pinHash, pinLookup, rol },
+    });
+    return NextResponse.json(nuevo, { status: 201 });
+  } catch (e: any) {
+    if (e.code === "P2002") {
+      return NextResponse.json({ error: "Ese email ya está en uso por otro usuario" }, { status: 400 });
+    }
+    throw e;
+  }
 }

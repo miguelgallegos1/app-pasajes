@@ -1,8 +1,9 @@
 // components/PanelUsuariosAdmin.tsx
-// CRUD de Usuarios administrativos (TH, Finanzas, Super Admin): crear,
-// editar, y "Gestionar" (Desactivar/Reactivar + Eliminar, bloqueado si
-// tiene historial de aprobaciones o pagos). Para los de TH, además se
-// gestionan sus asignaciones de Empresa/Sitio/Área en un modal aparte.
+// CRUD de Usuarios administrativos (TH, Coordinador, Nómina, Super Admin):
+// crear, editar, y "Gestionar" (Desactivar/Reactivar + Eliminar, bloqueado
+// si tiene historial de aprobaciones o pagos). Para los de TH y
+// Coordinador, además se gestionan sus asignaciones de Empresa/Sitio/Área
+// en un modal aparte.
 
 "use client";
 
@@ -13,6 +14,7 @@ import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { IconoCopiar } from "./Icons";
 import { useToast } from "./Toast";
+import { ETIQUETAS_ROL } from "../lib/roles";
 
 type Asignacion = { id: string; etiqueta: string };
 type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; asignaciones: Asignacion[] };
@@ -20,11 +22,9 @@ type Area = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; areas: Area[] };
 type Empresa = { id: string; nombre: string; sitios: Sitio[] };
 
-const ETIQUETAS_ROL: Record<string, string> = {
-  SUPER_ADMIN: "Super Administrador",
-  ADMIN_TH: "Talento Humano",
-  FINANZAS: "Finanzas",
-};
+// Roles cuyo alcance se restringe por Empresa/Sitio/Área (comparten el
+// mismo mecanismo de AsignacionTH, ver lib/alcanceTH.ts).
+const ROLES_CON_ALCANCE = ["ADMIN_TH", "COORDINADOR"];
 
 export default function PanelUsuariosAdmin({
   usuarios,
@@ -51,13 +51,18 @@ export default function PanelUsuariosAdmin({
   const generarPin = async () => {
     setGenerandoPin(true);
     setPinCopiado(false);
-    const res = await fetch("/api/auth/generar-pin", { method: "POST" });
-    setGenerandoPin(false);
-    if (res.ok) {
-      const data = await res.json();
-      setPin(data.pin);
-    } else {
-      toast.error("No se pudo generar un PIN, intenta de nuevo");
+    try {
+      const res = await fetch("/api/auth/generar-pin", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setPin(data.pin);
+      } else {
+        toast.error("No se pudo generar un PIN, intenta de nuevo");
+      }
+    } catch {
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setGenerandoPin(false);
     }
   };
 
@@ -105,22 +110,28 @@ export default function PanelUsuariosAdmin({
     const method = editandoId ? "PATCH" : "POST";
     const body = editandoId ? { nombre } : { nombre, pin, rol };
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setGuardando(false);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo guardar");
-      toast.error(data.error ?? "No se pudo guardar el usuario");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo guardar");
+        toast.error(data.error ?? "No se pudo guardar el usuario");
+        return;
+      }
+      setModalAbierto(false);
+      toast.exito(editandoId ? "Usuario actualizado" : "Usuario creado");
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setGuardando(false);
     }
-    setModalAbierto(false);
-    toast.exito(editandoId ? "Usuario actualizado" : "Usuario creado");
-    router.refresh();
   };
 
   // ---------- Modal Gestionar (Desactivar/Reactivar + Eliminar) ----------
@@ -132,38 +143,50 @@ export default function PanelUsuariosAdmin({
     if (!gestionando) return;
     setProcesando(true);
     setErrorGestion("");
-    const res = await fetch(`/api/admin/usuarios/${gestionando.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ activo: nuevoActivo }),
-    });
-    setProcesando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorGestion(data.error ?? "No se pudo actualizar");
-      toast.error(data.error ?? "No se pudo actualizar el usuario");
-      return;
+    try {
+      const res = await fetch(`/api/admin/usuarios/${gestionando.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activo: nuevoActivo }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorGestion(data.error ?? "No se pudo actualizar");
+        toast.error(data.error ?? "No se pudo actualizar el usuario");
+        return;
+      }
+      toast.exito(nuevoActivo ? "Usuario reactivado" : "Usuario desactivado");
+      setGestionando(null);
+      router.refresh();
+    } catch {
+      setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setProcesando(false);
     }
-    toast.exito(nuevoActivo ? "Usuario reactivado" : "Usuario desactivado");
-    setGestionando(null);
-    router.refresh();
   };
 
   const eliminarUsuario = async () => {
     if (!gestionando) return;
     setProcesando(true);
     setErrorGestion("");
-    const res = await fetch(`/api/admin/usuarios/${gestionando.id}`, { method: "DELETE" });
-    setProcesando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorGestion(data.error ?? "No se pudo eliminar");
-      toast.error(data.error ?? "No se pudo eliminar el usuario");
-      return;
+    try {
+      const res = await fetch(`/api/admin/usuarios/${gestionando.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorGestion(data.error ?? "No se pudo eliminar");
+        toast.error(data.error ?? "No se pudo eliminar el usuario");
+        return;
+      }
+      toast.exito("Usuario eliminado");
+      setGestionando(null);
+      router.refresh();
+    } catch {
+      setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setProcesando(false);
     }
-    toast.exito("Usuario eliminado");
-    setGestionando(null);
-    router.refresh();
   };
 
   const usuarioAreas = usuarios.find((u) => u.id === idAreas);
@@ -180,7 +203,7 @@ export default function PanelUsuariosAdmin({
         </button>
       </div>
       <p className="text-xs text-orange-400 font-medium">
-        Talento Humano, Finanzas y Super Administradores
+        Talento Humano, Coordinadores, Nómina y Super Administradores
       </p>
 
       <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
@@ -203,7 +226,7 @@ export default function PanelUsuariosAdmin({
                   <td className="px-4 py-3">{u.nombre}</td>
                   <td className="px-4 py-3 text-neutral-600">{ETIQUETAS_ROL[u.rol] ?? u.rol}</td>
                   <td className="px-4 py-3 text-neutral-500">
-                    {u.rol === "ADMIN_TH" ? `${u.asignaciones.length} asignada(s)` : "—"}
+                    {ROLES_CON_ALCANCE.includes(u.rol) ? `${u.asignaciones.length} asignada(s)` : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -222,7 +245,7 @@ export default function PanelUsuariosAdmin({
                       >
                         Editar
                       </button>
-                      {u.rol === "ADMIN_TH" && (
+                      {ROLES_CON_ALCANCE.includes(u.rol) && (
                         <button
                           onClick={() => setIdAreas(u.id)}
                           className="text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-full transition"
@@ -312,7 +335,8 @@ export default function PanelUsuariosAdmin({
                   <div className="mt-1.5 flex bg-neutral-100 rounded-xl p-1 gap-1">
                     {[
                       { value: "ADMIN_TH", label: "TH" },
-                      { value: "FINANZAS", label: "Finanzas" },
+                      { value: "COORDINADOR", label: "Coordinador" },
+                      { value: "NOMINA", label: "Nómina" },
                       { value: "SUPER_ADMIN", label: "Super Admin" },
                     ].map((op) => (
                       <button
@@ -440,36 +464,48 @@ function ModalAreasTH({
     }
     setGuardando(true);
     setError("");
-    const res = await fetch("/api/admin/asignaciones-th", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ usuarioId: usuario.id, empresaId, sitioId: sitioId || null, areaId: areaId || null }),
-    });
-    setGuardando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo guardar");
-      toast.error(data.error ?? "No se pudo agregar la asignación");
-      return;
+    try {
+      const res = await fetch("/api/admin/asignaciones-th", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuarioId: usuario.id, empresaId, sitioId: sitioId || null, areaId: areaId || null }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo guardar");
+        toast.error(data.error ?? "No se pudo agregar la asignación");
+        return;
+      }
+      toast.exito("Asignación agregada");
+      setEmpresaId("");
+      setSitioId("");
+      setAreaId("");
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setGuardando(false);
     }
-    toast.exito("Asignación agregada");
-    setEmpresaId("");
-    setSitioId("");
-    setAreaId("");
-    router.refresh();
   };
 
   const quitar = async () => {
     if (!idAQuitar) return;
     setQuitando(true);
-    const res = await fetch(`/api/admin/asignaciones-th/${idAQuitar}`, { method: "DELETE" });
-    setQuitando(false);
-    setIdAQuitar(null);
-    if (res.ok) {
-      toast.exito("Asignación quitada");
-      router.refresh();
-    } else {
-      toast.error("No se pudo quitar la asignación");
+    try {
+      const res = await fetch(`/api/admin/asignaciones-th/${idAQuitar}`, { method: "DELETE" });
+      setIdAQuitar(null);
+      if (res.ok) {
+        toast.exito("Asignación quitada");
+        router.refresh();
+      } else {
+        toast.error("No se pudo quitar la asignación");
+      }
+    } catch {
+      setIdAQuitar(null);
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setQuitando(false);
     }
   };
 

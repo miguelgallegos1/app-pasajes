@@ -35,6 +35,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Esa área no está en tu alcance" }, { status: 403 });
   }
 
+  // El supervisor indicado debe existir, estar marcado como supervisor y
+  // estar dentro del alcance de este TH (si no, se podría enlazar a un
+  // colaborador de otra empresa/área fuera de su administración).
+  if (supervisorId) {
+    const idsPermitidos = new Set(areasPermitidas.map((a) => a.id));
+    const supervisor = await db.colaborador.findUnique({ where: { id: supervisorId } });
+    if (!supervisor || !supervisor.esSupervisor || !idsPermitidos.has(supervisor.areaId)) {
+      return NextResponse.json({ error: "El supervisor indicado no es válido" }, { status: 400 });
+    }
+  }
+
   const codigoEnUso = await db.colaborador.findFirst({ where: { codigoNomina: codigoNormalizado } });
   if (codigoEnUso) {
     return NextResponse.json({ error: "Ese código de nómina ya está en uso por otro colaborador" }, { status: 400 });
@@ -64,34 +75,42 @@ export async function POST(req: Request) {
   const pinHash = await bcrypt.hash(pin, 10);
 
   try {
-    const nuevo = await db.usuario.create({
-      data: {
-        nombre: nombreCompletoNormalizado,
-        pinHash,
-        pinLookup,
-        rol: "COLABORADOR",
-        colaborador: {
-          create: {
-            nombreCompleto: nombreCompletoNormalizado,
-            apellidos: apellidosNormalizados,
-            nombres: nombresNormalizados,
-            codigoNomina: codigoNormalizado,
-            sitioId: area.sitioId,
-            areaId: area.id,
-            esSupervisor: !!esSupervisor,
-            supervisorId: supervisorId || null,
+    // Creación del usuario+colaborador y la asignación de rutas exclusivas
+    // en una sola transacción: si el updateMany de rutas fallara, no debe
+    // quedar un colaborador creado a medias (sin las rutas que el
+    // formulario pretendía asignarle).
+    const nuevo = await db.$transaction(async (tx) => {
+      const creado = await tx.usuario.create({
+        data: {
+          nombre: nombreCompletoNormalizado,
+          pinHash,
+          pinLookup,
+          rol: "COLABORADOR",
+          colaborador: {
+            create: {
+              nombreCompleto: nombreCompletoNormalizado,
+              apellidos: apellidosNormalizados,
+              nombres: nombresNormalizados,
+              codigoNomina: codigoNormalizado,
+              sitioId: area.sitioId,
+              areaId: area.id,
+              esSupervisor: !!esSupervisor,
+              supervisorId: supervisorId || null,
+            },
           },
         },
-      },
-      include: { colaborador: true },
-    });
-
-    if (rutaIdsValidos.length > 0) {
-      await db.ruta.updateMany({
-        where: { id: { in: rutaIdsValidos } },
-        data: { colaboradorExclusivoId: nuevo.colaborador!.id },
+        include: { colaborador: true },
       });
-    }
+
+      if (rutaIdsValidos.length > 0) {
+        await tx.ruta.updateMany({
+          where: { id: { in: rutaIdsValidos } },
+          data: { colaboradorExclusivoId: creado.colaborador!.id },
+        });
+      }
+
+      return creado;
+    });
 
     return NextResponse.json(nuevo, { status: 201 });
   } catch (e: any) {

@@ -9,11 +9,19 @@ import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
 import { establecerCookieSesion, verificarAccesoColaborador } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
+import { intentoPermitido, obtenerIp } from "../../../../lib/rateLimit";
 
 export async function POST(req: Request) {
-  const { pin } = await req.json();
+  if (!intentoPermitido(obtenerIp(req))) {
+    return NextResponse.json(
+      { error: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo." },
+      { status: 429 }
+    );
+  }
 
-  if (!pin || pin.length !== 6) {
+  const { pin } = await req.json().catch(() => ({ pin: null }));
+
+  if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
     return NextResponse.json(
       { error: "El PIN debe tener 6 dígitos" },
       { status: 400 }

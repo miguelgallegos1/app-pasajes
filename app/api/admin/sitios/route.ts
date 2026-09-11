@@ -16,6 +16,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Empresa y nombre son obligatorios" }, { status: 400 });
   }
 
+  const empresa = await db.empresa.findUnique({ where: { id: empresaId } });
+  if (!empresa) {
+    return NextResponse.json({ error: "La empresa indicada no existe" }, { status: 400 });
+  }
+
   const sitio = await db.sitioProductivo.create({
     data: {
       empresaId,

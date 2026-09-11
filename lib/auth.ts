@@ -5,13 +5,14 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import { DURACION_SESION_SEGUNDOS } from "./config";
+import { JWT_SECRET } from "./jwtSecret";
 import { db } from "./db";
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+const secret = new TextEncoder().encode(JWT_SECRET);
 
 export type SesionUsuario = {
   id: string;
-  rol: "SUPER_ADMIN" | "ADMIN_TH" | "COLABORADOR" | "FINANZAS";
+  rol: "SUPER_ADMIN" | "ADMIN_TH" | "COORDINADOR" | "COLABORADOR" | "NOMINA";
 };
 
 // Crea un token firmado que se guarda en una cookie del navegador
