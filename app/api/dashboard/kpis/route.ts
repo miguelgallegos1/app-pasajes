@@ -71,10 +71,52 @@ export async function GET(req: Request) {
     const nombre = areaPorRuta.get(g.rutaId) ?? "Desconocida";
     mapaGasto.set(nombre, (mapaGasto.get(nombre) ?? 0) + Number(g._sum.montoTotal ?? 0));
   }
-  const gastoPorArea = Array.from(mapaGasto.entries())
+  // Top 4 áreas con nombre propio + el resto agrupado en "Otras" (nunca
+  // más de 5 porciones en el gráfico de pastel, y nunca un color nuevo
+  // generado sobre la marcha para una 5ª+ área).
+  const TOP_AREAS = 4;
+  const entradasGasto = Array.from(mapaGasto.entries())
     .map(([area, total]) => ({ area, total }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
+    .sort((a, b) => b.total - a.total);
+  const restoGasto = entradasGasto.slice(TOP_AREAS).reduce((acc, e) => acc + e.total, 0);
+  const gastoPorArea = [
+    ...entradasGasto.slice(0, TOP_AREAS),
+    ...(restoGasto > 0 ? [{ area: "Otras", total: restoGasto }] : []),
+  ];
+
+  // Tendencia de los últimos 6 meses (hasta el mes de "hasta"), para el
+  // gráfico de barras comparativo — independiente del rango de fechas
+  // elegido arriba, así siempre se puede ver la evolución reciente.
+  const MESES_TENDENCIA = 6;
+  const NOMBRES_MES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const rangosMensuales = Array.from({ length: MESES_TENDENCIA }, (_, i) => {
+    const offset = MESES_TENDENCIA - 1 - i;
+    const inicio = new Date(Date.UTC(hastaFecha.getUTCFullYear(), hastaFecha.getUTCMonth() - offset, 1));
+    const fin = new Date(Date.UTC(hastaFecha.getUTCFullYear(), hastaFecha.getUTCMonth() - offset + 1, 0, 23, 59, 59, 999));
+    return { inicio, fin };
+  });
+
+  const tendenciaMensual = await Promise.all(
+    rangosMensuales.map(async ({ inicio, fin }) => {
+      const grupos = await db.solicitudPasaje.groupBy({
+        by: ["estado"],
+        where: {
+          fecha: { gte: inicio, lte: fin },
+          ...(sinRestriccion ? {} : { ruta: condicion }),
+        },
+        _count: true,
+      });
+      const porEstado = Object.fromEntries(grupos.map((g) => [g.estado, g._count]));
+      return {
+        mes: `${inicio.getUTCFullYear()}-${String(inicio.getUTCMonth() + 1).padStart(2, "0")}`,
+        etiqueta: `${NOMBRES_MES[inicio.getUTCMonth()]} ${inicio.getUTCFullYear()}`,
+        pendientes: porEstado.PENDIENTE ?? 0,
+        aprobadas: porEstado.APROBADA ?? 0,
+        revisadas: porEstado.REVISADO ?? 0,
+        pagadas: porEstado.PAGADA ?? 0,
+      };
+    })
+  );
 
   return NextResponse.json({
     pendientes: { cantidad: pendientes._count, total: Number(pendientes._sum.montoTotal ?? 0) },
@@ -82,5 +124,6 @@ export async function GET(req: Request) {
     revisadas: { cantidad: revisadas._count, total: Number(revisadas._sum.montoTotal ?? 0) },
     pagadas: { cantidad: pagadas._count, total: Number(pagadas._sum.montoTotal ?? 0) },
     gastoPorArea,
+    tendenciaMensual,
   });
 }

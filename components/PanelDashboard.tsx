@@ -1,12 +1,15 @@
 // components/PanelDashboard.tsx
-// Dashboard ejecutivo: KPIs de Pendientes/Aprobadas/Pagadas del mes
-// actual (o del rango que elijas), más el top 5 de gasto por Área.
+// Dashboard ejecutivo: KPIs del período elegido, tendencia mensual (barras
+// apiladas por estado, últimos 6 meses) y gasto por Área (dona), con
+// colores e interacción siguiendo el skill de dataviz del proyecto.
 
 "use client";
 
 import { useState } from "react";
 import CalendarioSelector from "./CalendarioSelector";
 import Spinner from "./Spinner";
+import GraficoBarrasMensual, { type FilaMes } from "./GraficoBarrasMensual";
+import GraficoPastelAreas from "./GraficoPastelAreas";
 
 type KPI = { cantidad: number; total: number };
 type Datos = {
@@ -15,7 +18,17 @@ type Datos = {
   revisadas: KPI;
   pagadas: KPI;
   gastoPorArea: { area: string; total: number }[];
+  tendenciaMensual: FilaMes[];
 };
+
+// Mismo mapeo de color que en GraficoBarrasMensual — un estado siempre
+// se ve del mismo color en toda la pantalla (tarjeta, leyenda y barra).
+const TARJETAS_KPI = [
+  { clave: "pendientes" as const, label: "Pendientes", color: "#eda100", fondo: "bg-amber-50", texto: "text-amber-800" },
+  { clave: "aprobadas" as const, label: "Aprobadas", color: "#1baf7a", fondo: "bg-emerald-50", texto: "text-emerald-800" },
+  { clave: "revisadas" as const, label: "Revisadas", color: "#2a78d6", fondo: "bg-blue-50", texto: "text-blue-800" },
+  { clave: "pagadas" as const, label: "Pagadas", color: "#eb6834", fondo: "bg-orange-50", texto: "text-orange-800" },
+];
 
 export default function PanelDashboard() {
   const [desde, setDesde] = useState("");
@@ -45,8 +58,6 @@ export default function PanelDashboard() {
       setCargando(false);
     }
   };
-
-  const maxGasto = datos ? Math.max(...datos.gastoPorArea.map((g) => g.total), 1) : 1;
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
@@ -82,47 +93,33 @@ export default function PanelDashboard() {
       {datos && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Pendientes</p>
-              <p className="text-2xl font-bold text-amber-900 mt-1">{datos.pendientes.cantidad}</p>
-              <p className="text-sm text-amber-700 mt-0.5">${datos.pendientes.total.toFixed(2)}</p>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-green-700">Aprobadas</p>
-              <p className="text-2xl font-bold text-green-900 mt-1">{datos.aprobadas.cantidad}</p>
-              <p className="text-sm text-green-700 mt-0.5">${datos.aprobadas.total.toFixed(2)}</p>
-            </div>
-            <div className="bg-sky-50 border border-sky-200 rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Revisadas</p>
-              <p className="text-2xl font-bold text-sky-900 mt-1">{datos.revisadas.cantidad}</p>
-              <p className="text-sm text-sky-700 mt-0.5">${datos.revisadas.total.toFixed(2)}</p>
-            </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Pagadas</p>
-              <p className="text-2xl font-bold text-orange-900 mt-1">{datos.pagadas.cantidad}</p>
-              <p className="text-sm text-orange-700 mt-0.5">${datos.pagadas.total.toFixed(2)}</p>
-            </div>
+            {TARJETAS_KPI.map((t) => {
+              const kpi = datos[t.clave];
+              return (
+                <div key={t.clave} className={`${t.fondo} border border-black/5 rounded-2xl p-4 sm:p-5`}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                    <p className={`text-xs font-semibold uppercase tracking-wide ${t.texto}`}>{t.label}</p>
+                  </div>
+                  <p className="text-2xl sm:text-3xl font-bold text-neutral-900 mt-1.5">{kpi.cantidad}</p>
+                  <p className={`text-sm ${t.texto} mt-0.5`}>${kpi.total.toFixed(2)}</p>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-3">
-            <h2 className="font-semibold text-sm">Gasto por Área (Aprobado + Revisado + Pagado)</h2>
-            {datos.gastoPorArea.length === 0 && (
-              <p className="text-sm text-neutral-400">Sin datos en este rango</p>
-            )}
-            {datos.gastoPorArea.map((g) => (
-              <div key={g.area} className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>{g.area}</span>
-                  <span className="font-medium">${g.total.toFixed(2)}</span>
-                </div>
-                <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-orange-500 rounded-full"
-                    style={{ width: `${(g.total / maxGasto) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5">
+              <h2 className="font-semibold text-sm text-neutral-800">Solicitudes por mes</h2>
+              <p className="text-xs text-neutral-400 mb-3">Últimos 6 meses, por estado</p>
+              <GraficoBarrasMensual datos={datos.tendenciaMensual} />
+            </div>
+
+            <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5">
+              <h2 className="font-semibold text-sm text-neutral-800">Gasto por Área</h2>
+              <p className="text-xs text-neutral-400 mb-3">Aprobado + Revisado + Pagado, período seleccionado</p>
+              <GraficoPastelAreas datos={datos.gastoPorArea} />
+            </div>
           </div>
         </>
       )}
