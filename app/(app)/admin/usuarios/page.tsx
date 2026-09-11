@@ -10,7 +10,7 @@ export default async function AdminUsuariosPage() {
   if (session.rol !== "SUPER_ADMIN") redirect("/login");
 
   const usuarios = await db.usuario.findMany({
-    where: { rol: { in: ["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"] } },
+    where: { rol: { in: ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"] } },
     orderBy: { numero: "asc" },
     include: {
       asignaciones: { include: { empresa: true, sitio: true, area: true } },
