@@ -42,6 +42,7 @@ export default function PanelUsuariosAdmin({
   const [pin, setPin] = useState("");
   const [generandoPin, setGenerandoPin] = useState(false);
   const [pinCopiado, setPinCopiado] = useState(false);
+  const [reseteandoPin, setReseteandoPin] = useState(false);
   const [rol, setRol] = useState("ADMIN_TH");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -89,6 +90,8 @@ export default function PanelUsuariosAdmin({
   const abrirEditar = (u: Usuario) => {
     setEditandoId(u.id);
     setNombre(u.nombre);
+    setPin("");
+    setReseteandoPin(false);
     setError("");
     setModalAbierto(true);
   };
@@ -98,7 +101,7 @@ export default function PanelUsuariosAdmin({
       setError("El nombre es obligatorio");
       return;
     }
-    if (!editandoId && !/^\d{6}$/.test(pin)) {
+    if ((!editandoId || reseteandoPin) && !/^\d{6}$/.test(pin)) {
       setError("El PIN debe tener exactamente 6 dígitos");
       return;
     }
@@ -108,7 +111,7 @@ export default function PanelUsuariosAdmin({
 
     const url = editandoId ? `/api/admin/usuarios/${editandoId}` : "/api/admin/usuarios";
     const method = editandoId ? "PATCH" : "POST";
-    const body = editandoId ? { nombre } : { nombre, pin, rol };
+    const body = editandoId ? { nombre, ...(reseteandoPin ? { pin } : {}) } : { nombre, pin, rol };
 
     try {
       const res = await fetch(url, {
@@ -124,7 +127,9 @@ export default function PanelUsuariosAdmin({
         return;
       }
       setModalAbierto(false);
-      toast.exito(editandoId ? "Usuario actualizado" : "Usuario creado");
+      toast.exito(
+        editandoId ? (reseteandoPin ? "Usuario actualizado y PIN reseteado" : "Usuario actualizado") : "Usuario creado"
+      );
       router.refresh();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -316,6 +321,62 @@ export default function PanelUsuariosAdmin({
                   </button>
                 </div>
                 <p className="text-xs text-neutral-400 mt-1">Copialo y comunícaselo al usuario para su primer ingreso</p>
+              </div>
+            )}
+
+            {editandoId && !reseteandoPin && (
+              <button
+                type="button"
+                onClick={() => { setReseteandoPin(true); generarPin(); }}
+                className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition"
+              >
+                Resetear PIN de acceso
+              </button>
+            )}
+
+            {editandoId && reseteandoPin && (
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Nuevo PIN de acceso
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { setReseteandoPin(false); setPin(""); }}
+                    className="text-xs text-neutral-400 hover:text-neutral-600 transition"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+                <div className="mt-1.5 flex gap-1.5">
+                  <input
+                    value={generandoPin ? "" : pin}
+                    readOnly
+                    placeholder={generandoPin ? "Generando..." : "······"}
+                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={copiarPin}
+                    disabled={!pin || generandoPin}
+                    title="Copiar PIN"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                  >
+                    {pinCopiado ? "✓" : <IconoCopiar className="w-4 h-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generarPin}
+                    disabled={generandoPin}
+                    title="Generar otro PIN"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                  >
+                    ↻
+                  </button>
+                </div>
+                <p className="text-xs text-amber-600 mt-1">
+                  El PIN anterior deja de funcionar en cuanto guardes. Copialo y comunícaselo al usuario.
+                </p>
               </div>
             )}
 
