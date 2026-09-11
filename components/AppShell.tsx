@@ -66,6 +66,10 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
       ],
     },
   ],
+  JEFE: [
+    { label: "Dashboard", href: "/dashboard", icono: IconoGrafico },
+    { label: "Historial General", href: "/jefe/historial", icono: IconoReloj },
+  ],
   SUPER_ADMIN: [
     { label: "Dashboard", href: "/dashboard", icono: IconoGrafico },
     {
@@ -90,6 +94,10 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Pagos", href: "/nomina/pagos", icono: IconoDinero },
         { label: "Historial", href: "/nomina/historial", icono: IconoReloj },
       ],
+    },
+    {
+      grupo: "Informes",
+      items: [{ label: "Historial General", href: "/jefe/historial", icono: IconoReloj }],
     },
     {
       grupo: "Administración",

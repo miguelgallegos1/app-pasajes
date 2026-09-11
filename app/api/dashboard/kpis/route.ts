@@ -10,7 +10,7 @@ import { fechaValida } from "../../../../lib/fechas";
 
 export async function GET(req: Request) {
   const session = await getSession();
-  if (!session || !["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"].includes(session.rol)) {
+  if (!session || !["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 

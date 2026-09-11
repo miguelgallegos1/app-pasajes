@@ -203,7 +203,7 @@ export default function PanelUsuariosAdmin({
         </button>
       </div>
       <p className="text-xs text-orange-400 font-medium">
-        Talento Humano, Coordinadores, Nómina y Super Administradores
+        Talento Humano, Coordinadores, Nómina, Jefes y Super Administradores
       </p>
 
       <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
@@ -337,6 +337,7 @@ export default function PanelUsuariosAdmin({
                       { value: "ADMIN_TH", label: "TH" },
                       { value: "COORDINADOR", label: "Coordinador" },
                       { value: "NOMINA", label: "Nómina" },
+                      { value: "JEFE", label: "Jefe" },
                       { value: "SUPER_ADMIN", label: "Super Admin" },
                     ].map((op) => (
                       <button

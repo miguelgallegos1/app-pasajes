@@ -34,6 +34,7 @@ async function main() {
   const pinHashTH = await bcrypt.hash("111111", 10);
   const pinHashNomina = await bcrypt.hash("333333", 10);
   const pinHashCoordinador = await bcrypt.hash("555555", 10);
+  const pinHashJefe = await bcrypt.hash("666666", 10);
   const pinHashSupervisor = await bcrypt.hash("444444", 10);
   const pinHashColab = await bcrypt.hash("222222", 10);
 
@@ -72,6 +73,18 @@ async function main() {
       pinHash: pinHashNomina,
       pinLookup: calcularPinLookup("333333"),
       rol: "NOMINA",
+    },
+  });
+
+  // Jefe — sin restricción de alcance, solo ve informes (Dashboard +
+  // Historial General), sin acciones sobre las solicitudes.
+  await db.usuario.create({
+    data: {
+      nombre: "Roberto Vega (Jefe)",
+      email: "jefe@empresa.com",
+      pinHash: pinHashJefe,
+      pinLookup: calcularPinLookup("666666"),
+      rol: "JEFE",
     },
   });
 
@@ -164,6 +177,7 @@ async function main() {
   console.log("ADMIN_TH     → th@empresa.com / PIN: 111111 (asignada a Producción y Cultivo)");
   console.log("NOMINA       → nomina@empresa.com / PIN: 333333");
   console.log("COORDINADOR  → coordinador@empresa.com / PIN: 555555 (asignada a Producción)");
+  console.log("JEFE         → jefe@empresa.com / PIN: 666666");
   console.log("SUPERVISOR   → Ana Rodríguez / PIN: 444444");
   console.log("COLABORADOR  → Juan Pérez / PIN: 222222 (equipo de Ana)");
   console.log("-----------------------------------");

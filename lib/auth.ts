@@ -12,7 +12,7 @@ const secret = new TextEncoder().encode(JWT_SECRET);
 
 export type SesionUsuario = {
   id: string;
-  rol: "SUPER_ADMIN" | "ADMIN_TH" | "COORDINADOR" | "COLABORADOR" | "NOMINA";
+  rol: "SUPER_ADMIN" | "ADMIN_TH" | "COORDINADOR" | "COLABORADOR" | "NOMINA" | "JEFE";
 };
 
 // Crea un token firmado que se guarda en una cookie del navegador

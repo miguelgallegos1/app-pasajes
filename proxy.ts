@@ -21,8 +21,9 @@ const RUTAS_POR_ROL: Record<string, string[]> = {
   "/th": ["ADMIN_TH", "SUPER_ADMIN"],
   "/coordinador": ["COORDINADOR", "SUPER_ADMIN"],
   "/nomina": ["NOMINA", "SUPER_ADMIN"],
+  "/jefe": ["JEFE", "SUPER_ADMIN"],
   "/admin": ["SUPER_ADMIN"],
-  "/dashboard": ["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"],
+  "/dashboard": ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"],
 };
 
 // Reemite la cookie de sesión con una expiración fresca de
@@ -86,6 +87,7 @@ export const config = {
     "/th/:path*",
     "/coordinador/:path*",
     "/nomina/:path*",
+    "/jefe/:path*",
     "/admin/:path*",
     "/dashboard/:path*",
     "/login",

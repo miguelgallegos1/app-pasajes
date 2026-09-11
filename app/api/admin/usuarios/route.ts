@@ -8,7 +8,7 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
 
-const ROLES_PERMITIDOS = ["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"];
+const ROLES_PERMITIDOS = ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"];
 
 export async function POST(req: Request) {
   const session = await getSession();
