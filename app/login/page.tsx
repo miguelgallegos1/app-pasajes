@@ -81,7 +81,11 @@ export default function LoginPage() {
   };
 
   const enviarPin = async (pinCompleto: string, esReintento = false) => {
-    setMensajeCarga(esReintento ? "Reintentando..." : "Verificando tu PIN...");
+    // Un solo mensaje durante todo el proceso, incluido el reintento
+    // silencioso: mostrar "Reintentando..." le hacía pensar al usuario
+    // que algo había fallado, cuando en realidad es solo el servidor
+    // demorándose un poco (ver TIEMPO_LIMITE_MS más arriba).
+    setMensajeCarga("Verificando tu PIN...");
     setLoading(true);
     setError("");
 
