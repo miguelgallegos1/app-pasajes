@@ -26,7 +26,7 @@ async function main() {
   const rutaProduccion = await db.ruta.create({
     data: { empresaId: empresa.id, sitioId: sitio.id, areaId: areaProduccion.id, valor: 0.45 },
   });
-  const rutaCultivo = await db.ruta.create({
+  await db.ruta.create({
     data: { empresaId: empresa.id, sitioId: sitio.id, areaId: areaCultivo.id, valor: 0.5 },
   });
 

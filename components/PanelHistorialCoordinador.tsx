@@ -208,12 +208,12 @@ export default function PanelHistorialCoordinador({
           {puedeExportar ? (
             <a
               href={urlExportar()}
-              className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
+              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
             >
               <IconoDescargar className="w-4 h-4" /> Exportar a Excel
             </a>
           ) : (
-            <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-300 border border-neutral-200 px-3.5 py-2.5 rounded-xl cursor-not-allowed">
+            <span className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 border border-neutral-200 px-3.5 py-2.5 rounded-xl cursor-not-allowed">
               <IconoDescargar className="w-4 h-4" /> Exportar a Excel
             </span>
           )}
@@ -251,7 +251,7 @@ export default function PanelHistorialCoordinador({
       {vista === "lista" && items && (
         <div className="bg-white text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[680px] text-sm">
               <thead className="bg-neutral-100 text-neutral-500 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>

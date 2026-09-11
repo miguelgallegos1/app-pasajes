@@ -139,9 +139,17 @@ export async function PATCH(
     }
 
     return NextResponse.json(actualizado);
-  } catch (e: any) {
-    if (e.code === "P2002") {
-      return NextResponse.json({ error: "Ese código de nómina ya está en uso por otro colaborador" }, { status: 400 });
+  } catch (e) {
+    const esConflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";
+    if (esConflicto) {
+      // El mismo bloque try/catch cubre dos updates con campos únicos
+      // distintos (pinLookup en Usuario, codigoNomina en Colaborador) —
+      // el mensaje debe distinguir cuál fue, en vez de asumir siempre nómina.
+      const target = (e as { meta?: { target?: string[] } }).meta?.target ?? [];
+      const mensaje = target.includes("pinLookup")
+        ? "Ese PIN ya está en uso, elige otro"
+        : "Ese código de nómina ya está en uso por otro colaborador";
+      return NextResponse.json({ error: mensaje }, { status: 400 });
     }
     throw e;
   }

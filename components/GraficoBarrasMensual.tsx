@@ -54,6 +54,10 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [posTooltip, setPosTooltip] = useState({ x: 0, y: 0 });
+  // Ancho REAL del contenedor renderizado (no el viewBox del SVG, que es
+  // fijo en 640 aunque el SVG se achique en pantallas angostas) — sin
+  // esto, el tooltip se puede salir del celular en vez de quedar clampeado.
+  const [anchoContenedor, setAnchoContenedor] = useState(W);
 
   // Las barras crecen desde la base al montar, en vez de aparecer de
   // golpe: arranca en 0 y pasa a 1 un instante después para que la
@@ -69,6 +73,7 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
   }, []);
 
   const total = (fila: FilaMes) => fila.pendientes + fila.aprobadas + fila.revisadas + fila.pagadas;
+  const totalGeneral = datos.reduce((acc, f) => acc + total(f), 0);
   const maxTotal = Math.max(...datos.map(total), 1);
   const techo = techoAgradable(maxTotal);
 
@@ -81,8 +86,24 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
     if (!cont) return;
     const rect = cont.getBoundingClientRect();
     setHoverIdx(idx);
+    setAnchoContenedor(rect.width);
     setPosTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
+
+  // En touch no hay "hover": un toque muestra el tooltip (y otro toque
+  // sobre la misma barra lo oculta), además de seguir funcionando con
+  // mouse normal.
+  const alternarTooltipTactil = (e: React.MouseEvent, idx: number) => {
+    if (hoverIdx === idx) {
+      setHoverIdx(null);
+      return;
+    }
+    moverTooltip(e, idx);
+  };
+
+  if (datos.length === 0 || totalGeneral === 0) {
+    return <p className="text-sm text-neutral-400 py-8 text-center">Sin datos en este rango</p>;
+  }
 
   return (
     <div ref={contenedorRef} className="relative">
@@ -94,7 +115,7 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
           return (
             <g key={frac}>
               <line x1={PAD_IZQ} y1={y} x2={W - PAD_DER} y2={y} stroke="#e1e0d9" strokeWidth={1} />
-              <text x={PAD_IZQ - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#898781">
+              <text x={PAD_IZQ - 6} y={y + 3} textAnchor="end" fontSize="11" fill="#898781">
                 {valor.toLocaleString("es-EC")}
               </text>
             </g>
@@ -175,9 +196,10 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
                 onMouseLeave={() => setHoverIdx(null)}
                 onFocus={() => setHoverIdx(idx)}
                 onBlur={() => setHoverIdx(null)}
+                onClick={(e) => alternarTooltipTactil(e, idx)}
                 style={{ outline: "none", cursor: "pointer" }}
               />
-              <text x={xSlot + anchoSlot / 2} y={H - 8} textAnchor="middle" fontSize="10" fill="#898781">
+              <text x={xSlot + anchoSlot / 2} y={H - 8} textAnchor="middle" fontSize="12" fill="#898781">
                 {fila.etiqueta.split(" ")[0]}
               </text>
             </g>
@@ -188,7 +210,10 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
       {hoverIdx !== null && datos[hoverIdx] && (
         <div
           className="absolute z-10 pointer-events-none bg-neutral-900 text-white text-xs rounded-lg shadow-xl px-3 py-2 space-y-1 min-w-[150px]"
-          style={{ left: Math.min(posTooltip.x + 10, W - 160), top: Math.max(posTooltip.y - 90, 0) }}
+          style={{
+            left: Math.max(8, Math.min(posTooltip.x + 10, anchoContenedor - 158)),
+            top: Math.max(posTooltip.y - 90, 0),
+          }}
         >
           <p className="font-semibold text-[11px] text-neutral-300">{datos[hoverIdx].etiqueta}</p>
           {SERIES.map((s) => (

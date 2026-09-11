@@ -244,7 +244,7 @@ export default function PanelCoordinador({
   return (
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h1 className="text-lg sm:text-xl font-bold">Revisión</h1>
           {seleccionadas.size > 0 && (
             <button

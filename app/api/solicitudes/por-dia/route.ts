@@ -21,7 +21,9 @@ export async function GET(req: Request) {
   if (!fechaBuscada) return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
 
   const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
-  if (!miColaborador) return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
+  if (!miColaborador || miColaborador.estado !== "ACTIVO") {
+    return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
+  }
 
   const equipo = miColaborador.esSupervisor
     ? await db.colaborador.findMany({

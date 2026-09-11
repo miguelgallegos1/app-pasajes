@@ -50,8 +50,16 @@ export async function PATCH(
     data.pinLookup = pinLookup;
   }
 
-  const actualizado = await db.usuario.update({ where: { id }, data });
-  return NextResponse.json(actualizado);
+  try {
+    const actualizado = await db.usuario.update({ where: { id }, data });
+    return NextResponse.json(actualizado);
+  } catch (e) {
+    const esConflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";
+    if (esConflicto) {
+      return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
+    }
+    throw e;
+  }
 }
 
 export async function DELETE(
