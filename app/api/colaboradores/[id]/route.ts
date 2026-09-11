@@ -1,12 +1,14 @@
 // app/api/colaboradores/[id]/route.ts
-// PATCH: edita nombre/área/supervisor/estado de un colaborador.
+// PATCH: edita nombre/área/supervisor/estado/PIN de un colaborador.
 // DELETE: elimina PERMANENTEMENTE, solo si no tiene solicitudes ni
 // gente a su cargo (para no romper el historial ni dejar huérfanos).
 
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerAreasPermitidasTH } from "../../../../lib/alcanceTH";
+import { calcularPinLookup } from "../../../../lib/pin";
 
 export async function PATCH(
   req: Request,
@@ -18,7 +20,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { apellidos, nombres, codigoNomina, areaId, esSupervisor, supervisorId, estado, rutaIds } = await req.json();
+  const { apellidos, nombres, codigoNomina, areaId, esSupervisor, supervisorId, estado, rutaIds, pin } = await req.json();
 
   const colaborador = await db.colaborador.findUnique({ where: { id } });
   if (!colaborador) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -35,6 +37,34 @@ export async function PATCH(
   }
   if ((apellidos !== undefined || nombres !== undefined) && (!apellidos?.trim() || !nombres?.trim())) {
     return NextResponse.json({ error: "Apellidos y Nombres son obligatorios" }, { status: 400 });
+  }
+
+  // Resetear el PIN es opcional al editar (a diferencia de crear, donde es
+  // obligatorio): si no viene en el body, el PIN actual no se toca — el
+  // hash nunca se puede "recuperar", solo reemplazar por uno nuevo.
+  let pinHashNuevo: string | null = null;
+  let pinLookupNuevo: string | null = null;
+  if (pin !== undefined) {
+    if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
+      return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
+    }
+    pinLookupNuevo = calcularPinLookup(pin);
+    const yaExiste = await db.usuario.findFirst({
+      where: { pinLookup: pinLookupNuevo, id: { not: colaborador.usuarioId } },
+    });
+    if (yaExiste) {
+      return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
+    }
+    const usuariosSinMigrar = await db.usuario.findMany({
+      where: { pinLookup: null, id: { not: colaborador.usuarioId } },
+      select: { pinHash: true },
+    });
+    for (const u of usuariosSinMigrar) {
+      if (await bcrypt.compare(pin, u.pinHash)) {
+        return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
+      }
+    }
+    pinHashNuevo = await bcrypt.hash(pin, 10);
   }
 
   // Mismo chequeo que al crear: el supervisor debe existir, estar marcado
@@ -75,6 +105,13 @@ export async function PATCH(
   const areaFinalId = (data.areaId as string | undefined) ?? colaborador.areaId;
 
   try {
+    if (pinHashNuevo && pinLookupNuevo) {
+      await db.usuario.update({
+        where: { id: colaborador.usuarioId },
+        data: { pinHash: pinHashNuevo, pinLookup: pinLookupNuevo },
+      });
+    }
+
     const actualizado = await db.colaborador.update({ where: { id }, data });
 
     // Solo tocamos las rutas exclusivas si el formulario mandó la lista

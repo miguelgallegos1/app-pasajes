@@ -96,6 +96,7 @@ export default function PanelColaboradoresTH({
   const [pin, setPin] = useState("");
   const [generandoPin, setGenerandoPin] = useState(false);
   const [pinCopiado, setPinCopiado] = useState(false);
+  const [reseteandoPin, setReseteandoPin] = useState(false);
   const [esSupervisor, setEsSupervisor] = useState(false);
   const [supervisorId, setSupervisorId] = useState("");
   const [estadoEdicion, setEstadoEdicion] = useState("ACTIVO");
@@ -163,6 +164,7 @@ export default function PanelColaboradoresTH({
     setAreaId(c.areaId);
     setRutaIdsExclusivas(c.rutaIdsExclusivas);
     setPin("");
+    setReseteandoPin(false);
     setEsSupervisor(c.esSupervisor);
     setSupervisorId("");
     setEstadoEdicion(c.estado);
@@ -175,7 +177,7 @@ export default function PanelColaboradoresTH({
       setError("Apellidos, Nombres, Código de nómina y Área son obligatorios");
       return;
     }
-    if (!editandoId && !/^\d{6}$/.test(pin)) {
+    if ((!editandoId || reseteandoPin) && !/^\d{6}$/.test(pin)) {
       setError("El PIN debe tener exactamente 6 dígitos");
       return;
     }
@@ -195,6 +197,7 @@ export default function PanelColaboradoresTH({
           supervisorId: supervisorId || null,
           estado: estadoEdicion,
           rutaIds: rutaIdsExclusivas,
+          ...(reseteandoPin ? { pin } : {}),
         }
       : { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId: supervisorId || null, rutaIds: rutaIdsExclusivas };
 
@@ -212,7 +215,9 @@ export default function PanelColaboradoresTH({
         return;
       }
       setModalAbierto(false);
-      toast.exito(editandoId ? "Colaborador actualizado" : "Colaborador creado");
+      toast.exito(
+        editandoId ? (reseteandoPin ? "Colaborador actualizado y PIN reseteado" : "Colaborador actualizado") : "Colaborador creado"
+      );
       router.refresh();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -424,6 +429,62 @@ export default function PanelColaboradoresTH({
                   </button>
                 </div>
                 <p className="text-xs text-neutral-400 mt-1">Copialo y comunícaselo al colaborador para su primer ingreso</p>
+              </div>
+            )}
+
+            {editandoId && !reseteandoPin && (
+              <button
+                type="button"
+                onClick={() => { setReseteandoPin(true); generarPin(); }}
+                className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition"
+              >
+                Resetear PIN de acceso
+              </button>
+            )}
+
+            {editandoId && reseteandoPin && (
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    Nuevo PIN de acceso
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { setReseteandoPin(false); setPin(""); }}
+                    className="text-xs text-neutral-400 hover:text-neutral-600 transition"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+                <div className="mt-1.5 flex gap-1.5">
+                  <input
+                    value={generandoPin ? "" : pin}
+                    readOnly
+                    placeholder={generandoPin ? "Generando..." : "······"}
+                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={copiarPin}
+                    disabled={!pin || generandoPin}
+                    title="Copiar PIN"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                  >
+                    {pinCopiado ? "✓" : <IconoCopiar className="w-4 h-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generarPin}
+                    disabled={generandoPin}
+                    title="Generar otro PIN"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                  >
+                    ↻
+                  </button>
+                </div>
+                <p className="text-xs text-amber-600 mt-1">
+                  El PIN anterior deja de funcionar en cuanto guardes. Copialo y comunícaselo al colaborador.
+                </p>
               </div>
             )}
 
