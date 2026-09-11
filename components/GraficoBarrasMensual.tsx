@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type FilaMes = {
   mes: string;
@@ -54,6 +54,19 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [posTooltip, setPosTooltip] = useState({ x: 0, y: 0 });
+
+  // Las barras crecen desde la base al montar, en vez de aparecer de
+  // golpe: arranca en 0 y pasa a 1 un instante después para que la
+  // transición CSS tenga algo que animar. Para que la animación se
+  // repita con datos nuevos (ej. al presionar "Actualizar"), el padre le
+  // pasa un `key` distinto por cada búsqueda — eso fuerza un montaje
+  // nuevo, que es lo que de verdad reinicia el estado (no reasignarlo
+  // "a mano" dentro del efecto).
+  const [montado, setMontado] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMontado(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const total = (fila: FilaMes) => fila.pendientes + fila.aprobadas + fila.revisadas + fila.pagadas;
   const maxTotal = Math.max(...datos.map(total), 1);
@@ -105,33 +118,48 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
 
           return (
             <g key={fila.mes}>
-              {hoverIdx === idx && (
-                <rect x={xSlot} y={PAD_ARRIBA} width={anchoSlot} height={ALTO_PLOT} fill="#e1e0d9" opacity={0.5} />
-              )}
-              {segmentos.map(({ i, valor, y, altoSeg }) => {
-                if (valor <= 0) return null;
-                const esTope = i === ultimoNoVacio;
-                const gap = altoSeg > 3 ? 1 : 0;
-                if (esTope) {
+              <rect
+                x={xSlot}
+                y={PAD_ARRIBA}
+                width={anchoSlot}
+                height={ALTO_PLOT}
+                fill="#e1e0d9"
+                opacity={hoverIdx === idx ? 0.5 : 0}
+                style={{ transition: "opacity 0.15s ease" }}
+              />
+              <g
+                style={{
+                  transform: montado ? "scaleY(1)" : "scaleY(0)",
+                  transformOrigin: `${xSlot + anchoSlot / 2}px ${BASE_Y}px`,
+                  transformBox: "view-box",
+                  transition: `transform 0.6s cubic-bezier(0.22,1,0.36,1) ${idx * 55}ms`,
+                }}
+              >
+                {segmentos.map(({ i, valor, y, altoSeg }) => {
+                  if (valor <= 0) return null;
+                  const esTope = i === ultimoNoVacio;
+                  const gap = altoSeg > 3 ? 1 : 0;
+                  if (esTope) {
+                    return (
+                      <path
+                        key={i}
+                        d={pathTopeRedondeado(xBarra, y + gap, anchoBarra, altoSeg - gap, 4)}
+                        fill={SERIES[i].color}
+                      />
+                    );
+                  }
                   return (
-                    <path
+                    <rect
                       key={i}
-                      d={pathTopeRedondeado(xBarra, y + gap, anchoBarra, altoSeg - gap, 4)}
+                      x={xBarra}
+                      y={y + gap}
+                      width={anchoBarra}
+                      height={Math.max(altoSeg - gap * 2, 0)}
                       fill={SERIES[i].color}
                     />
                   );
-                }
-                return (
-                  <rect
-                    key={i}
-                    x={xBarra}
-                    y={y + gap}
-                    width={anchoBarra}
-                    height={Math.max(altoSeg - gap * 2, 0)}
-                    fill={SERIES[i].color}
-                  />
-                );
-              })}
+                })}
+              </g>
               {/* Área invisible de hover, más grande que la barra */}
               <rect
                 x={xSlot}
