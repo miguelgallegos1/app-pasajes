@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const COLORES_AREA = ["#e87ba4", "#008300", "#4a3aa7", "#e34948"];
 const COLOR_OTRAS = "#898781";
@@ -26,8 +26,8 @@ function puntoEnCirculo(radio: number, angulo: number) {
   return { x: CX + radio * Math.cos(angulo), y: CY + radio * Math.sin(angulo) };
 }
 
-function pathDona(startAngle: number, endAngle: number, radioExtra = 0): string {
-  const rOut = R_EXTERNO + radioExtra;
+function pathDona(startAngle: number, endAngle: number): string {
+  const rOut = R_EXTERNO;
   const rIn = R_INTERNO;
   const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
   const p1 = puntoEnCirculo(rOut, startAngle);
@@ -41,6 +41,15 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
   const contenedorRef = useRef<HTMLDivElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [posTooltip, setPosTooltip] = useState({ x: 0, y: 0 });
+
+  // Entrada suave (escala + desvanecido) al montar, en vez de aparecer de
+  // golpe. El padre le pasa un `key` distinto por cada búsqueda para que
+  // esto se repita con datos nuevos (ver GraficoBarrasMensual.tsx).
+  const [montado, setMontado] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMontado(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const totalGeneral = datos.reduce((acc, d) => acc + d.total, 0) || 1;
 
@@ -70,22 +79,39 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
   return (
     <div ref={contenedorRef} className="relative flex flex-col sm:flex-row items-center gap-4">
       <svg viewBox="0 0 200 200" className="w-44 h-44 shrink-0" role="img" aria-label="Gasto por área">
-        {cunas.map((c) => (
-          <path
-            key={c.area}
-            d={pathDona(c.start, c.end, hoverIdx === c.idx ? 3 : 0)}
-            fill={colorDe(c.area, c.idx)}
-            tabIndex={0}
-            role="button"
-            aria-label={`${c.area}: $${c.total.toFixed(2)}, ${(c.fraccion * 100).toFixed(0)}%`}
-            onMouseMove={(e) => mover(e, c.idx)}
-            onMouseEnter={(e) => mover(e, c.idx)}
-            onMouseLeave={() => setHoverIdx(null)}
-            onFocus={() => setHoverIdx(c.idx)}
-            onBlur={() => setHoverIdx(null)}
-            style={{ transition: "d 0.15s ease", outline: "none", cursor: "pointer" }}
-          />
-        ))}
+        <g
+          style={{
+            transform: montado ? "scale(1)" : "scale(0.85)",
+            opacity: montado ? 1 : 0,
+            transformOrigin: `${CX}px ${CY}px`,
+            transformBox: "view-box",
+            transition: "transform 0.45s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease",
+          }}
+        >
+          {cunas.map((c) => (
+            <path
+              key={c.area}
+              d={pathDona(c.start, c.end)}
+              fill={colorDe(c.area, c.idx)}
+              tabIndex={0}
+              role="button"
+              aria-label={`${c.area}: $${c.total.toFixed(2)}, ${(c.fraccion * 100).toFixed(0)}%`}
+              onMouseMove={(e) => mover(e, c.idx)}
+              onMouseEnter={(e) => mover(e, c.idx)}
+              onMouseLeave={() => setHoverIdx(null)}
+              onFocus={() => setHoverIdx(c.idx)}
+              onBlur={() => setHoverIdx(null)}
+              style={{
+                transform: hoverIdx === c.idx ? "scale(1.045)" : "scale(1)",
+                transformOrigin: `${CX}px ${CY}px`,
+                transformBox: "view-box",
+                transition: "transform 0.15s ease",
+                outline: "none",
+                cursor: "pointer",
+              }}
+            />
+          ))}
+        </g>
         <text x={CX} y={CY - 4} textAnchor="middle" fontSize="11" fill="#898781">
           Total
         </text>

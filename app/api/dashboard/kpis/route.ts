@@ -17,6 +17,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
+  const empresaId = searchParams.get("empresaId");
+  const sitioId = searchParams.get("sitioId");
+  const areaId = searchParams.get("areaId");
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
   }
@@ -26,8 +29,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
   }
 
-  // Nómina no tiene asignaciones por área, así que solo restringimos el
-  // alcance cuando el rol es Talento Humano o Coordinador.
+  // Nómina y Jefe no tienen asignaciones por área, así que solo
+  // restringimos el alcance cuando el rol es Talento Humano o Coordinador.
   const { sinRestriccion, condicion } =
     session.rol === "ADMIN_TH" || session.rol === "COORDINADOR"
       ? await obtenerCondicionRutaTH(session.id, session.rol)
@@ -37,9 +40,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No tienes áreas asignadas" }, { status: 403 });
   }
 
+  // Filtro opcional de Empresa/Sitio/Área (en cascada, nunca combinados
+  // entre sí) elegido a mano en pantalla. Se combina con AND junto al
+  // alcance del rol — si un TH/Coordinador elige un área fuera de su
+  // alcance, el resultado queda vacío en vez de saltarse la restricción.
+  const filtroManual = areaId ? { areaId } : sitioId ? { sitioId } : empresaId ? { empresaId } : null;
+  const rutaFiltro =
+    !sinRestriccion && filtroManual
+      ? { AND: [condicion, filtroManual] }
+      : !sinRestriccion
+      ? condicion
+      : filtroManual;
+
   const base = {
     fecha: { gte: desdeFecha, lte: hastaFecha },
-    ...(sinRestriccion ? {} : { ruta: condicion }),
+    ...(rutaFiltro ? { ruta: rutaFiltro } : {}),
   };
 
   const [pendientes, aprobadas, revisadas, pagadas, gastoPorRuta] = await Promise.all([
@@ -102,7 +117,7 @@ export async function GET(req: Request) {
         by: ["estado"],
         where: {
           fecha: { gte: inicio, lte: fin },
-          ...(sinRestriccion ? {} : { ruta: condicion }),
+          ...(rutaFiltro ? { ruta: rutaFiltro } : {}),
         },
         _count: true,
       });
