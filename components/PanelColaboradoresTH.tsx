@@ -114,13 +114,18 @@ export default function PanelColaboradoresTH({
   const generarPin = async () => {
     setGenerandoPin(true);
     setPinCopiado(false);
-    const res = await fetch("/api/auth/generar-pin", { method: "POST" });
-    setGenerandoPin(false);
-    if (res.ok) {
-      const data = await res.json();
-      setPin(data.pin);
-    } else {
-      toast.error("No se pudo generar un PIN, intenta de nuevo");
+    try {
+      const res = await fetch("/api/auth/generar-pin", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setPin(data.pin);
+      } else {
+        toast.error("No se pudo generar un PIN, intenta de nuevo");
+      }
+    } catch {
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setGenerandoPin(false);
     }
   };
 
@@ -193,22 +198,28 @@ export default function PanelColaboradoresTH({
         }
       : { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId: supervisorId || null, rutaIds: rutaIdsExclusivas };
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setGuardando(false);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo guardar");
-      toast.error(data.error ?? "No se pudo guardar el colaborador");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo guardar");
+        toast.error(data.error ?? "No se pudo guardar el colaborador");
+        return;
+      }
+      setModalAbierto(false);
+      toast.exito(editandoId ? "Colaborador actualizado" : "Colaborador creado");
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setGuardando(false);
     }
-    setModalAbierto(false);
-    toast.exito(editandoId ? "Colaborador actualizado" : "Colaborador creado");
-    router.refresh();
   };
 
   const colaboradorGestionar = colaboradores.find((c) => c.id === idGestionar);
@@ -217,38 +228,50 @@ export default function PanelColaboradoresTH({
     if (!idGestionar) return;
     setProcesando(true);
     setErrorGestion("");
-    const res = await fetch(`/api/colaboradores/${idGestionar}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: nuevoEstado }),
-    });
-    setProcesando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorGestion(data.error ?? "No se pudo actualizar");
-      toast.error(data.error ?? "No se pudo actualizar el colaborador");
-      return;
+    try {
+      const res = await fetch(`/api/colaboradores/${idGestionar}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorGestion(data.error ?? "No se pudo actualizar");
+        toast.error(data.error ?? "No se pudo actualizar el colaborador");
+        return;
+      }
+      setIdGestionar(null);
+      toast.exito(nuevoEstado === "ACTIVO" ? "Colaborador reactivado" : "Colaborador desactivado");
+      router.refresh();
+    } catch {
+      setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setProcesando(false);
     }
-    setIdGestionar(null);
-    toast.exito(nuevoEstado === "ACTIVO" ? "Colaborador reactivado" : "Colaborador desactivado");
-    router.refresh();
   };
 
   const eliminarPermanente = async () => {
     if (!idGestionar) return;
     setProcesando(true);
     setErrorGestion("");
-    const res = await fetch(`/api/colaboradores/${idGestionar}`, { method: "DELETE" });
-    setProcesando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setErrorGestion(data.error ?? "No se pudo eliminar");
-      toast.error(data.error ?? "No se pudo eliminar el colaborador");
-      return;
+    try {
+      const res = await fetch(`/api/colaboradores/${idGestionar}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorGestion(data.error ?? "No se pudo eliminar");
+        toast.error(data.error ?? "No se pudo eliminar el colaborador");
+        return;
+      }
+      setIdGestionar(null);
+      toast.exito("Colaborador eliminado");
+      router.refresh();
+    } catch {
+      setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setProcesando(false);
     }
-    setIdGestionar(null);
-    toast.exito("Colaborador eliminado");
-    router.refresh();
   };
 
   return (

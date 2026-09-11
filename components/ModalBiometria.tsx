@@ -36,9 +36,14 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
 
   const cargar = async () => {
     setCargando(true);
-    const res = await fetch("/api/auth/webauthn/credenciales");
-    setCargando(false);
-    if (res.ok) setCredenciales(await res.json());
+    try {
+      const res = await fetch("/api/auth/webauthn/credenciales");
+      if (res.ok) setCredenciales(await res.json());
+    } catch {
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargando(false);
+    }
   };
 
   useEffect(() => {
@@ -88,14 +93,20 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
   const quitar = async () => {
     if (!idAQuitar) return;
     setQuitando(true);
-    const res = await fetch(`/api/auth/webauthn/credenciales/${idAQuitar}`, { method: "DELETE" });
-    setQuitando(false);
-    setIdAQuitar(null);
-    if (res.ok) {
-      toast.exito("Dispositivo eliminado");
-      cargar();
-    } else {
-      toast.error("No se pudo quitar el dispositivo");
+    try {
+      const res = await fetch(`/api/auth/webauthn/credenciales/${idAQuitar}`, { method: "DELETE" });
+      setIdAQuitar(null);
+      if (res.ok) {
+        toast.exito("Dispositivo eliminado");
+        cargar();
+      } else {
+        toast.error("No se pudo quitar el dispositivo");
+      }
+    } catch {
+      setIdAQuitar(null);
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setQuitando(false);
     }
   };
 

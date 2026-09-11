@@ -7,7 +7,8 @@
 // encontrar AL candidato.
 
 import { createHmac } from "crypto";
+import { JWT_SECRET } from "./jwtSecret";
 
 export function calcularPinLookup(pin: string): string {
-  return createHmac("sha256", `${process.env.JWT_SECRET}:pin-lookup`).update(pin).digest("hex");
+  return createHmac("sha256", `${JWT_SECRET}:pin-lookup`).update(pin).digest("hex");
 }

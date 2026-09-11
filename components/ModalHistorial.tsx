@@ -39,17 +39,22 @@ export default function ModalHistorial({ abierto, onCerrar }: { abierto: boolean
     const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
     if (estado) params.set("estado", estado);
 
-    const res = await fetch(`/api/solicitudes/historial?${params.toString()}`);
-    setCargando(false);
-    if (!res.ok) {
-      setError("No se pudo cargar el historial");
-      return;
+    try {
+      const res = await fetch(`/api/solicitudes/historial?${params.toString()}`);
+      if (!res.ok) {
+        setError("No se pudo cargar el historial");
+        return;
+      }
+      const data = await res.json();
+      setItems(data.items);
+      setTotalMonto(data.totalMonto);
+      setTotalPaginas(data.totalPaginas);
+      setPagina(paginaNueva);
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargando(false);
     }
-    const data = await res.json();
-    setItems(data.items);
-    setTotalMonto(data.totalMonto);
-    setTotalPaginas(data.totalPaginas);
-    setPagina(paginaNueva);
   };
 
   return (
@@ -148,7 +153,7 @@ export default function ModalHistorial({ abierto, onCerrar }: { abierto: boolean
               </table>
             </div>
 
-            <Paginacion paginaActual={pagina} totalPaginas={totalPaginas} onCambiarPagina={buscar} />
+            <Paginacion paginaActual={pagina} totalPaginas={totalPaginas} onCambiarPagina={buscar} deshabilitado={cargando} />
           </div>
         )}
 

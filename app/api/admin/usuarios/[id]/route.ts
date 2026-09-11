@@ -1,5 +1,5 @@
 // app/api/admin/usuarios/[id]/route.ts
-// PATCH: edita nombre/estado activo de un usuario de TH/Finanzas/Admin.
+// PATCH: edita nombre/estado activo de un usuario de TH/Coordinador/Nómina/Admin.
 // DELETE: elimina permanentemente, solo si no aprobó/pagó nada en el
 // historial (si lo hizo, solo se puede desactivar para no perder trazabilidad).
 
@@ -54,10 +54,17 @@ export async function DELETE(
     );
   }
 
-  // Las asignaciones de TH son solo configuración de acceso, no historial,
-  // así que se pueden borrar junto con el usuario sin problema.
-  await db.asignacionTH.deleteMany({ where: { usuarioId: id } });
-  await db.usuario.delete({ where: { id } });
+  // Todo en una sola transacción: si el usuario tiene una passkey
+  // registrada (CredencialBiometrica tiene FK obligatoria hacia Usuario,
+  // sin cascada), borrarla en un paso aparte podía dejar el borrado a
+  // medias (asignaciones ya borradas, usuario.delete fallando por la FK).
+  await db.$transaction([
+    db.credencialBiometrica.deleteMany({ where: { usuarioId: id } }),
+    // Las asignaciones de TH son solo configuración de acceso, no historial,
+    // así que se pueden borrar junto con el usuario sin problema.
+    db.asignacionTH.deleteMany({ where: { usuarioId: id } }),
+    db.usuario.delete({ where: { id } }),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

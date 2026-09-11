@@ -69,18 +69,23 @@ export default function PanelControlSolicitudes({
     if (desde) params.set("desde", desde);
     if (hasta) params.set("hasta", hasta);
 
-    const res = await fetch(`/api/admin/solicitudes?${params.toString()}`);
-    setCargando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo cargar el listado");
-      return;
+    try {
+      const res = await fetch(`/api/admin/solicitudes?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo cargar el listado");
+        return;
+      }
+      const data = await res.json();
+      setItems(data.items);
+      setTotal(data.total);
+      setTotalPaginas(data.totalPaginas);
+      setPagina(paginaNueva);
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargando(false);
     }
-    const data = await res.json();
-    setItems(data.items);
-    setTotal(data.total);
-    setTotalPaginas(data.totalPaginas);
-    setPagina(paginaNueva);
   };
 
   const [idAEliminar, setIdAEliminar] = useState<string | null>(null);
@@ -90,17 +95,23 @@ export default function PanelControlSolicitudes({
   const confirmarEliminacion = async () => {
     if (!idAEliminar) return;
     setEliminando(true);
-    const res = await fetch(`/api/solicitudes/${idAEliminar}`, { method: "DELETE" });
-    setEliminando(false);
-    setIdAEliminar(null);
+    try {
+      const res = await fetch(`/api/solicitudes/${idAEliminar}`, { method: "DELETE" });
+      setIdAEliminar(null);
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      toast.error(data.error ?? "No se pudo eliminar la solicitud");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "No se pudo eliminar la solicitud");
+        return;
+      }
+      toast.exito("Solicitud eliminada");
+      buscar(pagina);
+    } catch {
+      setIdAEliminar(null);
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setEliminando(false);
     }
-    toast.exito("Solicitud eliminada");
-    buscar(pagina);
   };
 
   return (
@@ -235,7 +246,7 @@ export default function PanelControlSolicitudes({
               </tbody>
             </table>
           </div>
-          <Paginacion paginaActual={pagina} totalPaginas={totalPaginas} onCambiarPagina={buscar} />
+          <Paginacion paginaActual={pagina} totalPaginas={totalPaginas} onCambiarPagina={buscar} deshabilitado={cargando} />
         </div>
       )}
 

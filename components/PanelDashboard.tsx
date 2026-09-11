@@ -12,6 +12,7 @@ type KPI = { cantidad: number; total: number };
 type Datos = {
   pendientes: KPI;
   aprobadas: KPI;
+  revisadas: KPI;
   pagadas: KPI;
   gastoPorArea: { area: string; total: number }[];
 };
@@ -30,14 +31,19 @@ export default function PanelDashboard() {
     }
     setCargando(true);
     setError("");
-    const res = await fetch(`/api/dashboard/kpis?desde=${desde}&hasta=${hasta}`);
-    setCargando(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo cargar el dashboard");
-      return;
+    try {
+      const res = await fetch(`/api/dashboard/kpis?desde=${desde}&hasta=${hasta}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo cargar el dashboard");
+        return;
+      }
+      setDatos(await res.json());
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargando(false);
     }
-    setDatos(await res.json());
   };
 
   const maxGasto = datos ? Math.max(...datos.gastoPorArea.map((g) => g.total), 1) : 1;
@@ -75,7 +81,7 @@ export default function PanelDashboard() {
 
       {datos && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Pendientes</p>
               <p className="text-2xl font-bold text-amber-900 mt-1">{datos.pendientes.cantidad}</p>
@@ -86,6 +92,11 @@ export default function PanelDashboard() {
               <p className="text-2xl font-bold text-green-900 mt-1">{datos.aprobadas.cantidad}</p>
               <p className="text-sm text-green-700 mt-0.5">${datos.aprobadas.total.toFixed(2)}</p>
             </div>
+            <div className="bg-sky-50 border border-sky-200 rounded-2xl p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Revisadas</p>
+              <p className="text-2xl font-bold text-sky-900 mt-1">{datos.revisadas.cantidad}</p>
+              <p className="text-sm text-sky-700 mt-0.5">${datos.revisadas.total.toFixed(2)}</p>
+            </div>
             <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Pagadas</p>
               <p className="text-2xl font-bold text-orange-900 mt-1">{datos.pagadas.cantidad}</p>
@@ -94,7 +105,7 @@ export default function PanelDashboard() {
           </div>
 
           <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-3">
-            <h2 className="font-semibold text-sm">Gasto por Área (Aprobado + Pagado)</h2>
+            <h2 className="font-semibold text-sm">Gasto por Área (Aprobado + Revisado + Pagado)</h2>
             {datos.gastoPorArea.length === 0 && (
               <p className="text-sm text-neutral-400">Sin datos en este rango</p>
             )}

@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { fechaValida } from "../../../../lib/fechas";
 
 const POR_PAGINA = 15;
 
@@ -21,6 +22,11 @@ export async function GET(req: Request) {
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
   }
+  const desdeFecha = fechaValida(desde);
+  const hastaFecha = fechaValida(hasta);
+  if (!desdeFecha || !hastaFecha) {
+    return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
+  }
 
   const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
   if (!miColaborador) return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
@@ -32,14 +38,14 @@ export async function GET(req: Request) {
 
   const filtro = {
     colaboradorId: miColaborador.id,
-    fecha: { gte: new Date(desde), lte: new Date(hasta) },
+    fecha: { gte: desdeFecha, lte: hastaFecha },
     ...filtroEstado,
   };
 
   const [items, total, suma] = await Promise.all([
     db.solicitudPasaje.findMany({
       where: filtro,
-      include: { ruta: true },
+      include: { ruta: { select: { nombre: true } } },
       orderBy: { fecha: "desc" },
       skip: (pagina - 1) * POR_PAGINA,
       take: POR_PAGINA,

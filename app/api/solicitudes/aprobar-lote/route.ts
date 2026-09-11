@@ -14,8 +14,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { ids } = await req.json();
-  if (!Array.isArray(ids) || ids.length === 0) {
+  const { ids } = await req.json().catch(() => ({ ids: null }));
+  if (!Array.isArray(ids) || ids.length === 0 || !ids.every((v) => typeof v === "string")) {
     return NextResponse.json({ error: "No se enviaron solicitudes" }, { status: 400 });
   }
 
@@ -38,10 +38,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ninguna de las solicitudes es válida para aprobar" }, { status: 400 });
   }
 
-  await db.solicitudPasaje.updateMany({
-    where: { id: { in: idsValidos } },
+  // El estado se vuelve a exigir aquí (no solo en el findMany de arriba)
+  // para que la escritura sea atómica: si alguna de estas solicitudes
+  // cambió de estado entre el findMany y este updateMany (por otra
+  // petición concurrente), esa fila ya no calza en el WHERE y no se toca.
+  const resultado = await db.solicitudPasaje.updateMany({
+    where: { id: { in: idsValidos }, estado: "PENDIENTE" },
     data: { estado: "APROBADA", fechaAprobacion: new Date(), aprobadoPorId: session.id },
   });
 
-  return NextResponse.json({ aprobadas: idsValidos.length });
+  return NextResponse.json({ aprobadas: resultado.count });
 }

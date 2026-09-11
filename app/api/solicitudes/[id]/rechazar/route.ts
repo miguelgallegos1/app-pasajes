@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 
 export async function PATCH(
   req: Request,
@@ -24,7 +25,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Debes indicar qué corregir" }, { status: 400 });
   }
 
-  const solicitud = await db.solicitudPasaje.findUnique({ where: { id } });
+  // Un TH con áreas asignadas solo puede devolver solicitudes de rutas
+  // dentro de su alcance, igual que en aprobar-lote.
+  const { sinRestriccion, condicion } = await obtenerCondicionRutaTH(session.id, session.rol);
+  if (condicion === null) {
+    return NextResponse.json({ error: "No tienes áreas asignadas" }, { status: 403 });
+  }
+
+  const solicitud = await db.solicitudPasaje.findFirst({
+    where: { id, ...(sinRestriccion ? {} : { ruta: condicion }) },
+  });
   if (!solicitud || solicitud.estado !== "PENDIENTE") {
     return NextResponse.json({ error: "Solo se pueden devolver solicitudes pendientes" }, { status: 400 });
   }
@@ -32,13 +42,21 @@ export async function PATCH(
   const notaExistente = solicitud.observaciones ? `${solicitud.observaciones} | ` : "";
   const nuevaObservacion = `${notaExistente}CORRECCIÓN SOLICITADA: ${comentario.trim().toUpperCase()}`;
 
-  const actualizada = await db.solicitudPasaje.update({
-    where: { id },
+  // Estado exigido dentro del WHERE del UPDATE: verificación atómica para
+  // que no se sobreescriba una solicitud que otra petición concurrente ya
+  // sacó de PENDIENTE (por ejemplo, si TH la aprobó al mismo tiempo).
+  const resultado = await db.solicitudPasaje.updateMany({
+    where: { id, estado: "PENDIENTE" },
     data: {
       estado: "RECHAZADA",
       observaciones: nuevaObservacion,
     },
   });
 
+  if (resultado.count === 0) {
+    return NextResponse.json({ error: "Solo se pueden devolver solicitudes pendientes" }, { status: 400 });
+  }
+
+  const actualizada = await db.solicitudPasaje.findUnique({ where: { id } });
   return NextResponse.json(actualizada);
 }

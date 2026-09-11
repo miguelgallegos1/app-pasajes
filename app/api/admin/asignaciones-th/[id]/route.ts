@@ -15,6 +15,10 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  const asignacion = await db.asignacionTH.findUnique({ where: { id } });
+  if (!asignacion) return NextResponse.json({ error: "Asignación no encontrada" }, { status: 404 });
+
   await db.asignacionTH.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

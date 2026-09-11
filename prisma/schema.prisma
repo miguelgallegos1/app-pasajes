@@ -14,8 +14,9 @@ datasource db {
 enum Rol {
   SUPER_ADMIN
   ADMIN_TH
+  COORDINADOR
   COLABORADOR
-  FINANZAS
+  NOMINA
 }
 
 enum EstadoColaborador {
@@ -26,6 +27,7 @@ enum EstadoColaborador {
 enum EstadoSolicitud {
   PENDIENTE
   APROBADA
+  REVISADO
   RECHAZADA
   PAGADA
 }
@@ -217,8 +219,10 @@ model SolicitudPasaje {
   estado          EstadoSolicitud @default(PENDIENTE)
   fechaSolicitud  DateTime        @default(now())
   fechaAprobacion DateTime?
+  fechaRevision   DateTime?
   fechaPago       DateTime?
   aprobadoPorId   String?
+  revisadoPorId   String?
   pagadoPorId     String?
   comentario      String?
 

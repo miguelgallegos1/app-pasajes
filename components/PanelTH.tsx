@@ -107,39 +107,53 @@ export default function PanelTH({
     if (!idAAprobar) return;
     setAprobando(true);
     setError("");
-    const res = await fetch(`/api/solicitudes/${idAAprobar}/aprobar`, { method: "PATCH" });
-    setAprobando(false);
-    setIdAAprobar(null);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo aprobar");
-      toast.error(data.error ?? "No se pudo aprobar la solicitud");
-      return;
+    try {
+      const res = await fetch(`/api/solicitudes/${idAAprobar}/aprobar`, { method: "PATCH" });
+      setIdAAprobar(null);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo aprobar");
+        toast.error(data.error ?? "No se pudo aprobar la solicitud");
+        return;
+      }
+      toast.exito("Solicitud aprobada");
+      router.refresh();
+    } catch {
+      setIdAAprobar(null);
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setAprobando(false);
     }
-    toast.exito("Solicitud aprobada");
-    router.refresh();
   };
 
   const confirmarAprobarLote = async () => {
     setAprobandoLote(true);
     setError("");
-    const res = await fetch(`/api/solicitudes/aprobar-lote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: Array.from(seleccionadas) }),
-    });
-    setAprobandoLote(false);
-    setConfirmandoLote(false);
+    try {
+      const res = await fetch(`/api/solicitudes/aprobar-lote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(seleccionadas) }),
+      });
+      setConfirmandoLote(false);
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo aprobar el lote");
-      toast.error(data.error ?? "No se pudo aprobar el lote");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo aprobar el lote");
+        toast.error(data.error ?? "No se pudo aprobar el lote");
+        return;
+      }
+      toast.exito("Solicitudes aprobadas");
+      setSeleccionadas(new Set());
+      router.refresh();
+    } catch {
+      setConfirmandoLote(false);
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setAprobandoLote(false);
     }
-    toast.exito("Solicitudes aprobadas");
-    setSeleccionadas(new Set());
-    router.refresh();
   };
 
   const abrirModalDevolucion = (id: string) => {
@@ -156,22 +170,28 @@ export default function PanelTH({
     }
     setDevolviendo(true);
     setError("");
-    const res = await fetch(`/api/solicitudes/${idADevolver}/rechazar`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ comentario: comentarioDevolucion }),
-    });
-    setDevolviendo(false);
+    try {
+      const res = await fetch(`/api/solicitudes/${idADevolver}/rechazar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comentario: comentarioDevolucion }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "No se pudo devolver la solicitud");
-      toast.error(data.error ?? "No se pudo devolver la solicitud");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo devolver la solicitud");
+        toast.error(data.error ?? "No se pudo devolver la solicitud");
+        return;
+      }
+      toast.exito("Solicitud devuelta para corrección");
+      setIdADevolver(null);
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setDevolviendo(false);
     }
-    toast.exito("Solicitud devuelta para corrección");
-    setIdADevolver(null);
-    router.refresh();
   };
 
   return (
