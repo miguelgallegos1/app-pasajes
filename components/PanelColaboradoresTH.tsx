@@ -97,6 +97,7 @@ export default function PanelColaboradoresTH({
   const [generandoPin, setGenerandoPin] = useState(false);
   const [pinCopiado, setPinCopiado] = useState(false);
   const [reseteandoPin, setReseteandoPin] = useState(false);
+  const [confirmandoResetPin, setConfirmandoResetPin] = useState(false);
   const [esSupervisor, setEsSupervisor] = useState(false);
   const [supervisorId, setSupervisorId] = useState("");
   const [estadoEdicion, setEstadoEdicion] = useState("ACTIVO");
@@ -174,6 +175,7 @@ export default function PanelColaboradoresTH({
     setRutaIdsExclusivas(c.rutaIdsExclusivas);
     setPin("");
     setReseteandoPin(false);
+    setConfirmandoResetPin(false);
     setEsSupervisor(c.esSupervisor);
     setSupervisorId("");
     setEstadoEdicion(c.estado);
@@ -402,7 +404,7 @@ export default function PanelColaboradoresTH({
       </div>
 
       <Modal
-        abierto={modalAbierto}
+        abierto={modalAbierto && !confirmandoResetPin}
         className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
       >
             <h2 className="text-lg font-bold text-neutral-900">
@@ -447,7 +449,7 @@ export default function PanelColaboradoresTH({
             {editandoId && !reseteandoPin && (
               <button
                 type="button"
-                onClick={() => { setReseteandoPin(true); generarPin(); }}
+                onClick={() => setConfirmandoResetPin(true)}
                 className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition"
               >
                 Resetear PIN de acceso
@@ -639,6 +641,31 @@ export default function PanelColaboradoresTH({
                 {guardando ? "Guardando..." : "Guardar"}
               </button>
             </div>
+      </Modal>
+
+      {/* Modal: advertencia antes de resetear el PIN */}
+      <Modal abierto={confirmandoResetPin} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-2xl">!</div>
+        <p className="font-semibold text-neutral-900">¿Resetear el PIN de acceso?</p>
+        <p className="text-sm text-neutral-500">
+          El PIN actual dejará de funcionar en cuanto guardes los cambios. Vas a tener que comunicarle el nuevo PIN al colaborador.
+        </p>
+        <div className="flex gap-2 justify-center pt-1">
+          <button
+            type="button"
+            onClick={() => setConfirmandoResetPin(false)}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-300 hover:bg-neutral-100 rounded-xl transition"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => { setConfirmandoResetPin(false); setReseteandoPin(true); generarPin(); }}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition"
+          >
+            Sí, resetear
+          </button>
+        </div>
       </Modal>
 
       <Modal abierto={!!idGestionar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">

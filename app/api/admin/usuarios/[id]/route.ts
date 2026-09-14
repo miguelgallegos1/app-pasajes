@@ -1,5 +1,5 @@
 // app/api/admin/usuarios/[id]/route.ts
-// PATCH: edita nombre/estado activo/PIN de un usuario de TH/Coordinador/Nómina/Admin.
+// PATCH: edita nombre/rol/estado activo/PIN de un usuario de TH/Coordinador/Nómina/Admin.
 // DELETE: elimina permanentemente, solo si no aprobó/pagó nada en el
 // historial (si lo hizo, solo se puede desactivar para no perder trazabilidad).
 
@@ -8,6 +8,8 @@ import bcrypt from "bcryptjs";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { calcularPinLookup } from "../../../../../lib/pin";
+
+const ROLES_VALIDOS = ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"];
 
 export async function PATCH(
   req: Request,
@@ -19,11 +21,23 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, activo, pin } = await req.json();
+  const { nombre, activo, pin, rol } = await req.json();
+
+  // No dejamos que nadie se cambie su propio rol: si se equivoca de opción
+  // podría quedar sin acceso a Usuarios y no habría cómo revertirlo.
+  if (rol !== undefined && id === session.id) {
+    return NextResponse.json({ error: "No puedes cambiar tu propio rol" }, { status: 400 });
+  }
 
   const data: Record<string, unknown> = {};
   if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
   if (typeof activo === "boolean") data.activo = activo;
+  if (rol !== undefined) {
+    if (typeof rol !== "string" || !ROLES_VALIDOS.includes(rol)) {
+      return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
+    }
+    data.rol = rol;
+  }
 
   // Resetear el PIN es opcional: si no viene en el body, el actual no se
   // toca. El hash nunca se puede "recuperar", solo reemplazar por uno
