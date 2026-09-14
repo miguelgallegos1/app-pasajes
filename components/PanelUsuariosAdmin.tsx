@@ -553,14 +553,19 @@ function ModalAreasTH({
   const [error, setError] = useState("");
   const [idAQuitar, setIdAQuitar] = useState<string | null>(null);
   const [quitando, setQuitando] = useState(false);
-  const [confirmandoReemplazo, setConfirmandoReemplazo] = useState<string | null>(null);
+  const [confirmacion, setConfirmacion] = useState<{
+    tipo: "achicar" | "ensanchar";
+    nuevaEtiqueta: string;
+    cubrePorEtiqueta?: string;
+    redundantesEtiquetas: string[];
+  } | null>(null);
 
   const empresa = empresas.find((e) => e.id === empresaId);
   const sitios = empresa?.sitios ?? [];
   const sitio = sitios.find((s) => s.id === sitioId);
   const areas = sitio?.areas ?? [];
 
-  const agregar = async (reemplazar = false) => {
+  const agregar = async (confirmar = false) => {
     if (!usuario || !empresaId) {
       setError("Selecciona al menos la empresa");
       return;
@@ -571,16 +576,19 @@ function ModalAreasTH({
       const res = await fetch("/api/admin/asignaciones-th", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuarioId: usuario.id, empresaId, sitioId: sitioId || null, areaId: areaId || null, reemplazar }),
+        body: JSON.stringify({ usuarioId: usuario.id, empresaId, sitioId: sitioId || null, areaId: areaId || null, confirmar }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        // 409: ya hay una asignación más amplia que cubre esto — en vez de
-        // rechazarlo de una, preguntamos si el Super Admin quiere achicar
-        // el acceso a propósito (reemplazar la amplia por esta específica).
-        if (res.status === 409 && data.cubrePorId) {
-          const etiqueta = usuario.asignaciones.find((a) => a.id === data.cubrePorId)?.etiqueta ?? "una asignación más amplia";
-          setConfirmandoReemplazo(etiqueta);
+        // 409: este alcance cambia lo que el usuario ya tenía (para más
+        // amplio o para más específico) — se pregunta antes de aplicarlo.
+        if (res.status === 409 && data.requiereConfirmacion) {
+          setConfirmacion({
+            tipo: data.tipo,
+            nuevaEtiqueta: data.nuevaEtiqueta,
+            cubrePorEtiqueta: data.cubrePorEtiqueta,
+            redundantesEtiquetas: data.redundantesEtiquetas ?? [],
+          });
           return;
         }
         setError(data.error ?? "No se pudo guardar");
@@ -593,7 +601,7 @@ function ModalAreasTH({
           ? `Asignación agregada; se quitaron ${data.quitadas} más específicas que quedaron redundantes`
           : "Asignación agregada"
       );
-      setConfirmandoReemplazo(null);
+      setConfirmacion(null);
       setEmpresaId("");
       setSitioId("");
       setAreaId("");
@@ -711,15 +719,28 @@ function ModalAreasTH({
               </div>
         </Modal>
 
-        <Modal abierto={!!confirmandoReemplazo} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+        <Modal abierto={!!confirmacion} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
               <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-2xl">!</div>
-              <p className="font-semibold text-neutral-900">¿Achicar el acceso?</p>
+              <p className="font-semibold text-neutral-900">
+                {confirmacion?.tipo === "achicar" ? "¿Achicar el acceso?" : "¿Ampliar el acceso?"}
+              </p>
               <p className="text-sm text-neutral-500">
-                Ya tiene acceso a <strong>{confirmandoReemplazo}</strong>. Si seguís, eso se reemplaza por lo que elegiste arriba y va a dejar de tener acceso al resto.
+                {confirmacion?.tipo === "achicar" ? (
+                  <>
+                    Ya tiene acceso a <strong>{confirmacion.cubrePorEtiqueta}</strong>. Si continuás, eso se
+                    reemplaza por <strong>{confirmacion.nuevaEtiqueta}</strong> y va a dejar de tener acceso al resto.
+                  </>
+                ) : (
+                  <>
+                    Esto le va a dar acceso a <strong>{confirmacion?.nuevaEtiqueta}</strong>. Se van a quitar{" "}
+                    {confirmacion?.redundantesEtiquetas.length} asignación(es) más específica(s) que ya quedan
+                    incluidas: {confirmacion?.redundantesEtiquetas.join(", ")}.
+                  </>
+                )}
               </p>
               <div className="flex gap-2 justify-center pt-1">
                 <button
-                  onClick={() => setConfirmandoReemplazo(null)}
+                  onClick={() => setConfirmacion(null)}
                   disabled={guardando}
                   className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
                 >
@@ -730,7 +751,7 @@ function ModalAreasTH({
                   disabled={guardando}
                   className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition"
                 >
-                  {guardando ? "Guardando..." : "Sí, reemplazar"}
+                  {guardando ? "Guardando..." : "Sí, continuar"}
                 </button>
               </div>
         </Modal>
