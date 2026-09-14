@@ -7,7 +7,7 @@
 
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type Tema = "light" | "dark";
 
@@ -47,5 +47,10 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     });
   };
 
-  return <ThemeContext.Provider value={{ tema, alternarTema }}>{children}</ThemeContext.Provider>;
+  // Sin memo, este objeto sería nuevo en cada render de ThemeProvider (por
+  // ejemplo, cada vez que cambia "children" al navegar), y cualquier
+  // componente que use useTema() se volvería a renderizar sin necesidad.
+  const value = useMemo(() => ({ tema, alternarTema }), [tema]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
