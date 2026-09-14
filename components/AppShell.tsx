@@ -13,7 +13,9 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { APP_NOMBRE, APP_VERSION, APP_DESARROLLADOR } from "../lib/config";
+import { ETIQUETAS_ROL } from "../lib/roles";
 import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron } from "./Icons";
+import BotonTema from "./BotonTema";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -138,7 +140,7 @@ function ItemLink({ item, activo, onClick }: { item: ItemMenu; activo: boolean; 
       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
         activo
           ? "bg-orange-500 text-black shadow-[0_0_10px_rgba(249,115,22,0.3)]"
-          : "text-neutral-300 hover:bg-neutral-800/70"
+          : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800/70"
       }`}
     >
       <Icono className="w-4 h-4 shrink-0" />
@@ -174,7 +176,7 @@ function ItemsMenu({
               type="button"
               onClick={() => onAlternarGrupo(entrada.grupo)}
               className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wide transition ${
-                tieneActivo ? "text-orange-400" : "text-neutral-500 hover:text-neutral-300"
+                tieneActivo ? "text-orange-600 dark:text-orange-400" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
               }`}
             >
               {entrada.grupo}
@@ -269,53 +271,59 @@ export default function AppShell({
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex">
-      {/* ---------- Sidebar (solo escritorio) ---------- */}
-      <aside className="hidden md:flex md:flex-col w-60 bg-neutral-900 border-r border-neutral-800/70 shrink-0">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-neutral-800/70">
-        <div className="w-9 h-9 flex items-center justify-center shrink-0 rounded-lg border border-orange-500/70 shadow-[0_0_8px_rgba(249,115,22,0.25)] bg-neutral-800 p-1">
-          <img src="/logo.png" alt={APP_NOMBRE} className="w-full h-full object-contain" />
-        </div>
-          <span className="font-bold text-sm">{APP_NOMBRE}</span>
-        </div>
-        <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-          <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} />
-        </nav>
-        <div className="p-3 border-t border-neutral-800/70 flex items-center gap-2">
-          <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
-          <span className="text-xs text-neutral-300 truncate flex-1">{nombreCompleto}</span>
+    <div className="min-h-screen bg-neutral-100 text-neutral-900 dark:bg-neutral-950 dark:text-white flex flex-col">
+      {/* ---------- Header (todo el ancho, todas las pantallas): logo+nombre+rol a la izquierda, usuario a la derecha ---------- */}
+      <header className="flex items-center justify-between gap-3 pl-2 pr-4 md:pl-3 md:pr-6 py-2.5 md:py-3 bg-white border-b border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 sticky top-0 z-30 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
           <button
-            onClick={abrirBiometria}
-            title="Acceso biométrico"
-            className="text-neutral-400 hover:text-orange-400 p-1.5 rounded-lg hover:bg-neutral-800 transition"
+            onClick={() => setMenuAbierto(true)}
+            className="md:hidden shrink-0 p-2 text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 shadow-md shadow-neutral-300/50 dark:text-neutral-300 dark:hover:text-white dark:bg-neutral-800/80 dark:hover:bg-neutral-800 dark:shadow-black/30 rounded-lg transition"
           >
-            <IconoHuella className="w-4 h-4" />
-          </button>
-          <button
-            onClick={cerrarSesion}
-            title="Cerrar sesión"
-            className="text-neutral-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-neutral-800 transition"
-          >
-            <IconoSalir className="w-4 h-4" />
-          </button>
-        </div>
-      </aside>
-
-      {/* ---------- Contenido + header móvil ---------- */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-neutral-900 border-b border-neutral-800/70 sticky top-0 z-30">
-          <button
-              onClick={() => setMenuAbierto(true)}
-              className="p-1.5 -ml-1.5 text-neutral-300 hover:text-white hover:bg-neutral-900 rounded-lg transition"
-            >
-            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2}>
+            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
             </svg>
           </button>
-          <span className="font-bold text-sm">{APP_NOMBRE}</span>
+          <img src="/logo.png" alt={APP_NOMBRE} className="w-8 h-8 md:w-9 md:h-9 object-contain shrink-0" />
+          <div className="min-w-0">
+            <p className="font-bold text-base leading-tight truncate">{APP_NOMBRE}</p>
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-tight truncate">{ETIQUETAS_ROL[rol] ?? rol}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 min-w-0 shrink-0">
+          <span className="hidden md:block text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap mr-1">{nombreCompleto}</span>
+          <BotonTema />
           <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
-        </header>
+        </div>
+      </header>
 
+      <div className="flex-1 flex min-h-0">
+        {/* ---------- Sidebar (solo escritorio) ---------- */}
+        <aside className="hidden md:flex md:flex-col w-60 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0">
+          <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
+            <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} />
+          </nav>
+          <div className="p-3 border-t border-neutral-200 dark:border-neutral-800/70 flex items-center justify-between gap-2">
+            <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
+            <div className="flex items-center gap-1">
+            <button
+              onClick={abrirBiometria}
+              title="Acceso biométrico"
+              className="text-neutral-500 hover:text-orange-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-orange-400 dark:hover:bg-neutral-800 p-1.5 rounded-lg transition"
+            >
+              <IconoHuella className="w-4 h-4" />
+            </button>
+            <button
+              onClick={cerrarSesion}
+              title="Cerrar sesión"
+              className="text-neutral-500 hover:text-red-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-red-400 dark:hover:bg-neutral-800 p-1.5 rounded-lg transition"
+            >
+              <IconoSalir className="w-4 h-4" />
+            </button>
+            </div>
+          </div>
+        </aside>
+
+        <div className="flex-1 flex flex-col min-w-0">
         {/* ---------- Cajón de menú (móvil), siempre montado para poder animar la entrada/salida ---------- */}
         <div
           className={`fixed inset-0 z-50 md:hidden transition-opacity duration-300 ${
@@ -324,7 +332,7 @@ export default function AppShell({
         >
           <div className="absolute inset-0 bg-black/50" onClick={() => setMenuAbierto(false)} />
           <div
-            className={`absolute left-0 top-0 bottom-0 w-64 bg-neutral-900 border-r border-neutral-800/70 p-4 flex flex-col overflow-y-auto
+            className={`absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 p-4 flex flex-col overflow-y-auto
               transition-transform duration-300 ease-out
               ${menuAbierto ? "translate-x-0" : "-translate-x-full"}
             `}
@@ -333,7 +341,7 @@ export default function AppShell({
               <span className="font-bold text-sm">{APP_NOMBRE}</span>
               <button
                 onClick={() => setMenuAbierto(false)}
-                className="text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg w-7 h-7 flex items-center justify-center text-xl leading-none transition"
+                className="text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 rounded-lg w-7 h-7 flex items-center justify-center text-xl leading-none transition"
               >
                 ×
               </button>
@@ -349,13 +357,13 @@ export default function AppShell({
             </nav>
             <button
               onClick={() => { setMenuAbierto(false); abrirBiometria(); }}
-              className="flex items-center gap-2 text-sm text-neutral-400 hover:text-orange-400 hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
+              className="flex items-center gap-2 text-sm text-neutral-500 hover:text-orange-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-orange-400 dark:hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
             >
               <IconoHuella className="w-4 h-4" /> Acceso biométrico
             </button>
             <button
               onClick={cerrarSesion}
-              className="flex items-center gap-2 text-sm text-neutral-400 hover:text-red-400 hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
+              className="flex items-center gap-2 text-sm text-neutral-500 hover:text-red-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-red-400 dark:hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
             >
               <IconoSalir className="w-4 h-4" /> Cerrar sesión
             </button>
@@ -364,10 +372,11 @@ export default function AppShell({
 
         <main className="flex-1 min-w-0 flex flex-col">
           <div className="flex-1">{children}</div>
-          <footer className="text-center text-[11px] text-neutral-600 py-4 border-t border-neutral-900">
+          <footer className="text-center text-[11px] text-neutral-500 dark:text-neutral-600 py-4 border-t border-neutral-200 dark:border-neutral-900">
             Desarrollado por {APP_DESARROLLADOR} · v{APP_VERSION}
           </footer>
         </main>
+        </div>
       </div>
 
       {biometriaMontada && (

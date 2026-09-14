@@ -12,6 +12,7 @@ export const ETIQUETAS_ROL: Record<string, string> = {
   COORDINADOR: "Coordinador",
   NOMINA: "Nómina",
   JEFE: "Jefe",
+  COLABORADOR: "Colaborador",
 };
 
 export const INICIO_POR_ROL: Record<string, string> = {

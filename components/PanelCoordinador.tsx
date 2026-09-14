@@ -245,7 +245,10 @@ export default function PanelCoordinador({
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <h1 className="text-lg sm:text-xl font-bold">Revisión</h1>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <h1 className="text-lg sm:text-xl font-bold">Revisión</h1>
+            <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes aprobadas listas para revisar</span>
+          </div>
           {seleccionadas.size > 0 && (
             <button
               onClick={() => setConfirmandoLote(true)}
@@ -255,9 +258,6 @@ export default function PanelCoordinador({
             </button>
           )}
         </div>
-        <p className="text-xs text-orange-400 font-medium">
-          Rol: {esSuperAdmin ? "Super Administrador" : "Coordinador"} · Solicitudes aprobadas listas para revisar
-        </p>
 
         {sinAsignaciones && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
@@ -271,9 +271,9 @@ export default function PanelCoordinador({
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
             placeholder="Buscar por código, colaborador o ruta..."
-            className="w-full sm:max-w-sm rounded-xl border border-neutral-700 bg-neutral-900 text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            className="w-full sm:max-w-sm rounded-xl border border-neutral-300 bg-white text-neutral-900 px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
           />
-          <div className="flex bg-neutral-900 border border-neutral-800 rounded-xl p-1 gap-1 self-start">
+          <div className="flex bg-neutral-100 border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl p-1 gap-1 self-start">
             {[
               { value: "lista" as const, label: "Lista" },
               { value: "colaborador" as const, label: "Por colaborador" },
@@ -283,7 +283,7 @@ export default function PanelCoordinador({
                 type="button"
                 onClick={() => setVista(op.value)}
                 className={`text-xs font-semibold px-3 py-2 rounded-lg transition ${
-                  vista === op.value ? "bg-white text-neutral-900" : "text-neutral-400 hover:text-neutral-200"
+                  vista === op.value ? "bg-white text-neutral-900" : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                 }`}
               >
                 {op.label}
