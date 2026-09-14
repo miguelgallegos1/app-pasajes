@@ -59,22 +59,35 @@ export default function ComboboxBuscable({
 
   return (
     <div className="relative" ref={contenedorRef}>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={cargando ? -1 : 0}
         onClick={abrir}
-        disabled={cargando}
-        className={`w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left text-sm
-          border transition disabled:opacity-50
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); } }}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl px-3.5 py-3 text-left text-sm cursor-pointer
+          border transition ${cargando ? "opacity-50 pointer-events-none" : ""}
           ${abierto ? "border-orange-400 ring-2 ring-orange-500/15" : "border-neutral-200 hover:border-neutral-300"}
         `}
       >
-        <span className={opcionSeleccionada ? "text-neutral-900 font-medium" : "text-neutral-400"}>
+        <span className={`truncate ${opcionSeleccionada ? "text-neutral-900 font-medium" : "text-neutral-400"}`}>
           {cargando ? "Cargando..." : opcionSeleccionada ? opcionSeleccionada.label : placeholder}
         </span>
-        <svg viewBox="0 0 24 24" className="w-4 h-4 text-neutral-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
-          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+        <span className="flex items-center gap-1 shrink-0">
+          {opcionSeleccionada && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onChange(""); }}
+              title="Quitar selección"
+              className="text-neutral-400 hover:text-red-500 transition p-0.5 leading-none"
+            >
+              ×
+            </button>
+          )}
+          <svg viewBox="0 0 24 24" className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </div>
 
       {abierto && (
         <div className="absolute z-50 mt-2 w-full bg-white ring-1 ring-black/5 rounded-2xl shadow-2xl overflow-hidden origin-top animate-[dropdown-in_0.15s_ease-out]">
