@@ -43,6 +43,7 @@ export default function PanelUsuariosAdmin({
   const [generandoPin, setGenerandoPin] = useState(false);
   const [pinCopiado, setPinCopiado] = useState(false);
   const [reseteandoPin, setReseteandoPin] = useState(false);
+  const [confirmandoResetPin, setConfirmandoResetPin] = useState(false);
   const [rol, setRol] = useState("ADMIN_TH");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -101,6 +102,8 @@ export default function PanelUsuariosAdmin({
     setNombre(u.nombre);
     setPin("");
     setReseteandoPin(false);
+    setConfirmandoResetPin(false);
+    setRol(u.rol);
     setError("");
     setModalAbierto(true);
   };
@@ -120,7 +123,7 @@ export default function PanelUsuariosAdmin({
 
     const url = editandoId ? `/api/admin/usuarios/${editandoId}` : "/api/admin/usuarios";
     const method = editandoId ? "PATCH" : "POST";
-    const body = editandoId ? { nombre, ...(reseteandoPin ? { pin } : {}) } : { nombre, pin, rol };
+    const body = editandoId ? { nombre, rol, ...(reseteandoPin ? { pin } : {}) } : { nombre, pin, rol };
 
     try {
       const res = await fetch(url, {
@@ -291,7 +294,7 @@ export default function PanelUsuariosAdmin({
 
       {/* Modal: Crear/Editar usuario */}
       <Modal
-        abierto={modalAbierto}
+        abierto={modalAbierto && !confirmandoResetPin}
         className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
       >
             <h2 className="text-lg font-bold text-neutral-900">
@@ -336,7 +339,7 @@ export default function PanelUsuariosAdmin({
             {editandoId && !reseteandoPin && (
               <button
                 type="button"
-                onClick={() => { setReseteandoPin(true); generarPin(); }}
+                onClick={() => setConfirmandoResetPin(true)}
                 className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition"
               >
                 Resetear PIN de acceso
@@ -399,31 +402,34 @@ export default function PanelUsuariosAdmin({
               />
             </div>
 
-            {!editandoId && (
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rol</label>
-                  <div className="mt-1.5 flex bg-neutral-100 rounded-xl p-1 gap-1">
-                    {[
-                      { value: "ADMIN_TH", label: "TH" },
-                      { value: "COORDINADOR", label: "Coordinador" },
-                      { value: "NOMINA", label: "Nómina" },
-                      { value: "JEFE", label: "Jefe" },
-                      { value: "SUPER_ADMIN", label: "Super Admin" },
-                    ].map((op) => (
-                      <button
-                        key={op.value}
-                        type="button"
-                        onClick={() => setRol(op.value)}
-                        className={`flex-1 text-xs font-semibold py-2 rounded-lg transition ${
-                          rol === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
-                        }`}
-                      >
-                        {op.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-            )}
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rol</label>
+              <div className="mt-1.5 flex flex-wrap bg-neutral-100 rounded-xl p-1 gap-1">
+                {[
+                  { value: "ADMIN_TH", label: "TH" },
+                  { value: "COORDINADOR", label: "Coordinador" },
+                  { value: "NOMINA", label: "Nómina" },
+                  { value: "JEFE", label: "Jefe" },
+                  { value: "SUPER_ADMIN", label: "Super Admin" },
+                ].map((op) => (
+                  <button
+                    key={op.value}
+                    type="button"
+                    onClick={() => setRol(op.value)}
+                    className={`flex-1 min-w-[80px] text-xs font-semibold py-2 rounded-lg transition ${
+                      rol === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+                    }`}
+                  >
+                    {op.label}
+                  </button>
+                ))}
+              </div>
+              {editandoId && rol !== usuarios.find((u) => u.id === editandoId)?.rol && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Vas a cambiar el rol de este usuario en cuanto guardes — eso cambia a qué pantallas tiene acceso.
+                </p>
+              )}
+            </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -443,6 +449,31 @@ export default function PanelUsuariosAdmin({
                 {guardando ? "Guardando..." : "Guardar"}
               </button>
             </div>
+      </Modal>
+
+      {/* Modal: advertencia antes de resetear el PIN */}
+      <Modal abierto={confirmandoResetPin} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-2xl">!</div>
+        <p className="font-semibold text-neutral-900">¿Resetear el PIN de acceso?</p>
+        <p className="text-sm text-neutral-500">
+          El PIN actual dejará de funcionar en cuanto guardes los cambios. Vas a tener que comunicarle el nuevo PIN al usuario.
+        </p>
+        <div className="flex gap-2 justify-center pt-1">
+          <button
+            type="button"
+            onClick={() => setConfirmandoResetPin(false)}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-300 hover:bg-neutral-100 rounded-xl transition"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => { setConfirmandoResetPin(false); setReseteandoPin(true); generarPin(); }}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition"
+          >
+            Sí, resetear
+          </button>
+        </div>
       </Modal>
 
       {/* Modal: Gestionar (Desactivar/Reactivar + Eliminar) */}
@@ -547,7 +578,12 @@ function ModalAreasTH({
         toast.error(data.error ?? "No se pudo agregar la asignación");
         return;
       }
-      toast.exito("Asignación agregada");
+      const data = await res.json().catch(() => ({}));
+      toast.exito(
+        data.quitadas > 0
+          ? `Asignación agregada; se quitaron ${data.quitadas} más específicas que quedaron redundantes`
+          : "Asignación agregada"
+      );
       setEmpresaId("");
       setSitioId("");
       setAreaId("");

@@ -54,9 +54,40 @@ export async function POST(req: Request) {
     }
   }
 
-  const asignacion = await db.asignacionTH.create({
-    data: { usuarioId, empresaId, sitioId: sitioId || null, areaId: areaId || null },
-  });
+  // El acceso es en cascada (Área ⊂ Sitio ⊂ Empresa): una asignación más
+  // amplia ya incluye todo lo que hay debajo, así que no tiene sentido
+  // convivir con asignaciones más específicas de esa misma rama.
+  const existentes = await db.asignacionTH.findMany({ where: { usuarioId } });
 
-  return NextResponse.json(asignacion, { status: 201 });
-}   
+  const yaCubierta = existentes.some((a) => {
+    if (a.empresaId !== empresaId) return false;
+    if (!a.sitioId) return true; // "a" ya es toda la empresa
+    if (a.sitioId !== sitioId) return false; // "a" es de otro sitio, no aplica
+    if (!a.areaId) return true; // "a" ya es ese sitio completo (cubre cualquier área)
+    return a.areaId === areaId; // "a" es exactamente la misma área
+  });
+  if (yaCubierta) {
+    return NextResponse.json(
+      { error: "Ya tiene una asignación más amplia que incluye este alcance" },
+      { status: 400 }
+    );
+  }
+
+  // Todo lo que queda "por debajo" de la nueva asignación pasa a ser
+  // redundante y se quita para no dejar el listado con ramas duplicadas.
+  const idsRedundantes = existentes
+    .filter((a) => {
+      if (a.empresaId !== empresaId) return false;
+      if (!sitioId) return true; // se agregó "toda la empresa": todo lo de abajo sobra
+      if (!areaId) return a.sitioId === sitioId; // se agregó un sitio completo: sus áreas sobran
+      return false; // se agregó un área: no hay nada más específico debajo
+    })
+    .map((a) => a.id);
+
+  const [asignacion] = await db.$transaction([
+    db.asignacionTH.create({ data: { usuarioId, empresaId, sitioId: sitioId || null, areaId: areaId || null } }),
+    ...(idsRedundantes.length > 0 ? [db.asignacionTH.deleteMany({ where: { id: { in: idsRedundantes } } })] : []),
+  ]);
+
+  return NextResponse.json({ ...asignacion, quitadas: idsRedundantes.length }, { status: 201 });
+}
