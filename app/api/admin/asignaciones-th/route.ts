@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { usuarioId, empresaId, sitioId, areaId } = await req.json();
+  const { usuarioId, empresaId, sitioId, areaId, reemplazar } = await req.json();
 
   if (!usuarioId || !empresaId) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
@@ -59,22 +59,26 @@ export async function POST(req: Request) {
   // convivir con asignaciones más específicas de esa misma rama.
   const existentes = await db.asignacionTH.findMany({ where: { usuarioId } });
 
-  const yaCubierta = existentes.some((a) => {
+  const cubrePor = existentes.find((a) => {
     if (a.empresaId !== empresaId) return false;
     if (!a.sitioId) return true; // "a" ya es toda la empresa
     if (a.sitioId !== sitioId) return false; // "a" es de otro sitio, no aplica
     if (!a.areaId) return true; // "a" ya es ese sitio completo (cubre cualquier área)
     return a.areaId === areaId; // "a" es exactamente la misma área
   });
-  if (yaCubierta) {
-    return NextResponse.json(
-      { error: "Ya tiene una asignación más amplia que incluye este alcance" },
-      { status: 400 }
-    );
+
+  // Pedir algo más específico que lo que ya se tiene es, en el fondo, una
+  // decisión de ACHICAR el acceso (se pierde lo que quedaba fuera de lo
+  // nuevo) — eso no se hace sin que el Super Admin lo confirme a propósito.
+  if (cubrePor && !reemplazar) {
+    return NextResponse.json({ error: "Ya tiene una asignación más amplia que incluye este alcance", cubrePorId: cubrePor.id }, { status: 409 });
   }
 
   // Todo lo que queda "por debajo" de la nueva asignación pasa a ser
   // redundante y se quita para no dejar el listado con ramas duplicadas.
+  // Si además se confirmó un reemplazo, la asignación más amplia que
+  // cubría esto también se quita (por eso hacía falta la confirmación:
+  // el usuario pierde el acceso a todo lo que quedaba fuera de lo nuevo).
   const idsRedundantes = existentes
     .filter((a) => {
       if (a.empresaId !== empresaId) return false;
@@ -83,6 +87,7 @@ export async function POST(req: Request) {
       return false; // se agregó un área: no hay nada más específico debajo
     })
     .map((a) => a.id);
+  if (cubrePor && reemplazar) idsRedundantes.push(cubrePor.id);
 
   const [asignacion] = await db.$transaction([
     db.asignacionTH.create({ data: { usuarioId, empresaId, sitioId: sitioId || null, areaId: areaId || null } }),
