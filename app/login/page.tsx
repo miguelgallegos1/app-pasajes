@@ -216,7 +216,7 @@ export default function LoginPage() {
           <img
             src="/logo.png"
             alt={APP_NOMBRE}
-            className="w-[126px] h-[126px] mx-auto mb-2 object-contain drop-shadow-[0_12px_20px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_0_20px_rgba(249,115,22,0.35)]"
+            className="w-[110px] h-[110px] mx-auto mb-2 object-contain drop-shadow-[0_12px_20px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_0_20px_rgba(249,115,22,0.35)]"
           />
           <h1 className="text-2xl font-bold">{APP_NOMBRE}</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Ingresa tu PIN de 6 dígitos</p>
