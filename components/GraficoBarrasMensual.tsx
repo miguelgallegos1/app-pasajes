@@ -209,18 +209,18 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
 
       {hoverIdx !== null && datos[hoverIdx] && (
         <div
-          className="absolute z-10 pointer-events-none bg-neutral-900 text-white text-xs rounded-lg shadow-xl px-3 py-2 space-y-1 min-w-[150px]"
+          className="absolute z-10 pointer-events-none bg-white text-neutral-900 dark:bg-neutral-900 dark:text-white text-xs rounded-lg shadow-xl px-3 py-2 space-y-1 min-w-[150px]"
           style={{
             left: Math.max(8, Math.min(posTooltip.x + 10, anchoContenedor - 158)),
             top: Math.max(posTooltip.y - 90, 0),
           }}
         >
-          <p className="font-semibold text-[11px] text-neutral-300">{datos[hoverIdx].etiqueta}</p>
+          <p className="font-semibold text-[11px] text-neutral-600 dark:text-neutral-300">{datos[hoverIdx].etiqueta}</p>
           {SERIES.map((s) => (
             <div key={s.clave} className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
               <span className="font-semibold">{datos[hoverIdx][s.clave]}</span>
-              <span className="text-neutral-400">{s.label}</span>
+              <span className="text-neutral-500 dark:text-neutral-400">{s.label}</span>
             </div>
           ))}
         </div>

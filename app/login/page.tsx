@@ -11,6 +11,7 @@ import { APP_NOMBRE } from "../../lib/config";
 import Spinner from "../../components/Spinner";
 import { IconoHuella } from "../../components/Icons";
 import { INICIO_POR_ROL as DESTINO_POR_ROL } from "../../lib/roles";
+import BotonTema from "../../components/BotonTema";
 
 const TIEMPO_LIMITE_MS = 2000;
 
@@ -205,17 +206,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4 relative">
-      <div className={`w-full max-w-sm transition-opacity ${loading ? "opacity-40 pointer-events-none" : ""}`}>
-        <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-28 h-28 rounded-2xl border-2 border-orange-500 shadow-[0_0_30px_rgba(249,115,22,0.5)] bg-neutral-900 mb-4 p-4">
-          <img src="/logo.png" alt={APP_NOMBRE} className="w-full h-full object-contain" />
-        </div>
-          <h1 className="text-2xl font-bold text-white">{APP_NOMBRE}</h1>
-          <p className="text-sm text-neutral-400 mt-1">Ingresa tu PIN de 6 dígitos</p>
+    <div className="min-h-screen flex items-center justify-center bg-neutral-100 dark:bg-black px-4 relative text-neutral-900 dark:text-white">
+      <div className="absolute top-4 right-4">
+        <BotonTema />
+      </div>
+      <div className={`w-full max-w-md transition-opacity ${loading ? "opacity-40 pointer-events-none" : ""}`}>
+        <div className="border-x border-b border-x-neutral-200 border-b-neutral-200 dark:border-x-neutral-800 dark:border-b-neutral-800 border-t-4 border-t-orange-500 rounded-3xl shadow-xl shadow-neutral-300/50 dark:shadow-black/50 bg-white dark:bg-neutral-950 p-5 sm:p-8">
+        <div className="text-center mb-8">
+          <img
+            src="/logo.png"
+            alt={APP_NOMBRE}
+            className="w-[126px] h-[126px] mx-auto mb-2 object-contain drop-shadow-[0_12px_20px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_0_20px_rgba(249,115,22,0.35)]"
+          />
+          <h1 className="text-2xl font-bold">{APP_NOMBRE}</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Ingresa tu PIN de 6 dígitos</p>
         </div>
 
-        <div className="flex justify-center gap-2 sm:gap-3">
+        <div className="flex justify-center gap-1.5 sm:gap-3">
           {digitos.map((digito, index) => (
             <input
               key={index}
@@ -230,8 +237,9 @@ export default function LoginPage() {
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={(e) => handlePaste(index, e)}
-              className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl font-bold rounded-xl
-                        bg-neutral-900 border-2 border-neutral-700 text-white
+              className="w-9 h-11 sm:w-14 sm:h-16 text-center text-lg sm:text-2xl font-bold rounded-xl
+                        bg-white border-2 border-neutral-300 text-neutral-900
+                        dark:bg-neutral-900 dark:border-neutral-700 dark:text-white
                         focus:border-orange-500 focus:shadow-[0_0_20px_rgba(249,115,22,0.5)]
                         outline-none transition disabled:opacity-40"
             />
@@ -245,20 +253,21 @@ export default function LoginPage() {
             type="button"
             onClick={entrarConBiometria}
             disabled={loading}
-            className="mt-6 w-full flex items-center justify-center gap-2 text-sm font-medium text-neutral-300 border border-neutral-700 rounded-xl py-3 hover:bg-neutral-900 hover:border-neutral-600 transition disabled:opacity-40"
+            className="mt-6 w-full flex items-center justify-center gap-2 text-sm font-medium text-neutral-600 border border-neutral-300 hover:bg-neutral-100 hover:border-neutral-400 dark:text-neutral-300 dark:border-neutral-700 dark:hover:bg-neutral-900 dark:hover:border-neutral-600 rounded-xl py-3 transition disabled:opacity-40"
           >
             <IconoHuella className="w-4 h-4" />
             Usar acceso biométrico
           </button>
         )}
+        </div>
       </div>
 
       {/* Overlay de carga: cubre toda la pantalla mientras se verifica,
           para que sea imposible confundirlo con que "no está pasando nada". */}
       {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/50 dark:bg-black/40">
           <Spinner className="w-10 h-10 text-orange-500" />
-          <p className="text-sm text-orange-400 font-medium">{mensajeCarga}</p>
+          <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">{mensajeCarga}</p>
         </div>
       )}
     </div>

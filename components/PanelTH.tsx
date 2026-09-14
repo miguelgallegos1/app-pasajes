@@ -198,7 +198,10 @@ export default function PanelTH({
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-lg sm:text-xl font-bold">Aprobaciones Pendientes</h1>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <h1 className="text-lg sm:text-xl font-bold">Aprobaciones Pendientes</h1>
+            <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes de colaboradores esperando aprobación</span>
+          </div>
           {seleccionadas.size > 0 && (
             <button
               onClick={() => setConfirmandoLote(true)}
@@ -208,9 +211,6 @@ export default function PanelTH({
             </button>
           )}
         </div>
-        <p className="text-xs text-orange-400 font-medium">
-          Rol: {esSuperAdmin ? "Super Administrador" : "Talento Humano"}
-        </p>
 
         {sinAsignaciones && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
@@ -224,7 +224,7 @@ export default function PanelTH({
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
             placeholder="Buscar por código, colaborador, ruta u observación..."
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-900 text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
           />
         </div>
 

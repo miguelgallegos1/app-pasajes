@@ -349,17 +349,20 @@ export default function PanelColaborador({
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <h1 className="text-lg sm:text-xl font-bold">Mis Pasajes</h1>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <h1 className="text-lg sm:text-xl font-bold">Mis Pasajes</h1>
+            <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Registra y da seguimiento a tus solicitudes de pasajes</span>
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setHistorialAbierto(true)}
-              className="text-xs sm:text-sm font-medium border border-neutral-700 text-neutral-300 px-3 py-2 rounded-lg hover:bg-neutral-900 hover:border-neutral-600 transition"
+              className="text-xs sm:text-sm font-medium border border-neutral-300 text-neutral-600 px-3 py-2 rounded-lg hover:bg-neutral-100 hover:border-neutral-400 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:border-neutral-600 transition"
             >
               Historial
             </button>
             <button
               onClick={abrirCopiar}
-              className="flex items-center gap-1.5 text-xs sm:text-sm font-medium border border-neutral-700 text-neutral-300 px-3 py-2 rounded-lg hover:bg-neutral-900 hover:border-neutral-600 transition"
+              className="flex items-center gap-1.5 text-xs sm:text-sm font-medium border border-neutral-300 text-neutral-600 px-3 py-2 rounded-lg hover:bg-neutral-100 hover:border-neutral-400 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:border-neutral-600 transition"
             >
               <IconoCopiar className="w-3.5 h-3.5" /> Copiar rutas
             </button>
@@ -372,16 +375,12 @@ export default function PanelColaborador({
           </div>
         </div>
 
-        <p className="text-xs text-orange-400 font-medium">
-          Rol: {esSupervisor ? "Supervisor" : "Colaborador"}
-        </p>
-
         <div className="relative max-w-sm">
           <input
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
             placeholder="Buscar por código, ruta, colaborador u observación..."
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-900 text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
           />
         </div>
 

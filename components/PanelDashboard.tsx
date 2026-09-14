@@ -101,8 +101,10 @@ export default function PanelDashboard({
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <h1 className="text-lg sm:text-xl font-bold">Dashboard</h1>
-      <p className="text-xs text-orange-400 font-medium">Resumen del período seleccionado</p>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h1 className="text-lg sm:text-xl font-bold">Dashboard</h1>
+        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Resumen del período seleccionado</span>
+      </div>
 
       <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -142,7 +144,7 @@ export default function PanelDashboard({
       </div>
 
       {!datos && !error && (
-        <p className="text-sm text-neutral-400">Elige un rango de fechas y presiona Actualizar para ver los datos.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Elige un rango de fechas y presiona Actualizar para ver los datos.</p>
       )}
 
       {datos && (

@@ -116,10 +116,10 @@ export default function PanelControlSolicitudes({
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <h1 className="text-lg sm:text-xl font-bold">Control de Solicitudes</h1>
-      <p className="text-xs text-orange-400 font-medium">
-        Rol: Super Administrador · buscá por código o filtrá, y puedes eliminar cualquier solicitud sin importar su estado
-      </p>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h1 className="text-lg sm:text-xl font-bold">Control de Solicitudes</h1>
+        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Buscá por código o filtrá, y puedes eliminar cualquier solicitud sin importar su estado</span>
+      </div>
 
       <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -186,9 +186,9 @@ export default function PanelControlSolicitudes({
       </div>
 
       {items && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3">
-          <p className="text-[11px] text-neutral-400 uppercase tracking-wide">Total con estos filtros</p>
-          <p className="text-lg font-bold text-white">{total} {total === 1 ? "solicitud" : "solicitudes"}</p>
+        <div className="bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Total con estos filtros</p>
+          <p className="text-lg font-bold text-neutral-900 dark:text-white">{total} {total === 1 ? "solicitud" : "solicitudes"}</p>
         </div>
       )}
 

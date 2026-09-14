@@ -293,10 +293,10 @@ export default function PanelNomina({
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <h1 className="text-lg sm:text-xl font-bold">Pagos Pendientes</h1>
-      <p className="text-xs text-orange-400 font-medium">
-        Rol: {esSuperAdmin ? "Super Administrador" : "Nómina"} · Solicitudes revisadas listas para pagar
-      </p>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h1 className="text-lg sm:text-xl font-bold">Pagos Pendientes</h1>
+        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes revisadas listas para pagar</span>
+      </div>
 
       <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -330,9 +330,9 @@ export default function PanelNomina({
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
             placeholder="Buscar por código, colaborador o ruta..."
-            className="w-full max-w-sm rounded-xl border border-neutral-200 px-4 py-2.5 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            className="w-full max-w-sm rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
           />
-          <div className="flex bg-neutral-100 rounded-xl p-1 gap-1 self-start">
+          <div className="flex bg-neutral-100 border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl p-1 gap-1 self-start">
             {[
               { value: "lista" as const, label: "Lista" },
               { value: "colaborador" as const, label: "Por colaborador" },
@@ -342,7 +342,7 @@ export default function PanelNomina({
                 type="button"
                 onClick={() => setVista(op.value)}
                 className={`text-xs font-semibold px-3 py-2 rounded-lg transition ${
-                  vista === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+                  vista === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                 }`}
               >
                 {op.label}
@@ -353,17 +353,17 @@ export default function PanelNomina({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3">
-          <p className="text-[11px] text-neutral-400 uppercase tracking-wide">Mostrando</p>
-          <p className="text-lg font-bold text-white">
+        <div className="flex-1 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Mostrando</p>
+          <p className="text-lg font-bold text-neutral-900 dark:text-white">
             {revisadasFiltradas.length} {revisadasFiltradas.length === 1 ? "solicitud" : "solicitudes"} · ${totalGeneral.toFixed(2)}
           </p>
         </div>
         {seleccionadas.size > 0 && (
           <div className="flex-1 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] text-orange-400 uppercase tracking-wide">Seleccionadas</p>
-              <p className="text-lg font-bold text-orange-300">
+              <p className="text-[11px] text-orange-600 dark:text-orange-400 uppercase tracking-wide">Seleccionadas</p>
+              <p className="text-lg font-bold text-orange-700 dark:text-orange-300">
                 {seleccionadas.size} · ${totalSeleccionado.toFixed(2)}
               </p>
             </div>

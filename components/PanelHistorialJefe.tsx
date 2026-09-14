@@ -166,8 +166,10 @@ export default function PanelHistorialJefe({
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <h1 className="text-lg sm:text-xl font-bold">Historial General</h1>
-      <p className="text-xs text-orange-400 font-medium">Todas las solicitudes, cualquier estado</p>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h1 className="text-lg sm:text-xl font-bold">Historial General</h1>
+        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Todas las solicitudes, cualquier estado</span>
+      </div>
 
       <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -240,7 +242,7 @@ export default function PanelHistorialJefe({
             {cargando ? "Buscando..." : "Buscar"}
           </button>
 
-          <div className="flex bg-neutral-100 rounded-xl p-1 gap-1">
+          <div className="flex bg-neutral-100 border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl p-1 gap-1">
             {[
               { value: "lista" as const, label: "Lista" },
               { value: "colaborador" as const, label: "Por colaborador" },
@@ -250,7 +252,7 @@ export default function PanelHistorialJefe({
                 type="button"
                 onClick={() => cambiarVista(op.value)}
                 className={`text-xs font-semibold px-3 py-2 rounded-lg transition ${
-                  vista === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+                  vista === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                 }`}
               >
                 {op.label}

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Modo oscuro por clase (.dark en <html>), no solo por preferencia del
+   sistema — así el selector del header puede forzar uno u otro. Ver
+   components/ThemeProvider.tsx y el script inline en app/layout.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

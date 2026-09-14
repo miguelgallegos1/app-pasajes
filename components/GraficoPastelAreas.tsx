@@ -155,16 +155,16 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
 
       {hoverIdx !== null && cunas[hoverIdx] && (
         <div
-          className="absolute z-10 pointer-events-none bg-neutral-900 text-white text-xs rounded-lg shadow-xl px-3 py-2 space-y-0.5"
+          className="absolute z-10 pointer-events-none bg-white text-neutral-900 dark:bg-neutral-900 dark:text-white text-xs rounded-lg shadow-xl px-3 py-2 space-y-0.5"
           style={{
             left: Math.max(8, Math.min(posTooltip.x + 10, anchoContenedor - 128)),
             top: Math.max(posTooltip.y - 50, 0),
           }}
         >
-          <p className="font-semibold text-[11px] text-neutral-300">{cunas[hoverIdx].area}</p>
+          <p className="font-semibold text-[11px] text-neutral-600 dark:text-neutral-300">{cunas[hoverIdx].area}</p>
           <p>
             <span className="font-semibold">${cunas[hoverIdx].total.toFixed(2)}</span>{" "}
-            <span className="text-neutral-400">({(cunas[hoverIdx].fraccion * 100).toFixed(0)}%)</span>
+            <span className="text-neutral-500 dark:text-neutral-400">({(cunas[hoverIdx].fraccion * 100).toFixed(0)}%)</span>
           </p>
         </div>
       )}

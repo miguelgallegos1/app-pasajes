@@ -175,8 +175,10 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <h1 className="text-lg sm:text-xl font-bold">Empresas · Sitios · Áreas</h1>
-      <p className="text-xs text-orange-400 font-medium">Rol: Super Administrador</p>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h1 className="text-lg sm:text-xl font-bold">Empresas · Sitios · Áreas</h1>
+        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Administra la estructura de empresas, sitios y áreas</span>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Columna 1: Empresas */}

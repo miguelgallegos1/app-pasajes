@@ -186,7 +186,10 @@ export default function PanelRutasTH({
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Rutas</h1>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h1 className="text-lg sm:text-xl font-bold">Rutas</h1>
+          <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Cada Área puede tener varias rutas (una por cada trayecto)</span>
+        </div>
         <button
           onClick={abrirCrear}
           disabled={sinAsignaciones}
@@ -195,9 +198,6 @@ export default function PanelRutasTH({
           + Nueva ruta
         </button>
       </div>
-      <p className="text-xs text-orange-400 font-medium">
-        Cada Área puede tener varias rutas (una por cada trayecto)
-      </p>
 
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
@@ -211,10 +211,10 @@ export default function PanelRutasTH({
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
             placeholder="Buscar por nombre o área..."
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-900 text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
           />
         </div>
-        <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5">
+        <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
           <ToggleSwitch checked={soloActivas} onChange={cambiarSoloActivas} label="Solo activas" />
         </div>
       </div>

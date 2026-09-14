@@ -136,8 +136,10 @@ export default function PanelHistorialCoordinador({
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <h1 className="text-lg sm:text-xl font-bold">Historial</h1>
-      <p className="text-xs text-orange-400 font-medium">Solicitudes Revisadas y Pagadas</p>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h1 className="text-lg sm:text-xl font-bold">Historial</h1>
+        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes revisadas y pagadas</span>
+      </div>
 
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
@@ -187,7 +189,7 @@ export default function PanelHistorialCoordinador({
             {cargando ? "Buscando..." : "Buscar"}
           </button>
 
-          <div className="flex bg-neutral-100 rounded-xl p-1 gap-1">
+          <div className="flex bg-neutral-100 border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl p-1 gap-1">
             {[
               { value: "lista" as const, label: "Lista" },
               { value: "colaborador" as const, label: "Por colaborador" },
@@ -197,7 +199,7 @@ export default function PanelHistorialCoordinador({
                 type="button"
                 onClick={() => cambiarVista(op.value)}
                 className={`text-xs font-semibold px-3 py-2 rounded-lg transition ${
-                  vista === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+                  vista === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                 }`}
               >
                 {op.label}

@@ -21,16 +21,16 @@ export default function ToggleSwitch({
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-          checked ? "bg-orange-500" : "bg-neutral-700"
+          checked ? "bg-orange-500" : "bg-neutral-300 dark:bg-neutral-700"
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm ring-1 ring-inset ring-black/10 transition-transform duration-200 ${
             checked ? "translate-x-4" : "translate-x-0"
           }`}
         />
       </button>
-      {label && <span className="text-sm text-neutral-300">{label}</span>}
+      {label && <span className="text-sm text-neutral-600 dark:text-neutral-300">{label}</span>}
     </label>
   );
 }
