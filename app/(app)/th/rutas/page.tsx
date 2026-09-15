@@ -46,6 +46,7 @@ export default async function RutasPage() {
       rutas={rutasSerializadas}
       areasDisponibles={areasSerializadas}
       sinAsignaciones={areasPermitidas.length === 0}
+      esSuperAdmin={session.rol === "SUPER_ADMIN"}
     />
   );
 }

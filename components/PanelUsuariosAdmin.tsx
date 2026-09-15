@@ -155,6 +155,7 @@ export default function PanelUsuariosAdmin({
   const [gestionando, setGestionando] = useState<Usuario | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [errorGestion, setErrorGestion] = useState("");
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
 
   const cambiarEstado = async (nuevoActivo: boolean) => {
     if (!gestionando) return;
@@ -197,6 +198,7 @@ export default function PanelUsuariosAdmin({
       }
       toast.exito("Usuario eliminado");
       setGestionando(null);
+      setConfirmandoEliminar(false);
       router.refresh();
     } catch {
       setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -271,7 +273,7 @@ export default function PanelUsuariosAdmin({
                         </button>
                       )}
                       <button
-                        onClick={() => { setGestionando(u); setErrorGestion(""); }}
+                        onClick={() => { setGestionando(u); setErrorGestion(""); setConfirmandoEliminar(false); }}
                         className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
                       >
                         Gestionar
@@ -477,7 +479,7 @@ export default function PanelUsuariosAdmin({
       </Modal>
 
       {/* Modal: Gestionar (Desactivar/Reactivar + Eliminar) */}
-      <Modal abierto={!!gestionando} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!gestionando && !confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900">{gestionando?.nombre}</h2>
               <p className="text-xs text-neutral-500 mt-0.5">{ETIQUETAS_ROL[gestionando?.rol ?? ""] ?? gestionando?.rol}</p>
@@ -507,7 +509,7 @@ export default function PanelUsuariosAdmin({
               )}
 
               <button
-                onClick={eliminarUsuario}
+                onClick={() => setConfirmandoEliminar(true)}
                 disabled={procesando}
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -525,6 +527,29 @@ export default function PanelUsuariosAdmin({
             >
               Cancelar
             </button>
+      </Modal>
+
+      <Modal abierto={confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
+            <p className="font-semibold text-neutral-900">¿Eliminar a {gestionando?.nombre}?</p>
+            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
+            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
+            <div className="flex gap-2 justify-center pt-1">
+              <button
+                onClick={() => setConfirmandoEliminar(false)}
+                disabled={procesando}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminarUsuario}
+                disabled={procesando}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
+              >
+                {procesando ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
       </Modal>
 
       {/* Modal: Gestionar áreas asignadas (solo TH) */}

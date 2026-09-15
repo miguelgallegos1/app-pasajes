@@ -1,39 +1,39 @@
 // lib/rateLimit.ts
-// Limitador de intentos en memoria, pensado para frenar fuerza bruta
-// contra el login por PIN (6 dígitos = solo 1.000.000 de combinaciones).
-// Asume un solo proceso Node sirviendo la app (como "next start" en un
-// único servidor); si algún día se escala a varias instancias detrás de
-// un balanceador, esto debería moverse a un almacén compartido (Redis).
+// Limitador de intentos de login contra fuerza bruta (6 dígitos = solo
+// 1.000.000 de combinaciones posibles). El contador vive en la base de
+// datos (tabla IntentoLogin), no en memoria del proceso: en un entorno
+// serverless (Vercel) cada instancia puede tener su propia memoria y
+// reiniciarse en cualquier momento, así que un contador en memoria no
+// da un límite confiable. Guardarlo en la base sí sobrevive a eso.
 
-type Entrada = { conteo: number; venceEn: number };
-
-const intentos = new Map<string, Entrada>();
+import { db } from "./db";
 
 const VENTANA_MS = 5 * 60 * 1000; // 5 minutos
-const MAX_INTENTOS = 8;
-
-// Evita que el Map crezca sin límite: cada vez que se agrega una clave
-// nueva, aprovechamos para descartar las que ya vencieron.
-function limpiarVencidas(ahora: number) {
-  for (const [clave, entrada] of intentos) {
-    if (entrada.venceEn < ahora) intentos.delete(clave);
-  }
-}
+const MAX_INTENTOS = 3;
 
 // Devuelve false si `clave` (normalmente la IP del cliente) ya superó
 // MAX_INTENTOS dentro de la ventana de tiempo actual.
-export function intentoPermitido(clave: string): boolean {
-  const ahora = Date.now();
-  const entrada = intentos.get(clave);
+export async function intentoPermitido(clave: string): Promise<boolean> {
+  const ahora = new Date();
 
+  const entrada = await db.intentoLogin.findUnique({ where: { clave } });
+
+  // Sin registro previo, o la ventana anterior ya venció: arranca una
+  // ventana nueva (esto también hace de limpieza: cada IP que vuelve a
+  // intentar después de vencida "recicla" su propia fila en vez de
+  // acumular filas nuevas sin límite).
   if (!entrada || entrada.venceEn < ahora) {
-    intentos.set(clave, { conteo: 1, venceEn: ahora + VENTANA_MS });
-    if (intentos.size > 1000) limpiarVencidas(ahora);
+    await db.intentoLogin.upsert({
+      where: { clave },
+      create: { clave, conteo: 1, venceEn: new Date(ahora.getTime() + VENTANA_MS) },
+      update: { conteo: 1, venceEn: new Date(ahora.getTime() + VENTANA_MS) },
+    });
     return true;
   }
 
   if (entrada.conteo >= MAX_INTENTOS) return false;
-  entrada.conteo++;
+
+  await db.intentoLogin.update({ where: { clave }, data: { conteo: { increment: 1 } } });
   return true;
 }
 

@@ -234,3 +234,14 @@ model SolicitudPasaje {
   @@index([rutaId])
   @@index([estado, fecha])
 }
+
+// Contador de intentos de login fallidos por IP, para frenar fuerza bruta
+// contra el PIN (6 dígitos = solo 1.000.000 de combinaciones). Vive en la
+// base (no en memoria del proceso, ver lib/rateLimit.ts) para que el
+// límite sea real en un entorno serverless (Vercel), donde cada instancia
+// puede tener su propia memoria y reiniciarse en cualquier momento.
+model IntentoLogin {
+  clave   String   @id
+  conteo  Int      @default(1)
+  venceEn DateTime
+}

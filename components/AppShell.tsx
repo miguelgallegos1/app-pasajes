@@ -12,10 +12,11 @@ import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { APP_NOMBRE, APP_VERSION, APP_DESARROLLADOR } from "../lib/config";
+import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
 import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron } from "./Icons";
 import BotonTema from "./BotonTema";
+import Footer from "./Footer";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -372,9 +373,7 @@ export default function AppShell({
 
         <main className="flex-1 min-w-0 flex flex-col">
           <div className="flex-1">{children}</div>
-          <footer className="text-center text-[11px] text-neutral-500 dark:text-neutral-600 py-4 border-t border-neutral-200 dark:border-neutral-900">
-            Desarrollado por {APP_DESARROLLADOR} · v{APP_VERSION}
-          </footer>
+          <Footer />
         </main>
         </div>
       </div>
