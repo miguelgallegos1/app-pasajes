@@ -116,6 +116,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
   const [gestionando, setGestionando] = useState<ElementoGestion | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [errorGestion, setErrorGestion] = useState("");
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
 
   const cambiarEstadoEmpresa = async (nuevoActivo: boolean) => {
     if (!gestionando) return;
@@ -164,6 +165,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       const ETIQUETAS: Record<string, string> = { empresa: "Empresa", sitio: "Sitio", area: "Área" };
       toast.exito(`${ETIQUETAS[gestionando.tipo]} eliminada`);
       setGestionando(null);
+      setConfirmandoEliminar(false);
       router.refresh();
     } catch {
       setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -224,6 +226,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                       ev.stopPropagation();
                       setGestionando({ tipo: "empresa", id: e.id, nombre: e.nombre, activo: e.activo, tieneHijos: e.sitios.length > 0 });
                       setErrorGestion("");
+                      setConfirmandoEliminar(false);
                     }}
                     className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-black/70" : "text-neutral-500"}`}
                   >
@@ -270,6 +273,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                       ev.stopPropagation();
                       setGestionando({ tipo: "sitio", id: s.id, nombre: s.nombre, tieneHijos: s.areas.length > 0 });
                       setErrorGestion("");
+                      setConfirmandoEliminar(false);
                     }}
                     className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-black/70" : "text-neutral-500"}`}
                   >
@@ -309,6 +313,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                     onClick={() => {
                       setGestionando({ tipo: "area", id: a.id, nombre: a.nombre, tieneHijos: false });
                       setErrorGestion("");
+                      setConfirmandoEliminar(false);
                     }}
                     className="text-[11px] font-medium underline text-neutral-500"
                   >
@@ -388,7 +393,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       </Modal>
 
       {/* Modal: Gestionar (Desactivar/Reactivar solo Empresa, + Eliminar en los 3) */}
-      <Modal abierto={!!gestionando} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!gestionando && !confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900">{gestionando?.nombre}</h2>
               <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer</p>
@@ -420,7 +425,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
               )}
 
               <button
-                onClick={eliminar}
+                onClick={() => setConfirmandoEliminar(true)}
                 disabled={procesando || gestionando?.tieneHijos}
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -440,6 +445,29 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
             >
               Cancelar
             </button>
+      </Modal>
+
+      <Modal abierto={confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
+            <p className="font-semibold text-neutral-900">¿Eliminar {gestionando?.nombre}?</p>
+            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
+            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
+            <div className="flex gap-2 justify-center pt-1">
+              <button
+                onClick={() => setConfirmandoEliminar(false)}
+                disabled={procesando}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminar}
+                disabled={procesando}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
+              >
+                {procesando ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
       </Modal>
     </div>
   );

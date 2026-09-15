@@ -31,10 +31,12 @@ export default function PanelRutasTH({
   rutas,
   areasDisponibles,
   sinAsignaciones,
+  esSuperAdmin,
 }: {
   rutas: Ruta[];
   areasDisponibles: Opcion[];
   sinAsignaciones: boolean;
+  esSuperAdmin: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -71,6 +73,65 @@ export default function PanelRutasTH({
   const [idGestionar, setIdGestionar] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [errorGestion, setErrorGestion] = useState("");
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+
+  // ---------- Eliminar en bloque (solo Super Admin) ----------
+  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
+  const [confirmandoLote, setConfirmandoLote] = useState(false);
+  const [eliminandoLote, setEliminandoLote] = useState(false);
+  const [errorLote, setErrorLote] = useState("");
+
+  const todasEnPaginaSeleccionadas =
+    rutasPagina.length > 0 && rutasPagina.every((r) => seleccionadas.has(r.id));
+
+  const alternarSeleccion = (id: string) => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(id)) copia.delete(id);
+      else copia.add(id);
+      return copia;
+    });
+  };
+
+  const alternarSeleccionarTodo = () => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      if (todasEnPaginaSeleccionadas) rutasPagina.forEach((r) => copia.delete(r.id));
+      else rutasPagina.forEach((r) => copia.add(r.id));
+      return copia;
+    });
+  };
+
+  const eliminarLote = async () => {
+    setEliminandoLote(true);
+    setErrorLote("");
+    try {
+      const res = await fetch("/api/th/rutas/eliminar-lote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(seleccionadas) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErrorLote(data.error ?? "No se pudo eliminar");
+        toast.error(data.error ?? "No se pudieron eliminar las rutas");
+        return;
+      }
+      setConfirmandoLote(false);
+      setSeleccionadas(new Set());
+      toast.exito(
+        data.omitidas > 0
+          ? `${data.eliminadas} ruta(s) eliminada(s); ${data.omitidas} se omitieron por tener solicitudes registradas`
+          : `${data.eliminadas} ruta(s) eliminada(s)`
+      );
+      router.refresh();
+    } catch {
+      setErrorLote("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setEliminandoLote(false);
+    }
+  };
 
   const abrirCrear = () => {
     setEditandoId(null);
@@ -173,6 +234,7 @@ export default function PanelRutasTH({
         return;
       }
       setIdGestionar(null);
+      setConfirmandoEliminar(false);
       toast.exito("Ruta eliminada");
       router.refresh();
     } catch {
@@ -190,13 +252,23 @@ export default function PanelRutasTH({
           <h1 className="text-lg sm:text-xl font-bold">Rutas</h1>
           <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Cada Área puede tener varias rutas (una por cada trayecto)</span>
         </div>
-        <button
-          onClick={abrirCrear}
-          disabled={sinAsignaciones}
-          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md disabled:opacity-40"
-        >
-          + Nueva ruta
-        </button>
+        <div className="flex items-center gap-2">
+          {esSuperAdmin && seleccionadas.size > 0 && (
+            <button
+              onClick={() => { setConfirmandoLote(true); setErrorLote(""); }}
+              className="text-xs sm:text-sm font-semibold bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+            >
+              Eliminar seleccionadas ({seleccionadas.size})
+            </button>
+          )}
+          <button
+            onClick={abrirCrear}
+            disabled={sinAsignaciones}
+            className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md disabled:opacity-40"
+          >
+            + Nueva ruta
+          </button>
+        </div>
       </div>
 
       {sinAsignaciones && (
@@ -224,6 +296,16 @@ export default function PanelRutasTH({
           <table className="w-full text-sm min-w-[680px]">
             <thead className="bg-neutral-100/70 text-neutral-500 text-left">
               <tr>
+                {esSuperAdmin && (
+                  <th className="px-4 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={todasEnPaginaSeleccionadas}
+                      onChange={alternarSeleccionarTodo}
+                      className="w-4 h-4 accent-orange-500 rounded"
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3 font-medium w-12">N°</th>
                 <th className="px-4 py-3 font-medium">Área</th>
                 <th className="px-4 py-3 font-medium">Ruta</th>
@@ -235,6 +317,16 @@ export default function PanelRutasTH({
             <tbody>
               {rutasPagina.map((r) => (
                 <tr key={r.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                  {esSuperAdmin && (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={seleccionadas.has(r.id)}
+                        onChange={() => alternarSeleccion(r.id)}
+                        className="w-4 h-4 accent-orange-500 rounded"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-neutral-400">{r.numero}</td>
                   <td className="px-4 py-3 font-medium">{r.areaLabel}</td>
                   <td className="px-4 py-3 text-neutral-600">
@@ -264,7 +356,7 @@ export default function PanelRutasTH({
                         Editar
                       </button>
                       <button
-                        onClick={() => { setIdGestionar(r.id); setErrorGestion(""); }}
+                        onClick={() => { setIdGestionar(r.id); setErrorGestion(""); setConfirmandoEliminar(false); }}
                         className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
                       >
                         Gestionar
@@ -275,7 +367,7 @@ export default function PanelRutasTH({
               ))}
               {rutasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
+                  <td colSpan={esSuperAdmin ? 7 : 6} className="px-4 py-10 text-center text-neutral-400">
                     {busqueda
                       ? "Sin resultados para esa búsqueda"
                       : soloActivas
@@ -358,7 +450,7 @@ export default function PanelRutasTH({
             </div>
       </Modal>
 
-      <Modal abierto={!!idGestionar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idGestionar && !confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900">{rutaGestionar?.nombre}</h2>
               <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer con esta ruta</p>
@@ -388,7 +480,7 @@ export default function PanelRutasTH({
               )}
 
               <button
-                onClick={eliminarPermanente}
+                onClick={() => setConfirmandoEliminar(true)}
                 disabled={procesando || rutaGestionar?.tieneSolicitudes}
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -408,6 +500,54 @@ export default function PanelRutasTH({
             >
               Cancelar
             </button>
+      </Modal>
+
+      <Modal abierto={confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
+            <p className="font-semibold text-neutral-900">¿Eliminar &quot;{rutaGestionar?.nombre}&quot;?</p>
+            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
+            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
+            <div className="flex gap-2 justify-center pt-1">
+              <button
+                onClick={() => setConfirmandoEliminar(false)}
+                disabled={procesando}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminarPermanente}
+                disabled={procesando}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
+              >
+                {procesando ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
+      </Modal>
+
+      <Modal abierto={confirmandoLote} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
+            <p className="font-semibold text-neutral-900">¿Eliminar {seleccionadas.size} ruta(s)?</p>
+            <p className="text-sm text-neutral-500">
+              Esta acción no se puede deshacer. Las que tengan solicitudes registradas se omiten automáticamente.
+            </p>
+            {errorLote && <p className="text-sm text-red-600">{errorLote}</p>}
+            <div className="flex gap-2 justify-center pt-1">
+              <button
+                onClick={() => setConfirmandoLote(false)}
+                disabled={eliminandoLote}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminarLote}
+                disabled={eliminandoLote}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
+              >
+                {eliminandoLote ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
       </Modal>
     </div>
   );

@@ -12,7 +12,7 @@ import { calcularPinLookup } from "../../../../lib/pin";
 import { intentoPermitido, obtenerIp } from "../../../../lib/rateLimit";
 
 export async function POST(req: Request) {
-  if (!intentoPermitido(obtenerIp(req))) {
+  if (!(await intentoPermitido(obtenerIp(req)))) {
     return NextResponse.json(
       { error: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo." },
       { status: 429 }

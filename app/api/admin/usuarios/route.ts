@@ -44,7 +44,7 @@ export async function POST(req: Request) {
 
   try {
     const nuevo = await db.usuario.create({
-      data: { nombre: nombre.trim().toUpperCase(), email: email || null, pinHash, pinLookup, rol },
+      data: { nombre: nombre.trim().toUpperCase(), email: email?.trim() ? email.trim().toLowerCase() : null, pinHash, pinLookup, rol },
     });
     return NextResponse.json(nuevo, { status: 201 });
   } catch (e: any) {

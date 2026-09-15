@@ -107,6 +107,7 @@ export default function PanelColaboradoresTH({
   const [idGestionar, setIdGestionar] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [errorGestion, setErrorGestion] = useState("");
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
 
   const rutasDelAreaSeleccionada = useMemo(
     () => rutasDisponibles.filter((r) => r.areaId === areaId).map((r) => ({ id: r.id, label: r.nombre })),
@@ -280,6 +281,7 @@ export default function PanelColaboradoresTH({
         return;
       }
       setIdGestionar(null);
+      setConfirmandoEliminar(false);
       toast.exito("Colaborador eliminado");
       router.refresh();
     } catch {
@@ -376,7 +378,7 @@ export default function PanelColaboradoresTH({
                         Editar
                       </button>
                       <button
-                        onClick={() => { setIdGestionar(c.id); setErrorGestion(""); }}
+                        onClick={() => { setIdGestionar(c.id); setErrorGestion(""); setConfirmandoEliminar(false); }}
                         className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
                       >
                         Gestionar
@@ -668,7 +670,7 @@ export default function PanelColaboradoresTH({
         </div>
       </Modal>
 
-      <Modal abierto={!!idGestionar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idGestionar && !confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900">{colaboradorGestionar?.nombreCompleto}</h2>
               <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer con este colaborador</p>
@@ -698,7 +700,7 @@ export default function PanelColaboradoresTH({
               )}
 
               <button
-                onClick={eliminarPermanente}
+                onClick={() => setConfirmandoEliminar(true)}
                 disabled={procesando || colaboradorGestionar?.tieneSolicitudes}
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -718,6 +720,29 @@ export default function PanelColaboradoresTH({
             >
               Cancelar
             </button>
+      </Modal>
+
+      <Modal abierto={confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
+            <p className="font-semibold text-neutral-900">¿Eliminar a {colaboradorGestionar?.nombreCompleto}?</p>
+            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
+            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
+            <div className="flex gap-2 justify-center pt-1">
+              <button
+                onClick={() => setConfirmandoEliminar(false)}
+                disabled={procesando}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminarPermanente}
+                disabled={procesando}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
+              >
+                {procesando ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
       </Modal>
     </div>
   );
