@@ -37,7 +37,7 @@ export default async function MisPasajesPage() {
   });
 
   const rutasPropias = await db.ruta.findMany({
-    where: condicionRutasVisibles(colaborador),
+    where: await condicionRutasVisibles(colaborador),
     orderBy: { nombre: "asc" },
   });
 

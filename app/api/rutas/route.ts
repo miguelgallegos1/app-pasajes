@@ -34,7 +34,7 @@ export async function GET(req: Request) {
   }
 
   const rutas = await db.ruta.findMany({
-    where: condicionRutasVisibles(colaboradorObjetivo),
+    where: await condicionRutasVisibles(colaboradorObjetivo),
     orderBy: { nombre: "asc" },
   });
 

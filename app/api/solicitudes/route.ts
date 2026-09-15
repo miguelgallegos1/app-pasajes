@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   // objetivo (evita que, manipulando la petición, alguien asigne una
   // ruta de otra área).
   const ruta = await db.ruta.findFirst({
-    where: { id: rutaId, ...condicionRutasVisibles(colaboradorObjetivo) },
+    where: { id: rutaId, ...(await condicionRutasVisibles(colaboradorObjetivo)) },
   });
 
   if (!ruta) {
