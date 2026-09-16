@@ -116,7 +116,7 @@ export default function RangoFechasSelector({
           </div>
 
           <p className="text-[11px] text-neutral-400 mb-2 text-center">
-            {desdeElegido ? "Elegí el día final" : "Elegí el día inicial"}
+            {desdeElegido ? "Elegir el día final" : "Elegir el día inicial"}
           </p>
 
           <div className="grid grid-cols-7 gap-1 mb-2">
