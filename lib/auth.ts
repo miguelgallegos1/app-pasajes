@@ -7,6 +7,7 @@ import type { NextResponse } from "next/server";
 import { DURACION_SESION_SEGUNDOS } from "./config";
 import { JWT_SECRET } from "./jwtSecret";
 import { db } from "./db";
+import { obtenerColaboradorPorUsuarioId } from "./colaboradorSesion";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -43,10 +44,7 @@ export async function obtenerPerfilSesion(
   session: SesionUsuario
 ): Promise<{ nombre: string; fotoUrl: string | null; esSupervisor: boolean }> {
   if (session.rol === "COLABORADOR") {
-    const colaborador = await db.colaborador.findUnique({
-      where: { usuarioId: session.id },
-      select: { nombreCompleto: true, fotoUrl: true, esSupervisor: true },
-    });
+    const colaborador = await obtenerColaboradorPorUsuarioId(session.id);
     return {
       nombre: colaborador?.nombreCompleto ?? "",
       fotoUrl: colaborador?.fotoUrl ?? null,

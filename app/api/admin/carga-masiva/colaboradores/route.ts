@@ -36,10 +36,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Máximo ${TOPE_FILAS_IMPORTACION} filas por archivo` }, { status: 400 });
   }
 
-  const mapaAreas = await construirMapaAreas();
-  const usuariosSinMigrar = await db.usuario.findMany({ where: { pinLookup: null }, select: { pinHash: true } });
+  // Códigos de nómina que trae el archivo, para chequear duplicados con
+  // UNA sola consulta (en vez de un findFirst por fila dentro del loop).
+  const codigosDelArchivo = Array.from(
+    new Set(
+      filas
+        .map((f) => texto(f["Código de nómina"] ?? f["Codigo de nomina"]).toUpperCase())
+        .filter(Boolean)
+    )
+  );
+
+  const [mapaAreas, usuariosSinMigrar, colaboradoresExistentes] = await Promise.all([
+    construirMapaAreas(),
+    db.usuario.findMany({ where: { pinLookup: null }, select: { pinHash: true } }),
+    codigosDelArchivo.length
+      ? db.colaborador.findMany({ where: { codigoNomina: { in: codigosDelArchivo } }, select: { codigoNomina: true } })
+      : Promise.resolve([]),
+  ]);
   const pinLookupsUsados = new Set<string>();
-  const codigosUsados = new Set<string>();
+  const codigosUsados = new Set(colaboradoresExistentes.map((c) => c.codigoNomina));
 
   async function pinDisponible(pin: string): Promise<boolean> {
     const pinLookup = calcularPinLookup(pin);

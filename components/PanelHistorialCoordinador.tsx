@@ -7,11 +7,11 @@
 "use client";
 
 import { useState } from "react";
-import CalendarioSelector from "./CalendarioSelector";
+import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
-import { formatearFecha } from "../lib/fechas";
+import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import TablaAgrupadaColaborador, { type FilaResumen } from "./TablaAgrupadaColaborador";
 import { IconoDescargar } from "./Icons";
 
@@ -38,8 +38,8 @@ export default function PanelHistorialCoordinador({
   sinAsignaciones: boolean;
 }) {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
-  const [desde, setDesde] = useState("");
-  const [hasta, setHasta] = useState("");
+  const [desde, setDesde] = useState(fechaHoyTexto);
+  const [hasta, setHasta] = useState(fechaHoyTexto);
   const [estado, setEstado] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
   const [items, setItems] = useState<Fila[] | null>(null);
@@ -148,14 +148,12 @@ export default function PanelHistorialCoordinador({
       )}
 
       <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Desde</label>
-            <div className="mt-1.5"><CalendarioSelector value={desde} onChange={setDesde} /></div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Hasta</label>
-            <div className="mt-1.5"><CalendarioSelector value={hasta} onChange={setHasta} /></div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rango de fechas</label>
+            <div className="mt-1.5">
+              <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
+            </div>
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Estado</label>

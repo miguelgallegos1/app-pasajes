@@ -5,13 +5,14 @@
 import { redirect } from "next/navigation";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { obtenerColaboradorPorUsuarioId } from "../../../../lib/colaboradorSesion";
 import PanelHistorialColaborador from "../../../../components/PanelHistorialColaborador";
 
 export default async function HistorialColaboradorPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const colaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
+  const colaborador = await obtenerColaboradorPorUsuarioId(session.id);
   if (!colaborador) redirect("/login");
 
   const equipo = colaborador.esSupervisor

@@ -11,7 +11,7 @@ import CalendarioSelector from "./CalendarioSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Modal from "./Modal";
 import Paginacion from "./Paginacion";
-import { formatearFecha } from "../lib/fechas";
+import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 
@@ -170,7 +170,7 @@ export default function PanelColaborador({
     setModalAbierto(true);
     setColaboradorSeleccionado(colaboradorId);
     setRutasDisponibles(rutasPropias);
-    setFecha("");
+    setFecha(fechaHoyTexto());
     setRutaId("");
     setObservaciones("");
     setError("");

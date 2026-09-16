@@ -1,24 +1,13 @@
 // components/CalendarioSelector.tsx
-// Selector de fecha moderno hecho a mano (sin librerías externas).
+// Selector de UNA fecha (sin librerías externas). Comparte el motor de
+// navegación/grilla con RangoFechasSelector vía useCalendarioMes — acá
+// solo vive la parte propia: un clic elige el día y cierra.
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import { IconoCalendario } from "./Icons";
 import { formatearFecha } from "../lib/fechas";
-
-const MESES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-const DIAS_SEMANA = ["L", "M", "M", "J", "V", "S", "D"];
-
-function aTextoFecha(fecha: Date) {
-  const año = fecha.getFullYear();
-  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
-  const dia = String(fecha.getDate()).padStart(2, "0");
-  return `${año}-${mes}-${dia}`;
-}
+import { useCalendarioMes, fechaATexto, MESES, DIAS_SEMANA } from "./useCalendarioMes";
 
 export default function CalendarioSelector({
   value,
@@ -29,35 +18,13 @@ export default function CalendarioSelector({
   onChange: (valor: string) => void;
   fechaMinima?: string;
 }) {
-  const [abierto, setAbierto] = useState(false);
-  const [mesVisible, setMesVisible] = useState(() => (value ? new Date(value) : new Date()));
-  const contenedorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function manejarClickAfuera(e: MouseEvent) {
-      if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) {
-        setAbierto(false);
-      }
-    }
-    document.addEventListener("mousedown", manejarClickAfuera);
-    return () => document.removeEventListener("mousedown", manejarClickAfuera);
-  }, []);
-
-  const primerDiaDelMes = new Date(mesVisible.getFullYear(), mesVisible.getMonth(), 1);
-  const diasEnElMes = new Date(mesVisible.getFullYear(), mesVisible.getMonth() + 1, 0).getDate();
-  const offsetInicio = (primerDiaDelMes.getDay() + 6) % 7;
-
-  const celdas: (number | null)[] = [
-    ...Array(offsetInicio).fill(null),
-    ...Array.from({ length: diasEnElMes }, (_, i) => i + 1),
-  ];
-
-  const hoyTexto = aTextoFecha(new Date());
-  const minimaComparable = fechaMinima ?? "0000-01-01";
+  const {
+    abierto, setAbierto, mesVisible, contenedorRef, celdas, fechaDeCelda,
+    mesAnterior, mesSiguiente, hoyTexto, minimaComparable,
+  } = useCalendarioMes({ mesInicial: value, fechaMinima });
 
   const elegirDia = (dia: number) => {
-    const fechaElegida = new Date(mesVisible.getFullYear(), mesVisible.getMonth(), dia);
-    const texto = aTextoFecha(fechaElegida);
+    const texto = fechaATexto(fechaDeCelda(dia));
     if (texto < minimaComparable) return;
     onChange(texto);
     setAbierto(false);
@@ -84,7 +51,7 @@ export default function CalendarioSelector({
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
-              onClick={() => setMesVisible(new Date(mesVisible.getFullYear(), mesVisible.getMonth() - 1, 1))}
+              onClick={mesAnterior}
               className="w-8 h-8 rounded-full hover:bg-orange-50 hover:text-orange-600 flex items-center justify-center text-neutral-500 transition"
             >
               ‹
@@ -94,7 +61,7 @@ export default function CalendarioSelector({
             </span>
             <button
               type="button"
-              onClick={() => setMesVisible(new Date(mesVisible.getFullYear(), mesVisible.getMonth() + 1, 1))}
+              onClick={mesSiguiente}
               className="w-8 h-8 rounded-full hover:bg-orange-50 hover:text-orange-600 flex items-center justify-center text-neutral-500 transition"
             >
               ›
@@ -112,8 +79,7 @@ export default function CalendarioSelector({
           <div className="grid grid-cols-7 gap-1">
             {celdas.map((dia, i) => {
               if (dia === null) return <div key={i} />;
-              const fechaCelda = new Date(mesVisible.getFullYear(), mesVisible.getMonth(), dia);
-              const textoCelda = aTextoFecha(fechaCelda);
+              const textoCelda = fechaATexto(fechaDeCelda(dia));
               const deshabilitado = textoCelda < minimaComparable;
               const esHoy = textoCelda === hoyTexto;
               const esSeleccionado = textoCelda === value;

@@ -6,10 +6,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import CalendarioSelector from "./CalendarioSelector";
+import RangoFechasSelector from "./RangoFechasSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
-import { formatearFecha } from "../lib/fechas";
+import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import TablaAgrupadaColaborador, { type FilaResumen } from "./TablaAgrupadaColaborador";
 import { IconoDescargar } from "./Icons";
 
@@ -31,8 +31,8 @@ export default function PanelHistorialNomina({
   colaboradores: Colaborador[];
 }) {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
-  const [desde, setDesde] = useState("");
-  const [hasta, setHasta] = useState("");
+  const [desde, setDesde] = useState(fechaHoyTexto);
+  const [hasta, setHasta] = useState(fechaHoyTexto);
   const [empresaId, setEmpresaId] = useState("");
   const [sitioId, setSitioId] = useState("");
   const [areaId, setAreaId] = useState("");
@@ -158,14 +158,10 @@ export default function PanelHistorialNomina({
       </div>
 
       <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Desde</label>
-            <div className="mt-1.5"><CalendarioSelector value={desde} onChange={setDesde} /></div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Hasta</label>
-            <div className="mt-1.5"><CalendarioSelector value={hasta} onChange={setHasta} /></div>
+        <div className="max-w-xs">
+          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rango de fechas</label>
+          <div className="mt-1.5">
+            <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
           </div>
         </div>
 

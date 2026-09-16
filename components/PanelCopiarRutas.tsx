@@ -4,11 +4,11 @@
 
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CalendarioSelector from "./CalendarioSelector";
 import Spinner from "./Spinner";
-import { formatearFecha } from "../lib/fechas";
+import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useToast } from "./Toast";
 
 type SolicitudDia = {
@@ -33,8 +33,8 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
   const router = useRouter();
   const toast = useToast();
 
-  const [fechaOrigen, setFechaOrigen] = useState("");
-  const [fechaDestino, setFechaDestino] = useState("");
+  const [fechaOrigen, setFechaOrigen] = useState(fechaHoyTexto);
+  const [fechaDestino, setFechaDestino] = useState(fechaHoyTexto);
   const [solicitudesOrigen, setSolicitudesOrigen] = useState<SolicitudDia[]>([]);
   const [cargandoOrigen, setCargandoOrigen] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
@@ -72,6 +72,27 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
       if (idPeticion === peticionDiaRef.current) setCargandoOrigen(false);
     }
   };
+
+  // Ambas fechas ya arrancan en "hoy" (useState de arriba); acá solo falta
+  // traer la lista de solicitudes de ese día para que no se vea vacía. Se
+  // hace el fetch directo (no llamando a cambiarFechaOrigen) para que el
+  // cuerpo del effect no dispare ningún setState de forma sincrónica.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      setCargandoOrigen(true);
+      try {
+        const res = await fetch(`/api/solicitudes/por-dia?fecha=${fechaOrigen}`);
+        if (!cancelado) setSolicitudesOrigen(res.ok ? await res.json() : []);
+      } catch {
+        if (!cancelado) toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      } finally {
+        if (!cancelado) setCargandoOrigen(false);
+      }
+    })();
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const alternarSeleccion = (id: string) => {
     setSeleccionadas((prev) => {

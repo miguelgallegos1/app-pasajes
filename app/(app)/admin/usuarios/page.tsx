@@ -9,23 +9,25 @@ export default async function AdminUsuariosPage() {
   if (!session) redirect("/login");
   if (session.rol !== "SUPER_ADMIN") redirect("/login");
 
-  const usuarios = await db.usuario.findMany({
-    where: { rol: { in: ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"] } },
-    orderBy: { numero: "asc" },
-    include: {
-      asignaciones: { include: { empresa: true, sitio: true, area: true } },
-    },
-  });
-
-  const empresas = await db.empresa.findMany({
-    orderBy: { nombre: "asc" },
-    include: {
-      sitios: {
-        orderBy: { nombre: "asc" },
-        include: { areas: { orderBy: { nombre: "asc" } } },
+  // Independientes entre sí: se piden a la vez en vez de una tras otra.
+  const [usuarios, empresas] = await Promise.all([
+    db.usuario.findMany({
+      where: { rol: { in: ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"] } },
+      orderBy: { numero: "asc" },
+      include: {
+        asignaciones: { include: { empresa: true, sitio: true, area: true } },
       },
-    },
-  });
+    }),
+    db.empresa.findMany({
+      orderBy: { nombre: "asc" },
+      include: {
+        sitios: {
+          orderBy: { nombre: "asc" },
+          include: { areas: { orderBy: { nombre: "asc" } } },
+        },
+      },
+    }),
+  ]);
 
   const usuariosSerializados = usuarios.map((u) => ({
     id: u.id,

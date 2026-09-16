@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
+import { obtenerColaboradorPorUsuarioId } from "../../../lib/colaboradorSesion";
 import { condicionRutasVisibles } from "../../../lib/rutas";
 import PanelColaborador from "../../../components/PanelColaborador";
 
@@ -9,9 +10,7 @@ export default async function MisPasajesPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const colaborador = await db.colaborador.findUnique({
-    where: { usuarioId: session.id },
-  });
+  const colaborador = await obtenerColaboradorPorUsuarioId(session.id);
   if (!colaborador) redirect("/login");
 
   const equipo = colaborador.esSupervisor
@@ -24,22 +23,24 @@ export default async function MisPasajesPage() {
 
   const idsAConsultar = [colaborador.id, ...equipo.map((c) => c.id)];
 
-  const solicitudes = await db.solicitudPasaje.findMany({
-    where: {
-      colaboradorId: { in: idsAConsultar },
-      estado: { in: ["PENDIENTE", "APROBADA", "RECHAZADA"] },
-    },
-    orderBy: { fecha: "desc" },
-    include: {
-      ruta: true, // ya no hace falta "area", usamos el nombre propio de la ruta
-      colaborador: { select: { nombreCompleto: true } },
-    },
-  });
-
-  const rutasPropias = await db.ruta.findMany({
-    where: await condicionRutasVisibles(colaborador),
-    orderBy: { nombre: "asc" },
-  });
+  // Ninguna de las dos depende del resultado de la otra: se piden a la vez.
+  const [solicitudes, rutasPropias] = await Promise.all([
+    db.solicitudPasaje.findMany({
+      where: {
+        colaboradorId: { in: idsAConsultar },
+        estado: { in: ["PENDIENTE", "APROBADA", "RECHAZADA"] },
+      },
+      orderBy: { fecha: "desc" },
+      include: {
+        ruta: true, // ya no hace falta "area", usamos el nombre propio de la ruta
+        colaborador: { select: { nombreCompleto: true } },
+      },
+    }),
+    db.ruta.findMany({
+      where: await condicionRutasVisibles(colaborador),
+      orderBy: { nombre: "asc" },
+    }),
+  ]);
 
   const solicitudesSerializadas = solicitudes.map((s) => ({
     id: s.id,

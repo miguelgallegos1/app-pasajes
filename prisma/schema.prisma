@@ -98,6 +98,12 @@ model Ruta {
   @@unique([areaId, nombre]) // evita 2 rutas con el mismo nombre en la misma área
   @@index([sitioId, areaId, activo])
   @@index([colaboradorExclusivoId])
+  // El índice de arriba tiene sitioId primero, así que no sirve para
+  // filtros que buscan solo por área o solo por empresa (sin sitio) — y
+  // eso es justo lo que hacen las pantallas de TH y el alcance por
+  // Empresa/Sitio/Área de obtenerCondicionRutaTH (lib/alcanceTH.ts).
+  @@index([areaId, activo])
+  @@index([empresaId])
 }
 
 model Usuario {
@@ -199,6 +205,9 @@ model Colaborador {
   @@index([sitioId])
   @@index([supervisorId])
   @@index([areaId, estado])
+  // Cubre el "equipo activo de un supervisor" que se pide en Mis Pasajes,
+  // Historial, Copiar rutas y Asignar equipo.
+  @@index([supervisorId, estado])
 }
 
 model SolicitudPasaje {

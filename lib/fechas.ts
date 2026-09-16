@@ -17,3 +17,20 @@ export function fechaValida(valor: string): Date | null {
   const d = new Date(valor);
   return Number.isNaN(d.getTime()) ? null : d;
 }
+
+// "YYYY-MM-DD" en hora LOCAL (no UTC) — el mismo formato que usan los
+// selectores de fecha como value. Solo se debe usar dentro de un
+// useEffect (nunca como valor inicial de useState ni en el cuerpo del
+// render): si el servidor calculara "hoy" al armar el HTML y el navegador
+// calcula otro día distinto al hidratar (reloj/zona horaria distintos),
+// React tira un error de hidratación.
+export function fechaATexto(fecha: Date): string {
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, "0");
+  const d = String(fecha.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function fechaHoyTexto(): string {
+  return fechaATexto(new Date());
+}

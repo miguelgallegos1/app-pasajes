@@ -14,10 +14,12 @@ export default async function AsignacionEquipoPage() {
   if (!session) redirect("/login");
   if (!["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) redirect("/login");
 
-  const { sinRestriccion, condicion } = await obtenerCondicionColaboradorTH(session.id, session.rol);
+  // Independientes entre sí: se piden a la vez en vez de una tras otra.
+  const [{ sinRestriccion, condicion }, areasPermitidas] = await Promise.all([
+    obtenerCondicionColaboradorTH(session.id, session.rol),
+    obtenerAreasPermitidasTH(session.id, session.rol),
+  ]);
   const sinAsignaciones = condicion === null;
-
-  const areasPermitidas = await obtenerAreasPermitidasTH(session.id, session.rol);
 
   const colaboradores = sinAsignaciones
     ? []
