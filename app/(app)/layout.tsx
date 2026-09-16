@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const perfil = await obtenerPerfilSesion(session);
 
   return (
-    <AppShell rol={session.rol} nombreCompleto={perfil.nombre} fotoUrl={perfil.fotoUrl}>
+    <AppShell rol={session.rol} nombreCompleto={perfil.nombre} fotoUrl={perfil.fotoUrl} esSupervisor={perfil.esSupervisor}>
       {children}
     </AppShell>
   );

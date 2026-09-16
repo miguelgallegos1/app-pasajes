@@ -49,14 +49,14 @@ type AreaPermitida = {
   id: string;
   nombre: string;
   sitioId: string;
-  sitio: { nombre: string; empresa: { nombre: string } };
+  sitio: { nombre: string; empresa: { id: string; nombre: string } };
 };
 
 const SELECT_AREA_PERMITIDA = {
   id: true,
   nombre: true,
   sitioId: true,
-  sitio: { select: { nombre: true, empresa: { select: { nombre: true } } } },
+  sitio: { select: { nombre: true, empresa: { select: { id: true, nombre: true } } } },
 } as const;
 
 export async function obtenerAreasPermitidasTH(usuarioId: string, rol: string): Promise<AreaPermitida[]> {

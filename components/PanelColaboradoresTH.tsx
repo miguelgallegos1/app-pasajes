@@ -8,7 +8,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
-import MultiSelectBuscable from "./MultiSelectBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
@@ -26,28 +25,32 @@ type Colaborador = {
   estado: string;
   esSupervisor: boolean;
   supervisorNombre: string | null;
+  empresaId: string;
+  sitioId: string;
   areaId: string;
   areaLabel: string;
   tieneSolicitudes: boolean;
-  rutaIdsExclusivas: string[];
 };
 
 type Opcion = { id: string; label: string };
-type RutaOpcion = { id: string; nombre: string; areaId: string };
+type Sitio = { id: string; nombre: string; empresaId: string };
+type Area = { id: string; nombre: string; sitioId: string };
 
 const POR_PAGINA = 10;
 
 export default function PanelColaboradoresTH({
   colaboradores,
   areasDisponibles,
-  supervisoresDisponibles,
-  rutasDisponibles,
+  empresas,
+  sitios,
+  areas,
   sinAsignaciones,
 }: {
   colaboradores: Colaborador[];
   areasDisponibles: Opcion[];
-  supervisoresDisponibles: Opcion[];
-  rutasDisponibles: RutaOpcion[];
+  empresas: Opcion[];
+  sitios: Sitio[];
+  areas: Area[];
   sinAsignaciones: boolean;
 }) {
   const router = useRouter();
@@ -57,10 +60,44 @@ export default function PanelColaboradoresTH({
   const [soloActivos, setSoloActivos] = useState(true); // arranca mostrando solo Activos
   const [paginaActual, setPaginaActual] = useState(1);
 
+  const [empresaFiltro, setEmpresaFiltro] = useState("");
+  const [sitioFiltro, setSitioFiltro] = useState("");
+  const [areaFiltro, setAreaFiltro] = useState("");
+
+  const sitiosFiltro = useMemo(
+    () =>
+      sitios
+        .filter((s) => !empresaFiltro || s.empresaId === empresaFiltro)
+        .map((s) => ({ id: s.id, label: s.nombre })),
+    [sitios, empresaFiltro]
+  );
+  const areasFiltro = useMemo(() => {
+    const idsSitiosFiltro = new Set(sitiosFiltro.map((s) => s.id));
+    return areas
+      .filter((a) => (sitioFiltro ? a.sitioId === sitioFiltro : !empresaFiltro || idsSitiosFiltro.has(a.sitioId)))
+      .map((a) => ({ id: a.id, label: a.nombre }));
+  }, [areas, sitioFiltro, empresaFiltro, sitiosFiltro]);
+
+  const cambiarEmpresaFiltro = (v: string) => {
+    setEmpresaFiltro(v);
+    setSitioFiltro("");
+    setAreaFiltro("");
+    setPaginaActual(1);
+  };
+  const cambiarSitioFiltro = (v: string) => {
+    setSitioFiltro(v);
+    setAreaFiltro("");
+    setPaginaActual(1);
+  };
+  const cambiarAreaFiltro = (v: string) => { setAreaFiltro(v); setPaginaActual(1); };
+
   const colaboradoresFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return colaboradores.filter((c) => {
       if (soloActivos && c.estado !== "ACTIVO") return false;
+      if (empresaFiltro && c.empresaId !== empresaFiltro) return false;
+      if (sitioFiltro && c.sitioId !== sitioFiltro) return false;
+      if (areaFiltro && c.areaId !== areaFiltro) return false;
       if (!texto) return true;
       return (
         c.nombreCompleto.toLowerCase().includes(texto) ||
@@ -68,7 +105,7 @@ export default function PanelColaboradoresTH({
         (c.codigoNomina ?? "").toLowerCase().includes(texto)
       );
     });
-  }, [colaboradores, busqueda, soloActivos]);
+  }, [colaboradores, busqueda, soloActivos, empresaFiltro, sitioFiltro, areaFiltro]);
 
   const totalPaginas = Math.max(1, Math.ceil(colaboradoresFiltrados.length / POR_PAGINA));
   const colaboradoresPagina = useMemo(
@@ -92,14 +129,12 @@ export default function PanelColaboradoresTH({
   const [nombres, setNombres] = useState("");
   const [codigoNomina, setCodigoNomina] = useState("");
   const [areaId, setAreaId] = useState("");
-  const [rutaIdsExclusivas, setRutaIdsExclusivas] = useState<string[]>([]);
   const [pin, setPin] = useState("");
   const [generandoPin, setGenerandoPin] = useState(false);
   const [pinCopiado, setPinCopiado] = useState(false);
   const [reseteandoPin, setReseteandoPin] = useState(false);
   const [confirmandoResetPin, setConfirmandoResetPin] = useState(false);
   const [esSupervisor, setEsSupervisor] = useState(false);
-  const [supervisorId, setSupervisorId] = useState("");
   const [estadoEdicion, setEstadoEdicion] = useState("ACTIVO");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -108,11 +143,6 @@ export default function PanelColaboradoresTH({
   const [procesando, setProcesando] = useState(false);
   const [errorGestion, setErrorGestion] = useState("");
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
-
-  const rutasDelAreaSeleccionada = useMemo(
-    () => rutasDisponibles.filter((r) => r.areaId === areaId).map((r) => ({ id: r.id, label: r.nombre })),
-    [rutasDisponibles, areaId]
-  );
 
   // Evita que una respuesta fuera de orden (Resetear -> Cancelar ->
   // Resetear de nuevo, muy seguido) termine mostrando un PIN de una
@@ -157,10 +187,8 @@ export default function PanelColaboradoresTH({
     setNombres("");
     setCodigoNomina("");
     setAreaId("");
-    setRutaIdsExclusivas([]);
     setPin("");
     setEsSupervisor(false);
-    setSupervisorId("");
     setEstadoEdicion("ACTIVO");
     setError("");
     setModalAbierto(true);
@@ -173,12 +201,10 @@ export default function PanelColaboradoresTH({
     setNombres(c.nombres);
     setCodigoNomina(c.codigoNomina ?? "");
     setAreaId(c.areaId);
-    setRutaIdsExclusivas(c.rutaIdsExclusivas);
     setPin("");
     setReseteandoPin(false);
     setConfirmandoResetPin(false);
     setEsSupervisor(c.esSupervisor);
-    setSupervisorId("");
     setEstadoEdicion(c.estado);
     setError("");
     setModalAbierto(true);
@@ -206,12 +232,10 @@ export default function PanelColaboradoresTH({
           codigoNomina,
           areaId,
           esSupervisor,
-          supervisorId: supervisorId || null,
           estado: estadoEdicion,
-          rutaIds: rutaIdsExclusivas,
           ...(reseteandoPin ? { pin } : {}),
         }
-      : { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId: supervisorId || null, rutaIds: rutaIdsExclusivas };
+      : { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor };
 
     try {
       const res = await fetch(url, {
@@ -314,18 +338,47 @@ export default function PanelColaboradoresTH({
         </div>
       )}
 
-      {/* Barra de filtros: buscador + switch, elegante y responsive */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <input
-            value={busqueda}
-            onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, área o código..."
-            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-          />
+      {/* Barra de filtros: buscador + switch + Empresa/Sitio/Área */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <input
+              value={busqueda}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              placeholder="Buscar por nombre, área o código..."
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
+            <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo activos" />
+          </div>
         </div>
-        <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
-          <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo activos" />
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 min-w-0">
+            <ComboboxBuscable
+              opciones={empresas}
+              value={empresaFiltro}
+              onChange={cambiarEmpresaFiltro}
+              placeholder="Todas las empresas"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <ComboboxBuscable
+              opciones={sitiosFiltro}
+              value={sitioFiltro}
+              onChange={cambiarSitioFiltro}
+              placeholder="Todos los sitios"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <ComboboxBuscable
+              opciones={areasFiltro}
+              value={areaFiltro}
+              onChange={cambiarAreaFiltro}
+              placeholder="Todas las áreas"
+            />
+          </div>
         </div>
       </div>
 
@@ -335,9 +388,8 @@ export default function PanelColaboradoresTH({
             <thead className="bg-neutral-100/70 text-neutral-500 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium w-12">N°</th>
-                <th className="px-4 py-3 font-medium">Nombre</th>
                 <th className="px-4 py-3 font-medium">Código</th>
-                <th className="px-4 py-3 font-medium">Área</th>
+                <th className="px-4 py-3 font-medium">Nombre</th>
                 <th className="px-4 py-3 font-medium">Supervisor</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3"></th>
@@ -347,6 +399,9 @@ export default function PanelColaboradoresTH({
               {colaboradoresPagina.map((c) => (
                 <tr key={c.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
                   <td className="px-4 py-3 text-neutral-400">{c.numero}</td>
+                  <td className="px-4 py-3 text-neutral-500">
+                    {c.codigoNomina ?? <span className="text-amber-600">Sin código</span>}
+                  </td>
                   <td className="px-4 py-3">
                     {c.nombreCompleto}
                     {c.esSupervisor && (
@@ -355,10 +410,6 @@ export default function PanelColaboradoresTH({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-neutral-500">
-                    {c.codigoNomina ?? <span className="text-amber-600">Sin código</span>}
-                  </td>
-                  <td className="px-4 py-3 text-neutral-600">{c.areaLabel}</td>
                   <td className="px-4 py-3 text-neutral-500">{c.supervisorNombre ?? "—"}</td>
                   <td className="px-4 py-3">
                     <span
@@ -389,9 +440,9 @@ export default function PanelColaboradoresTH({
               ))}
               {colaboradoresFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
-                    {busqueda
-                      ? "Sin resultados para esa búsqueda"
+                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
+                    {busqueda || empresaFiltro || sitioFiltro || areaFiltro
+                      ? "Sin resultados para esos filtros"
                       : soloActivos
                       ? "No hay colaboradores activos"
                       : "Aún no hay colaboradores registrados"}
@@ -548,30 +599,19 @@ export default function PanelColaboradoresTH({
                 <ComboboxBuscable
                   opciones={areasDisponibles}
                   value={areaId}
-                  onChange={(v) => { setAreaId(v); setRutaIdsExclusivas([]); }}
+                  onChange={setAreaId}
                   placeholder="Selecciona un área"
                 />
               </div>
-            </div>
-
-            {areaId && (
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                  Rutas exclusivas (opcional)
-                </label>
-                <div className="mt-1.5">
-                  <MultiSelectBuscable
-                    opciones={rutasDelAreaSeleccionada}
-                    value={rutaIdsExclusivas}
-                    onChange={setRutaIdsExclusivas}
-                    placeholder="Buscar ruta..."
-                  />
-                </div>
-                <p className="text-xs text-neutral-400 mt-1">
-                  Si no elegís ninguna, sigue viendo todas las rutas del área (como siempre)
+              {editandoId && (
+                <p className="text-xs text-neutral-400 mt-1.5">
+                  Para asignarle rutas exclusivas, usá la pantalla{" "}
+                  <a href="/th/rutas/asignaciones" className="text-orange-600 hover:text-orange-700 font-medium">
+                    Asignar rutas
+                  </a>
                 </p>
-              </div>
-            )}
+              )}
+            </div>
 
             {editandoId && (
               <div>
@@ -598,31 +638,44 @@ export default function PanelColaboradoresTH({
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={esSupervisor}
-                onChange={(e) => setEsSupervisor(e.target.checked)}
-                className="w-4 h-4 accent-orange-500 rounded"
-                id="chk-supervisor"
-              />
-              <label htmlFor="chk-supervisor" className="text-sm text-neutral-700">
-                Este colaborador es Supervisor
-              </label>
-            </div>
-
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Reporta a (opcional)
+                Tipo de colaborador
               </label>
-              <div className="mt-1.5">
-                <ComboboxBuscable
-                  opciones={supervisoresDisponibles}
-                  value={supervisorId}
-                  onChange={setSupervisorId}
-                  placeholder="Sin supervisor"
-                />
+              <div className="mt-1.5 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEsSupervisor(false)}
+                  className={`text-left px-3.5 py-3 rounded-xl border-2 transition ${
+                    !esSupervisor ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-neutral-300"
+                  }`}
+                >
+                  <p className={`text-sm font-semibold ${!esSupervisor ? "text-orange-700" : "text-neutral-800"}`}>
+                    Colaborador
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-0.5">Registra y da seguimiento a sus propios pasajes.</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEsSupervisor(true)}
+                  className={`text-left px-3.5 py-3 rounded-xl border-2 transition ${
+                    esSupervisor ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-neutral-300"
+                  }`}
+                >
+                  <p className={`text-sm font-semibold ${esSupervisor ? "text-orange-700" : "text-neutral-800"}`}>
+                    Supervisor
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-0.5">Además, puede registrar pasajes por su equipo.</p>
+                </button>
               </div>
+              {editandoId && (
+                <p className="text-xs text-neutral-400 mt-1.5">
+                  Para asignarle su equipo, usá la pantalla{" "}
+                  <a href="/th/colaboradores/asignaciones" className="text-orange-600 hover:text-orange-700 font-medium">
+                    Asignar equipo
+                  </a>
+                </p>
+              )}
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}

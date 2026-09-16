@@ -20,24 +20,12 @@ export default async function ColaboradoresPage() {
         include: {
           area: { include: { sitio: { include: { empresa: true } } } },
           supervisor: { select: { nombreCompleto: true } },
-          rutasExclusivas: { select: { id: true } },
           _count: { select: { solicitudes: true } },
         },
         orderBy: { numero: "asc" },
       });
 
   const areasPermitidas = await obtenerAreasPermitidasTH(session.id, session.rol);
-  const areaIds = areasPermitidas.map((a) => a.id);
-
-  // Todas las rutas de las áreas que este TH administra, para el selector
-  // de "rutas exclusivas" al crear/editar un colaborador.
-  const rutas = areaIds.length
-    ? await db.ruta.findMany({
-        where: { areaId: { in: areaIds }, activo: true },
-        select: { id: true, nombre: true, areaId: true },
-        orderBy: { nombre: "asc" },
-      })
-    : [];
 
   const colaboradoresSerializados = colaboradores.map((c) => ({
     id: c.id,
@@ -49,10 +37,11 @@ export default async function ColaboradoresPage() {
     estado: c.estado,
     esSupervisor: c.esSupervisor,
     supervisorNombre: c.supervisor?.nombreCompleto ?? null,
+    empresaId: c.area.sitio.empresa.id,
+    sitioId: c.area.sitioId,
     areaId: c.areaId,
     areaLabel: `${c.area.sitio.empresa.nombre} · ${c.area.sitio.nombre} · ${c.area.nombre}`,
     tieneSolicitudes: c._count.solicitudes > 0,
-    rutaIdsExclusivas: c.rutasExclusivas.map((r) => r.id),
   }));
 
   const areasSerializadas = areasPermitidas.map((a) => ({
@@ -60,18 +49,26 @@ export default async function ColaboradoresPage() {
     label: `${a.sitio.empresa.nombre} · ${a.sitio.nombre} · ${a.nombre}`,
   }));
 
-  const rutasSerializadas = rutas.map((r) => ({ id: r.id, nombre: r.nombre, areaId: r.areaId }));
-
-  const supervisoresDisponibles = colaboradoresSerializados
-    .filter((c) => c.esSupervisor && c.estado === "ACTIVO")
-    .map((c) => ({ id: c.id, label: c.nombreCompleto }));
+  // Empresas, sitios y áreas únicos (derivados de las áreas permitidas)
+  // para los filtros en cascada de la tabla de colaboradores.
+  const empresasMapa = new Map<string, { id: string; nombre: string }>();
+  const sitiosMapa = new Map<string, { id: string; nombre: string; empresaId: string }>();
+  const areasMapa = new Map<string, { id: string; nombre: string; sitioId: string }>();
+  for (const a of areasPermitidas) {
+    empresasMapa.set(a.sitio.empresa.id, { id: a.sitio.empresa.id, nombre: a.sitio.empresa.nombre });
+    sitiosMapa.set(a.sitioId, { id: a.sitioId, nombre: a.sitio.nombre, empresaId: a.sitio.empresa.id });
+    areasMapa.set(a.id, { id: a.id, nombre: a.nombre, sitioId: a.sitioId });
+  }
 
   return (
     <PanelColaboradoresTH
       colaboradores={colaboradoresSerializados}
       areasDisponibles={areasSerializadas}
-      supervisoresDisponibles={supervisoresDisponibles}
-      rutasDisponibles={rutasSerializadas}
+      empresas={Array.from(empresasMapa.values())
+        .sort((a, b) => a.nombre.localeCompare(b.nombre))
+        .map((e) => ({ id: e.id, label: e.nombre }))}
+      sitios={Array.from(sitiosMapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre))}
+      areas={Array.from(areasMapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre))}
       sinAsignaciones={sinAsignaciones}
     />
   );

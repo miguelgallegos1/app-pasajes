@@ -6,9 +6,18 @@
 import * as XLSX from "xlsx";
 
 export function construirLibroExcel(filas: Record<string, unknown>[], nombreHoja: string): Buffer {
-  const hoja = XLSX.utils.json_to_sheet(filas);
+  return construirLibroExcelMultiHoja([{ nombre: nombreHoja, filas }]);
+}
+
+// Variante con varias hojas: se usa en las plantillas de carga masiva, para
+// incluir además una hoja de referencia con los nombres exactos de
+// Empresa/Sitio/Área ya existentes (evita errores de tipeo al importar).
+export function construirLibroExcelMultiHoja(hojas: { nombre: string; filas: Record<string, unknown>[] }[]): Buffer {
   const libro = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(libro, hoja, nombreHoja.slice(0, 31)); // Excel limita el nombre de hoja a 31 caracteres
+  for (const { nombre, filas } of hojas) {
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    XLSX.utils.book_append_sheet(libro, hoja, nombre.slice(0, 31)); // Excel limita el nombre de hoja a 31 caracteres
+  }
   return XLSX.write(libro, { type: "buffer", bookType: "xlsx" }) as Buffer;
 }
 

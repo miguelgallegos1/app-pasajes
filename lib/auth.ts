@@ -41,16 +41,20 @@ export async function getSession(): Promise<SesionUsuario | null> {
 // internas, en vez de que cada página vuelva a consultarlo por su cuenta.
 export async function obtenerPerfilSesion(
   session: SesionUsuario
-): Promise<{ nombre: string; fotoUrl: string | null }> {
+): Promise<{ nombre: string; fotoUrl: string | null; esSupervisor: boolean }> {
   if (session.rol === "COLABORADOR") {
     const colaborador = await db.colaborador.findUnique({
       where: { usuarioId: session.id },
-      select: { nombreCompleto: true, fotoUrl: true },
+      select: { nombreCompleto: true, fotoUrl: true, esSupervisor: true },
     });
-    return { nombre: colaborador?.nombreCompleto ?? "", fotoUrl: colaborador?.fotoUrl ?? null };
+    return {
+      nombre: colaborador?.nombreCompleto ?? "",
+      fotoUrl: colaborador?.fotoUrl ?? null,
+      esSupervisor: colaborador?.esSupervisor ?? false,
+    };
   }
   const usuario = await db.usuario.findUnique({ where: { id: session.id }, select: { nombre: true } });
-  return { nombre: usuario?.nombre ?? "", fotoUrl: null };
+  return { nombre: usuario?.nombre ?? "", fotoUrl: null, esSupervisor: false };
 }
 
 // Firma el token de la sesión y lo deja puesto en la cookie de la respuesta.

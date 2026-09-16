@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
-import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar } from "./Icons";
 import BotonTema from "./BotonTema";
 import Footer from "./Footer";
 
@@ -35,8 +35,9 @@ function esGrupo(entrada: EntradaMenu): entrada is GrupoMenu {
 // colapsables. Agregar una función nueva a futuro es sumar un ítem dentro
 // del grupo que corresponda (o crear un grupo nuevo) — no hace falta
 // tocar el componente.
+// El menú del colaborador se arma aparte (ver construirMenuColaborador) porque
+// depende de esSupervisor, no solo del rol.
 const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
-  COLABORADOR: [{ label: "Mis Pasajes", href: "/mis-pasajes", icono: IconoBuseta }],
   ADMIN_TH: [
     { label: "Dashboard", href: "/dashboard", icono: IconoGrafico },
     {
@@ -45,7 +46,9 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Aprobaciones", href: "/th/aprobaciones", icono: IconoCheck },
         { label: "Historial", href: "/th/historial", icono: IconoReloj },
         { label: "Colaboradores", href: "/th/colaboradores", icono: IconoPersonas },
+        { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", icono: IconoPersonas },
         { label: "Rutas", href: "/th/rutas", icono: IconoRuta },
+        { label: "Asignar rutas", href: "/th/rutas/asignaciones", icono: IconoRuta },
       ],
     },
   ],
@@ -81,7 +84,9 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Aprobaciones", href: "/th/aprobaciones", icono: IconoCheck },
         { label: "Historial", href: "/th/historial", icono: IconoReloj },
         { label: "Colaboradores", href: "/th/colaboradores", icono: IconoPersonas },
+        { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", icono: IconoPersonas },
         { label: "Rutas", href: "/th/rutas", icono: IconoRuta },
+        { label: "Asignar rutas", href: "/th/rutas/asignaciones", icono: IconoRuta },
       ],
     },
     {
@@ -108,10 +113,27 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Empresas", href: "/admin/empresas", icono: IconoEdificio },
         { label: "Usuarios", href: "/admin/usuarios", icono: IconoUsuario },
         { label: "Control de Solicitudes", href: "/admin/solicitudes", icono: IconoControl },
+        { label: "Carga masiva", href: "/admin/carga-masiva", icono: IconoDescargar },
       ],
     },
   ],
 };
+
+// El colaborador siempre tiene "Registrar" + "Historial"; si además es
+// Supervisor, se lo dejamos explícito en el nombre del grupo para que no
+// haya dudas de qué tipo de cuenta es la que inició sesión.
+function construirMenuColaborador(esSupervisor: boolean): EntradaMenu[] {
+  return [
+    {
+      grupo: esSupervisor ? "Mi equipo" : "Mis Pasajes",
+      items: [
+        { label: "Registrar", href: "/mis-pasajes", icono: IconoBuseta },
+        { label: "Historial", href: "/mis-pasajes/historial", icono: IconoReloj },
+        { label: "Copiar rutas", href: "/mis-pasajes/copiar", icono: IconoRuta },
+      ],
+    },
+  ];
+}
 
 // Nombre del grupo que contiene la página actual (o null si es un ítem
 // suelto, o si no hay ninguno) — se usa para abrirlo solo automáticamente.
@@ -212,11 +234,13 @@ export default function AppShell({
   rol,
   nombreCompleto,
   fotoUrl,
+  esSupervisor = false,
   children,
 }: {
   rol: string;
   nombreCompleto: string;
   fotoUrl?: string | null;
+  esSupervisor?: boolean;
   children: React.ReactNode;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -229,7 +253,7 @@ export default function AppShell({
     setBiometriaAbierta(true);
   };
   const pathname = usePathname();
-  const items = MENU_POR_ROL[rol] ?? [];
+  const items = rol === "COLABORADOR" ? construirMenuColaborador(esSupervisor) : MENU_POR_ROL[rol] ?? [];
 
   const [gruposAbiertos, setGruposAbiertos] = useState<Set<string>>(new Set());
 

@@ -19,22 +19,33 @@ type Ruta = {
   nombre: string;
   valor: number;
   activo: boolean;
+  empresaId: string;
+  sitioId: string;
+  areaId: string;
   areaLabel: string;
   tieneSolicitudes: boolean;
   colaboradorExclusivoNombre: string | null;
 };
 type Opcion = { id: string; label: string };
+type Sitio = { id: string; nombre: string; empresaId: string };
+type Area = { id: string; nombre: string; sitioId: string };
 
 const POR_PAGINA = 10;
 
 export default function PanelRutasTH({
   rutas,
   areasDisponibles,
+  empresas,
+  sitios,
+  areas,
   sinAsignaciones,
   esSuperAdmin,
 }: {
   rutas: Ruta[];
   areasDisponibles: Opcion[];
+  empresas: Opcion[];
+  sitios: Sitio[];
+  areas: Area[];
   sinAsignaciones: boolean;
   esSuperAdmin: boolean;
 }) {
@@ -44,14 +55,48 @@ export default function PanelRutasTH({
   const [soloActivas, setSoloActivas] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
 
+  const [empresaFiltro, setEmpresaFiltro] = useState("");
+  const [sitioFiltro, setSitioFiltro] = useState("");
+  const [areaFiltro, setAreaFiltro] = useState("");
+
+  const sitiosFiltro = useMemo(
+    () =>
+      sitios
+        .filter((s) => !empresaFiltro || s.empresaId === empresaFiltro)
+        .map((s) => ({ id: s.id, label: s.nombre })),
+    [sitios, empresaFiltro]
+  );
+  const areasFiltro = useMemo(() => {
+    const idsSitiosFiltro = new Set(sitiosFiltro.map((s) => s.id));
+    return areas
+      .filter((a) => (sitioFiltro ? a.sitioId === sitioFiltro : !empresaFiltro || idsSitiosFiltro.has(a.sitioId)))
+      .map((a) => ({ id: a.id, label: a.nombre }));
+  }, [areas, sitioFiltro, empresaFiltro, sitiosFiltro]);
+
+  const cambiarEmpresaFiltro = (v: string) => {
+    setEmpresaFiltro(v);
+    setSitioFiltro("");
+    setAreaFiltro("");
+    setPaginaActual(1);
+  };
+  const cambiarSitioFiltro = (v: string) => {
+    setSitioFiltro(v);
+    setAreaFiltro("");
+    setPaginaActual(1);
+  };
+  const cambiarAreaFiltro = (v: string) => { setAreaFiltro(v); setPaginaActual(1); };
+
   const rutasFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return rutas.filter((r) => {
       if (soloActivas && !r.activo) return false;
+      if (empresaFiltro && r.empresaId !== empresaFiltro) return false;
+      if (sitioFiltro && r.sitioId !== sitioFiltro) return false;
+      if (areaFiltro && r.areaId !== areaFiltro) return false;
       if (!texto) return true;
       return r.nombre.toLowerCase().includes(texto) || r.areaLabel.toLowerCase().includes(texto);
     });
-  }, [rutas, busqueda, soloActivas]);
+  }, [rutas, busqueda, soloActivas, empresaFiltro, sitioFiltro, areaFiltro]);
 
   const totalPaginas = Math.max(1, Math.ceil(rutasFiltradas.length / POR_PAGINA));
   const rutasPagina = useMemo(
@@ -277,17 +322,46 @@ export default function PanelRutasTH({
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <input
-            value={busqueda}
-            onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por nombre o área..."
-            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <input
+              value={busqueda}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              placeholder="Buscar por nombre o área..."
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
+            <ToggleSwitch checked={soloActivas} onChange={cambiarSoloActivas} label="Solo activas" />
+          </div>
         </div>
-        <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
-          <ToggleSwitch checked={soloActivas} onChange={cambiarSoloActivas} label="Solo activas" />
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 min-w-0">
+            <ComboboxBuscable
+              opciones={empresas}
+              value={empresaFiltro}
+              onChange={cambiarEmpresaFiltro}
+              placeholder="Todas las empresas"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <ComboboxBuscable
+              opciones={sitiosFiltro}
+              value={sitioFiltro}
+              onChange={cambiarSitioFiltro}
+              placeholder="Todos los sitios"
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <ComboboxBuscable
+              opciones={areasFiltro}
+              value={areaFiltro}
+              onChange={cambiarAreaFiltro}
+              placeholder="Todas las áreas"
+            />
+          </div>
         </div>
       </div>
 
@@ -307,7 +381,6 @@ export default function PanelRutasTH({
                   </th>
                 )}
                 <th className="px-4 py-3 font-medium w-12">N°</th>
-                <th className="px-4 py-3 font-medium">Área</th>
                 <th className="px-4 py-3 font-medium">Ruta</th>
                 <th className="px-4 py-3 font-medium">Valor</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
@@ -328,7 +401,6 @@ export default function PanelRutasTH({
                     </td>
                   )}
                   <td className="px-4 py-3 text-neutral-400">{r.numero}</td>
-                  <td className="px-4 py-3 font-medium">{r.areaLabel}</td>
                   <td className="px-4 py-3 text-neutral-600">
                     {r.nombre}
                     {r.colaboradorExclusivoNombre && (
@@ -367,9 +439,9 @@ export default function PanelRutasTH({
               ))}
               {rutasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={esSuperAdmin ? 7 : 6} className="px-4 py-10 text-center text-neutral-400">
-                    {busqueda
-                      ? "Sin resultados para esa búsqueda"
+                  <td colSpan={esSuperAdmin ? 6 : 5} className="px-4 py-10 text-center text-neutral-400">
+                    {busqueda || empresaFiltro || sitioFiltro || areaFiltro
+                      ? "Sin resultados para esos filtros"
                       : soloActivas
                       ? "No hay rutas activas"
                       : "Aún no hay rutas creadas"}

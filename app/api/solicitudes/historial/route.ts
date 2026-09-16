@@ -17,6 +17,7 @@ export async function GET(req: Request) {
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
   const estado = searchParams.get("estado");
+  const colaboradorIdParam = searchParams.get("colaboradorId");
   const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1"));
 
   if (!desde || !hasta) {
@@ -31,13 +32,34 @@ export async function GET(req: Request) {
   const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
   if (!miColaborador) return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
 
+  // Sin colaboradorId: si es supervisor ve su historial + el de su equipo;
+  // si no, solo el propio. Con colaboradorId puntual, debe ser él mismo o
+  // alguien a su cargo.
+  let colaboradorIds: string[];
+  if (colaboradorIdParam && colaboradorIdParam !== miColaborador.id) {
+    const objetivo = await db.colaborador.findUnique({ where: { id: colaboradorIdParam } });
+    const esSuSupervisor = miColaborador.esSupervisor && objetivo?.supervisorId === miColaborador.id;
+    if (!objetivo || !esSuSupervisor) {
+      return NextResponse.json({ error: "No tienes permiso para ver el historial de ese colaborador" }, { status: 403 });
+    }
+    colaboradorIds = [objetivo.id];
+  } else if (colaboradorIdParam === miColaborador.id || !miColaborador.esSupervisor) {
+    colaboradorIds = [miColaborador.id];
+  } else {
+    const equipo = await db.colaborador.findMany({
+      where: { supervisorId: miColaborador.id },
+      select: { id: true },
+    });
+    colaboradorIds = [miColaborador.id, ...equipo.map((c) => c.id)];
+  }
+
   const filtroEstado =
     estado === "APROBADA" || estado === "PAGADA"
       ? { estado: estado as "APROBADA" | "PAGADA" }
       : { estado: { in: ["APROBADA", "PAGADA"] as Array<"APROBADA" | "PAGADA"> } };
 
   const filtro = {
-    colaboradorId: miColaborador.id,
+    colaboradorId: { in: colaboradorIds },
     fecha: { gte: desdeFecha, lte: hastaFecha },
     ...filtroEstado,
   };
@@ -45,7 +67,7 @@ export async function GET(req: Request) {
   const [items, total, suma] = await Promise.all([
     db.solicitudPasaje.findMany({
       where: filtro,
-      include: { ruta: { select: { nombre: true } } },
+      include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true } } },
       orderBy: { fecha: "desc" },
       skip: (pagina - 1) * POR_PAGINA,
       take: POR_PAGINA,
@@ -62,6 +84,7 @@ export async function GET(req: Request) {
       montoTotal: Number(s.montoTotal),
       estado: s.estado,
       rutaLabel: s.ruta.nombre,
+      nombreColaborador: s.colaborador.nombreCompleto,
     })),
     total,
     totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),

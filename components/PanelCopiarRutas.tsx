@@ -1,0 +1,215 @@
+// components/PanelCopiarRutas.tsx
+// "Copiar rutas de un día a otro" como página propia del menú (antes era
+// un modal escondido dentro de Mis Pasajes) — mismo patrón que Historial.
+
+"use client";
+
+import { useState, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import CalendarioSelector from "./CalendarioSelector";
+import Spinner from "./Spinner";
+import { formatearFecha } from "../lib/fechas";
+import { useToast } from "./Toast";
+
+type SolicitudDia = {
+  id: string;
+  colaboradorId: string;
+  nombreColaborador: string;
+  rutaId: string;
+  rutaLabel: string;
+  valor: number;
+  estado: string;
+};
+
+const ESTILOS_ESTADO: Record<string, string> = {
+  PENDIENTE: "bg-amber-100 text-amber-800",
+  APROBADA: "bg-green-100 text-green-800",
+  RECHAZADA: "bg-red-100 text-red-800",
+  REVISADO: "bg-sky-100 text-sky-800",
+  PAGADA: "bg-orange-100 text-orange-800",
+};
+
+export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boolean }) {
+  const router = useRouter();
+  const toast = useToast();
+
+  const [fechaOrigen, setFechaOrigen] = useState("");
+  const [fechaDestino, setFechaDestino] = useState("");
+  const [solicitudesOrigen, setSolicitudesOrigen] = useState<SolicitudDia[]>([]);
+  const [cargandoOrigen, setCargandoOrigen] = useState(false);
+  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
+  const [copiando, setCopiando] = useState(false);
+  const [error, setError] = useState("");
+  const peticionDiaRef = useRef(0);
+
+  const fechaMinima = useMemo(() => {
+    const limite = new Date();
+    limite.setDate(limite.getDate() - 2);
+    const y = limite.getFullYear();
+    const m = String(limite.getMonth() + 1).padStart(2, "0");
+    const d = String(limite.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const cambiarFechaOrigen = async (valor: string) => {
+    setFechaOrigen(valor);
+    setSeleccionadas(new Set());
+    if (!valor) {
+      setSolicitudesOrigen([]);
+      return;
+    }
+    const idPeticion = ++peticionDiaRef.current;
+    setCargandoOrigen(true);
+    try {
+      const res = await fetch(`/api/solicitudes/por-dia?fecha=${valor}`);
+      if (idPeticion !== peticionDiaRef.current) return;
+      setSolicitudesOrigen(res.ok ? await res.json() : []);
+    } catch {
+      if (idPeticion === peticionDiaRef.current) {
+        toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      }
+    } finally {
+      if (idPeticion === peticionDiaRef.current) setCargandoOrigen(false);
+    }
+  };
+
+  const alternarSeleccion = (id: string) => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(id)) copia.delete(id);
+      else copia.add(id);
+      return copia;
+    });
+  };
+
+  const todasSeleccionadas = solicitudesOrigen.length > 0 && solicitudesOrigen.every((s) => seleccionadas.has(s.id));
+
+  const alternarSeleccionarTodas = () => {
+    setSeleccionadas(todasSeleccionadas ? new Set() : new Set(solicitudesOrigen.map((s) => s.id)));
+  };
+
+  const confirmarCopiar = async () => {
+    if (seleccionadas.size === 0 || !fechaDestino) return;
+    setCopiando(true);
+    setError("");
+    try {
+      const res = await fetch("/api/solicitudes/copiar-lote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(seleccionadas), fecha: fechaDestino }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudieron copiar las rutas");
+        toast.error(data.error ?? "No se pudieron copiar las rutas");
+        return;
+      }
+      const data = await res.json();
+      toast.exito(`${data.copiadas} ${data.copiadas === 1 ? "ruta copiada" : "rutas copiadas"} a ${formatearFecha(fechaDestino)}`);
+      setFechaOrigen("");
+      setFechaDestino("");
+      setSolicitudesOrigen([]);
+      setSeleccionadas(new Set());
+      router.refresh();
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCopiando(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h1 className="text-lg sm:text-xl font-bold">Copiar rutas</h1>
+        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
+          · Elige el día del que quieres copiar, marca las rutas y a qué día se repiten
+        </span>
+      </div>
+
+      <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4 max-w-2xl">
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Día de origen</label>
+          <div className="mt-1.5"><CalendarioSelector value={fechaOrigen} onChange={cambiarFechaOrigen} /></div>
+        </div>
+
+        {fechaOrigen && (
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Rutas de ese día{solicitudesOrigen.length > 0 && ` (${solicitudesOrigen.length})`}
+              </label>
+              {solicitudesOrigen.length > 0 && (
+                <button
+                  type="button"
+                  onClick={alternarSeleccionarTodas}
+                  className="text-xs font-medium text-orange-600 hover:text-orange-700"
+                >
+                  {todasSeleccionadas ? "Ninguna" : "Todas"}
+                </button>
+              )}
+            </div>
+            <div className="bg-white border border-neutral-200 rounded-xl divide-y divide-neutral-100 max-h-72 overflow-y-auto">
+              {cargandoOrigen ? (
+                <div className="flex items-center gap-2 px-3.5 py-4 text-sm text-neutral-400">
+                  <Spinner className="w-4 h-4" /> Buscando...
+                </div>
+              ) : solicitudesOrigen.length === 0 ? (
+                <p className="px-3.5 py-4 text-sm text-neutral-400 text-center">Sin solicitudes registradas ese día</p>
+              ) : (
+                solicitudesOrigen.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm cursor-pointer hover:bg-neutral-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={seleccionadas.has(s.id)}
+                      onChange={() => alternarSeleccion(s.id)}
+                      className="w-4 h-4 accent-orange-500 rounded shrink-0"
+                    />
+                    <span className="flex-1 min-w-0 truncate">
+                      {esSupervisor && <span className="font-medium">{s.nombreColaborador} · </span>}
+                      {s.rutaLabel}
+                    </span>
+                    <span className="text-neutral-500 shrink-0">${s.valor.toFixed(2)}</span>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                        ESTILOS_ESTADO[s.estado] ?? "bg-neutral-100 text-neutral-600"
+                      }`}
+                    >
+                      {s.estado}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Día de destino</label>
+          <div className="mt-1.5"><CalendarioSelector value={fechaDestino} onChange={setFechaDestino} fechaMinima={fechaMinima} /></div>
+          {fechaDestino && fechaDestino === fechaOrigen && (
+            <p className="text-xs text-amber-600 mt-1">El día de destino no puede ser igual al de origen.</p>
+          )}
+        </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            disabled={seleccionadas.size === 0 || !fechaDestino || fechaDestino === fechaOrigen || copiando}
+            onClick={confirmarCopiar}
+            className="px-5 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40 transition shadow-sm hover:shadow-md flex items-center gap-2"
+          >
+            {copiando && <Spinner className="w-4 h-4" />}
+            {copiando ? "Copiando..." : `Copiar${seleccionadas.size > 0 ? ` (${seleccionadas.size})` : ""}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
