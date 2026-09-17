@@ -32,6 +32,15 @@ export default function Modal({
   const [cerrando, setCerrando] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const elementoPrevioRef = useRef<HTMLElement | null>(null);
+  // Guardamos la última onCerrar en un ref: si dependiera del valor directo
+  // en el efecto de abajo, cada re-render del padre (p. ej. al escribir en un
+  // input del formulario) pasaría una función inline nueva y el efecto se
+  // reiniciaría en cada tecla, devolviendo el foco al panel y "robándoselo"
+  // al input activo.
+  const onCerrarRef = useRef(onCerrar);
+  useEffect(() => {
+    onCerrarRef.current = onCerrar;
+  }, [onCerrar]);
 
   useEffect(() => {
     if (abierto) {
@@ -57,7 +66,7 @@ export default function Modal({
     elementoPrevioRef.current = document.activeElement as HTMLElement | null;
     const id = setTimeout(() => panelRef.current?.focus(), 10);
     const alPresionar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCerrar?.();
+      if (e.key === "Escape") onCerrarRef.current?.();
     };
     window.addEventListener("keydown", alPresionar);
     return () => {
@@ -65,7 +74,7 @@ export default function Modal({
       window.removeEventListener("keydown", alPresionar);
       elementoPrevioRef.current?.focus?.();
     };
-  }, [abierto, onCerrar]);
+  }, [abierto]);
 
   if (!montado) return null;
 
