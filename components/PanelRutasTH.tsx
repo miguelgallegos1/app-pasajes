@@ -114,7 +114,11 @@ export default function PanelRutasTH({
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [areaId, setAreaId] = useState("");
-  const [nombre, setNombre] = useState("");
+  // El nombre se guarda como un solo texto ("DESDE-HASTA", sin espacios
+  // alrededor del guion) pero se captura en dos campos separados para que
+  // sea consistente entre rutas — ver guardar() más abajo.
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [valor, setValor] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -185,7 +189,8 @@ export default function PanelRutasTH({
   const abrirCrear = () => {
     setEditandoId(null);
     setAreaId("");
-    setNombre("");
+    setDesde("");
+    setHasta("");
     setValor("");
     setError("");
     setModalAbierto(true);
@@ -193,7 +198,17 @@ export default function PanelRutasTH({
 
   const abrirEditar = (r: Ruta) => {
     setEditandoId(r.id);
-    setNombre(r.nombre);
+    // El nombre guardado es "DESDE-HASTA"; partimos en el primer guion para
+    // volver a poblar los dos campos (lo que sigue puede tener más guiones,
+    // ej. "CAYAMBE-TABACUNDO-LOMA GORDA" -> Desde "CAYAMBE", Hasta el resto).
+    const separador = r.nombre.indexOf("-");
+    if (separador === -1) {
+      setDesde(r.nombre);
+      setHasta("");
+    } else {
+      setDesde(r.nombre.slice(0, separador));
+      setHasta(r.nombre.slice(separador + 1));
+    }
     setValor(String(r.valor));
     setError("");
     setModalAbierto(true);
@@ -201,8 +216,8 @@ export default function PanelRutasTH({
 
   const guardar = async () => {
     const numero = Number(valor);
-    if (!nombre.trim() || !valor || isNaN(numero) || numero <= 0) {
-      setError("Nombre y valor (mayor a 0) son obligatorios");
+    if (!desde.trim() || !hasta.trim() || !valor || isNaN(numero) || numero <= 0) {
+      setError("Desde, Hasta y valor (mayor a 0) son obligatorios");
       return;
     }
     if (!editandoId && !areaId) {
@@ -213,6 +228,7 @@ export default function PanelRutasTH({
     setGuardando(true);
     setError("");
 
+    const nombre = `${desde.trim()}-${hasta.trim()}`;
     const url = editandoId ? `/api/th/rutas/${editandoId}` : "/api/th/rutas";
     const method = editandoId ? "PATCH" : "POST";
     const body = editandoId ? { nombre, valor: numero } : { areaId, nombre, valor: numero };
@@ -480,16 +496,34 @@ export default function PanelRutasTH({
               </div>
             )}
 
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                Nombre de la ruta
-              </label>
-              <input
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value.toUpperCase())}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                placeholder="Ej: EL YAZNÁN - CAYAMBE - TABACUNDO"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                  Desde
+                </label>
+                <input
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value.toUpperCase())}
+                  className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  placeholder="Ej: CAYAMBE"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                  Hasta
+                </label>
+                <input
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value.toUpperCase())}
+                  className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  placeholder="Ej: TABACUNDO"
+                />
+              </div>
+              {desde.trim() && hasta.trim() && (
+                <p className="col-span-2 text-xs text-neutral-400 dark:text-neutral-500">
+                  Se guarda como: <span className="font-semibold text-neutral-600 dark:text-neutral-300">{desde.trim()}-{hasta.trim()}</span>
+                </p>
+              )}
             </div>
 
             <div>
