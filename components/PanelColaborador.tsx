@@ -17,7 +17,7 @@ import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
-import { IconoPregunta } from "./Icons";
+import { IconoPregunta, IconoLupa } from "./Icons";
 
 type Solicitud = {
   id: string;
@@ -277,7 +277,7 @@ export default function PanelColaborador({
           <div className="flex flex-wrap gap-2">
             <button
               onClick={abrirModal}
-              className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+              className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
             >
               + Nueva solicitud
             </button>
@@ -285,11 +285,12 @@ export default function PanelColaborador({
         </div>
 
         <div className="relative max-w-sm">
+          <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
           <input
             value={busqueda}
             onChange={(e) => cambiarBusqueda(e.target.value)}
             placeholder="Buscar por código, ruta, colaborador u observación..."
-            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
           />
         </div>
 

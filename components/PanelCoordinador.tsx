@@ -8,7 +8,7 @@
 
 import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoCheck } from "./Icons";
+import { IconoCheck, IconoLupa } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import SelectorVista from "./SelectorVista";
@@ -275,12 +275,15 @@ export default function PanelCoordinador({
         )}
 
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <input
-            value={busqueda}
-            onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por código, colaborador o ruta..."
-            className="w-full sm:max-w-sm rounded-xl border border-neutral-300 bg-white text-neutral-900 px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
-          />
+          <div className="relative w-full sm:max-w-sm">
+            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+            <input
+              value={busqueda}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              placeholder="Buscar por código, colaborador o ruta..."
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+            />
+          </div>
           <SelectorVista valor={vista} onCambiar={setVista} className="self-start" />
         </div>
 

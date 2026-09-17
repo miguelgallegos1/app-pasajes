@@ -190,7 +190,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
             <h2 className="font-semibold text-sm">Empresas</h2>
             <button
               onClick={abrirCrearEmpresa}
-              className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-black px-2.5 py-1.5 rounded-lg transition"
+              className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-black px-2.5 py-1.5 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
             >
               + Nueva
             </button>
@@ -247,7 +247,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
             <button
               onClick={abrirCrearSitio}
               disabled={!empresaId}
-              className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-black px-2.5 py-1.5 rounded-lg transition disabled:opacity-40"
+              className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-black px-2.5 py-1.5 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
             >
               + Nuevo
             </button>
@@ -297,7 +297,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
             <button
               onClick={abrirCrearArea}
               disabled={!sitioId}
-              className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-black px-2.5 py-1.5 rounded-lg transition disabled:opacity-40"
+              className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-black px-2.5 py-1.5 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
             >
               + Nueva
             </button>

@@ -13,7 +13,7 @@ import Paginacion from "./Paginacion";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
-import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar } from "./Icons";
+import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar, IconoLupa } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import MenuAcciones from "./MenuAcciones";
@@ -351,7 +351,7 @@ export default function PanelColaboradoresTH({
         <button
           onClick={abrirCrear}
           disabled={sinAsignaciones}
-          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md disabled:opacity-40"
+          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
         >
           + Nuevo colaborador
         </button>
@@ -367,11 +367,12 @@ export default function PanelColaboradoresTH({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1 max-w-sm">
+            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
             <input
               value={busqueda}
               onChange={(e) => cambiarBusqueda(e.target.value)}
               placeholder="Buscar por nombre, área o código..."
-              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
             />
           </div>
           <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
@@ -659,7 +660,7 @@ export default function PanelColaboradoresTH({
                       className={`flex-1 text-xs font-semibold py-2 rounded-lg transition ${
                         estadoEdicion === op.value
                           ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm"
-                          : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                          : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/70 dark:hover:bg-neutral-700"
                       }`}
                     >
                       {op.label}
@@ -678,7 +679,7 @@ export default function PanelColaboradoresTH({
                   type="button"
                   onClick={() => setEsSupervisor(false)}
                   className={`text-left px-3.5 py-3 rounded-xl border-2 transition ${
-                    !esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
+                    !esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 hover:shadow-sm hover:-translate-y-0.5"
                   }`}
                 >
                   <p className={`text-sm font-semibold ${!esSupervisor ? "text-orange-700 dark:text-orange-400" : "text-neutral-800 dark:text-neutral-200"}`}>
@@ -690,7 +691,7 @@ export default function PanelColaboradoresTH({
                   type="button"
                   onClick={() => setEsSupervisor(true)}
                   className={`text-left px-3.5 py-3 rounded-xl border-2 transition ${
-                    esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
+                    esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 hover:shadow-sm hover:-translate-y-0.5"
                   }`}
                 >
                   <p className={`text-sm font-semibold ${esSupervisor ? "text-orange-700 dark:text-orange-400" : "text-neutral-800 dark:text-neutral-200"}`}>

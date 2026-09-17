@@ -16,6 +16,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
+import { IconoLupa } from "./Icons";
 
 type Colaborador = {
   id: string;
@@ -197,12 +198,15 @@ export default function PanelAsignacionRutas({
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Columna izquierda: filtros + lista de colaboradores */}
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
-          <input
-            value={busqueda}
-            onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por nombre o código..."
-            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-          />
+          <div className="relative">
+            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+            <input
+              value={busqueda}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              placeholder="Buscar por nombre o código..."
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            />
+          </div>
 
           <div className="space-y-2">
             <ComboboxBuscable
@@ -294,12 +298,15 @@ export default function PanelAsignacionRutas({
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <input
-                  value={busquedaRuta}
-                  onChange={(e) => setBusquedaRuta(e.target.value)}
-                  placeholder="Buscar ruta..."
-                  className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white px-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                />
+                <div className="relative flex-1">
+                  <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+                  <input
+                    value={busquedaRuta}
+                    onChange={(e) => setBusquedaRuta(e.target.value)}
+                    placeholder="Buscar ruta..."
+                    className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  />
+                </div>
                 <div className="flex gap-1.5 shrink-0">
                   <button
                     type="button"

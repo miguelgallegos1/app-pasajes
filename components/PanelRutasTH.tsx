@@ -6,7 +6,7 @@
 
 import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoAlerta } from "./Icons";
+import { IconoAlerta, IconoLupa } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -313,7 +313,7 @@ export default function PanelRutasTH({
           <button
             onClick={abrirCrear}
             disabled={sinAsignaciones}
-            className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md disabled:opacity-40"
+            className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
           >
             + Nueva ruta
           </button>
@@ -329,11 +329,12 @@ export default function PanelRutasTH({
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1 max-w-sm">
+            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
             <input
               value={busqueda}
               onChange={(e) => cambiarBusqueda(e.target.value)}
               placeholder="Buscar por nombre o área..."
-              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
             />
           </div>
           <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">

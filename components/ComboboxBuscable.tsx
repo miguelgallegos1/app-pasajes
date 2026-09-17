@@ -114,7 +114,7 @@ export default function ComboboxBuscable({
                 type="button"
                 onClick={() => elegir(o)}
                 className={`w-full text-left px-4 py-2.5 text-sm transition
-                  ${o.id === value ? "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 font-medium" : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800"}
+                  ${o.id === value ? "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 font-medium" : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700"}
                 `}
               >
                 {o.label}

@@ -15,6 +15,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
+import { IconoLupa } from "./Icons";
 
 type Colaborador = {
   id: string;
@@ -150,7 +151,12 @@ export default function PanelAsignacionEquipo({
     setMiembroIdsSeleccionados((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
   };
 
-  const marcarTodos = () => setMiembroIdsSeleccionados(candidatosDelArea.map((c) => c.id));
+  const marcarTodos = () =>
+    setMiembroIdsSeleccionados(
+      candidatosDelArea
+        .filter((c) => !c.supervisorId || c.supervisorId === supervisorSeleccionado?.id)
+        .map((c) => c.id)
+    );
   const desmarcarTodos = () => setMiembroIdsSeleccionados([]);
 
   const hayCambios = useMemo(() => {
@@ -225,12 +231,15 @@ export default function PanelAsignacionEquipo({
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Columna izquierda: filtros + lista de supervisores */}
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
-          <input
-            value={busqueda}
-            onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar supervisor por nombre o código..."
-            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-          />
+          <div className="relative">
+            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+            <input
+              value={busqueda}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              placeholder="Buscar supervisor por nombre o código..."
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+            />
+          </div>
 
           <div className="space-y-2">
             <ComboboxBuscable
@@ -318,12 +327,15 @@ export default function PanelAsignacionEquipo({
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <input
-                  value={busquedaMiembro}
-                  onChange={(e) => setBusquedaMiembro(e.target.value)}
-                  placeholder="Buscar colaborador..."
-                  className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white px-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                />
+                <div className="relative flex-1">
+                  <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+                  <input
+                    value={busquedaMiembro}
+                    onChange={(e) => setBusquedaMiembro(e.target.value)}
+                    placeholder="Buscar colaborador..."
+                    className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  />
+                </div>
                 <div className="flex gap-1.5 shrink-0">
                   <button
                     type="button"
@@ -346,18 +358,26 @@ export default function PanelAsignacionEquipo({
                 <div className="max-h-[380px] overflow-y-auto divide-y divide-neutral-100">
                   {candidatosVisibles.map((c) => {
                     const marcado = miembroIdsSeleccionados.includes(c.id);
-                    const reportaAOtro =
-                      !marcado && c.supervisorId && c.supervisorId !== supervisorSeleccionado.id;
+                    // Ya tiene otro supervisor asignado: no se puede sumar
+                    // desde acá — hay que sacarlo de ese equipo primero,
+                    // para no pisar la asignación sin que nadie lo note.
+                    const tieneOtroSupervisor = !!c.supervisorId && c.supervisorId !== supervisorSeleccionado.id;
                     return (
                       <label
                         key={c.id}
-                        className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition"
+                        title={tieneOtroSupervisor ? "Ya tiene un supervisor asignado — quitalo de ese equipo primero" : undefined}
+                        className={`flex items-center gap-3 px-4 py-3 text-sm transition ${
+                          tieneOtroSupervisor
+                            ? "cursor-not-allowed opacity-60"
+                            : "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
+                        }`}
                       >
                         <input
                           type="checkbox"
                           checked={marcado}
+                          disabled={tieneOtroSupervisor}
                           onChange={() => alternarMiembro(c.id)}
-                          className="w-4 h-4 accent-orange-500 rounded shrink-0"
+                          className="w-4 h-4 accent-orange-500 rounded shrink-0 disabled:cursor-not-allowed"
                         />
                         <span className="flex-1 min-w-0">
                           <span className="text-neutral-800 dark:text-neutral-200">{c.nombreCompleto}</span>
@@ -366,9 +386,9 @@ export default function PanelAsignacionEquipo({
                               SUPERVISOR
                             </span>
                           )}
-                          {reportaAOtro && (
+                          {tieneOtroSupervisor && (
                             <span className="block text-[11px] text-amber-600">
-                              Actualmente reporta a otro supervisor
+                              Ya tiene un supervisor asignado
                             </span>
                           )}
                         </span>

@@ -32,6 +32,7 @@ const ToastContext = createContext<ToastContextValor | null>(null);
 
 const DURACION_MS = 4000;
 const DURACION_DESHACER_MS = 5000;
+const DURACION_SALIDA_MS = 180;
 
 const ESTILOS_TIPO: Record<Tipo, { fondo: string; anillo: string; Icono: ComponentType<{ className?: string }> }> = {
   exito: { fondo: "bg-green-600", anillo: "ring-green-400/30", Icono: IconoCheck },
@@ -41,13 +42,25 @@ const ESTILOS_TIPO: Record<Tipo, { fondo: string; anillo: string; Icono: Compone
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
+  // Toasts en proceso de salida: siguen montados un instante más para
+  // reproducir la animación de cierre antes de desaparecer del todo (si
+  // se sacaran del array de golpe, se sentiría un corte seco).
+  const [saliendo, setSaliendo] = useState<Set<number>>(new Set());
   const idRef = useRef(0);
   // Guarda el temporizador de cada toast con acción "Deshacer" para poder
   // cancelarlo si se hace clic a tiempo (y no confirmar dos veces).
   const timersRef = useRef(new Map<number, ReturnType<typeof setTimeout>>());
 
   const quitar = useCallback((id: number) => {
-    setItems((prev) => prev.filter((t) => t.id !== id));
+    setSaliendo((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setItems((prev) => prev.filter((t) => t.id !== id));
+      setSaliendo((prev) => {
+        const copia = new Set(prev);
+        copia.delete(id);
+        return copia;
+      });
+    }, DURACION_SALIDA_MS);
   }, []);
 
   const mostrar = useCallback(
@@ -106,12 +119,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="fixed top-4 right-4 left-4 sm:left-auto z-[100] flex flex-col gap-2 sm:w-[380px]">
         {items.map((t) => {
+          const animacion = saliendo.has(t.id)
+            ? "animate-[toast-out_0.18s_ease-in_forwards]"
+            : "animate-[toast-in_0.3s_cubic-bezier(0.16,1,0.3,1)]";
           if (t.tipo === "deshacer") {
             return (
               <div
                 key={t.id}
                 role="status"
-                className="flex items-center gap-3 rounded-xl px-4 py-3 shadow-2xl ring-1 ring-black/10 dark:ring-white/10 text-sm font-medium bg-neutral-900 dark:bg-neutral-800 text-white animate-[toast-in_0.2s_ease-out]"
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 shadow-2xl ring-1 ring-black/10 dark:ring-white/10 text-sm font-medium bg-neutral-900 dark:bg-neutral-800 text-white ${animacion}`}
               >
                 <p className="flex-1">{t.mensaje}</p>
                 <button
@@ -135,7 +151,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={t.id}
               role="status"
-              className={`flex items-start gap-2.5 rounded-xl px-4 py-3 shadow-2xl ring-1 text-sm font-medium text-white animate-[toast-in_0.2s_ease-out] ${estilo.fondo} ${estilo.anillo}`}
+              className={`flex items-start gap-2.5 rounded-xl px-4 py-3 shadow-2xl ring-1 text-sm font-medium text-white ${animacion} ${estilo.fondo} ${estilo.anillo}`}
             >
               <estilo.Icono className="w-5 h-5 mt-0.5 shrink-0" />
               <p className="flex-1">{t.mensaje}</p>

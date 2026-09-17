@@ -220,7 +220,7 @@ export default function PanelUsuariosAdmin({
         </div>
         <button
           onClick={abrirCrear}
-          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
         >
           + Nuevo usuario
         </button>
@@ -412,7 +412,7 @@ export default function PanelUsuariosAdmin({
                     type="button"
                     onClick={() => setRol(op.value)}
                     className={`flex-1 min-w-[80px] text-xs font-semibold py-2 rounded-lg transition ${
-                      rol === op.value ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm" : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                      rol === op.value ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm" : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/70 dark:hover:bg-neutral-700"
                     }`}
                   >
                     {op.label}
