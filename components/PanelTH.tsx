@@ -6,7 +6,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { formatearMoneda } from "../lib/formato";
+import { IconoCheck } from "./Icons";
+import EstadoVacio from "./EstadoVacio";
+import Avatar from "./Avatar";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
@@ -29,14 +32,18 @@ const POR_PAGINA = 8;
 export default function PanelTH({
   esSuperAdmin,
   sinAsignaciones,
-  pendientes,
+  pendientes: pendientesIniciales,
 }: {
   esSuperAdmin: boolean;
   sinAsignaciones: boolean;
   pendientes: Pendiente[];
 }) {
-  const router = useRouter();
   const toast = useToast();
+
+  // Copia local editable: al aprobar/devolver se quita la fila al instante
+  // (no hace falta esperar un router.refresh() ni volver a pedirle la
+  // lista entera al servidor — ya sabemos exactamente qué cambió).
+  const [pendientes, setPendientes] = useState(pendientesIniciales);
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
@@ -117,7 +124,7 @@ export default function PanelTH({
         return;
       }
       toast.exito("Solicitud aprobada");
-      router.refresh();
+      setPendientes((prev) => prev.filter((p) => p.id !== idAAprobar));
     } catch {
       setIdAAprobar(null);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -145,8 +152,9 @@ export default function PanelTH({
         return;
       }
       toast.exito("Solicitudes aprobadas");
+      const idsAprobados = new Set(seleccionadas);
+      setPendientes((prev) => prev.filter((p) => !idsAprobados.has(p.id)));
       setSeleccionadas(new Set());
-      router.refresh();
     } catch {
       setConfirmandoLote(false);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -184,8 +192,8 @@ export default function PanelTH({
         return;
       }
       toast.exito("Solicitud devuelta para corrección");
+      setPendientes((prev) => prev.filter((p) => p.id !== idADevolver));
       setIdADevolver(null);
-      router.refresh();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -228,10 +236,10 @@ export default function PanelTH({
           />
         </div>
 
-        <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[720px]">
-              <thead className="bg-neutral-100/70 text-neutral-500 text-left">
+              <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 w-10">
                     <input
@@ -252,7 +260,7 @@ export default function PanelTH({
               </thead>
               <tbody>
                 {pendientesPagina.map((s) => (
-                  <tr key={s.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                  <tr key={s.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
@@ -261,19 +269,24 @@ export default function PanelTH({
                         className="w-4 h-4 accent-orange-500 rounded"
                       />
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(s.fecha)}</p>
-                      <p className="text-[11px] text-neutral-400">
+                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                         Registrado: {new Date(s.fechaSolicitud).toLocaleString("es-EC", {
                           day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                         })}
                       </p>
                     </td>
-                    <td className="px-4 py-3">{s.nombreColaborador}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar nombre={s.nombreColaborador} className="w-7 h-7 text-[11px]" />
+                        <span>{s.nombreColaborador}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
-                    <td className="px-4 py-3">${s.montoTotal.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-neutral-500 max-w-[160px] truncate" title={s.observaciones ?? ""}>
+                    <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
+                    <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400 max-w-[160px] truncate" title={s.observaciones ?? ""}>
                       {s.observaciones || "—"}
                     </td>
                     <td className="px-4 py-3">
@@ -296,12 +309,21 @@ export default function PanelTH({
                 ))}
                 {pendientesFiltradas.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
-                      {busqueda
-                        ? "Sin resultados para esa búsqueda"
-                        : sinAsignaciones
-                        ? "Sin áreas asignadas"
-                        : "No hay solicitudes pendientes 🎉"}
+                    <td colSpan={8} className="px-4 py-10">
+                      <EstadoVacio
+                        mensaje={
+                          busqueda
+                            ? "Sin resultados para esa búsqueda"
+                            : sinAsignaciones
+                            ? "Sin áreas asignadas"
+                            : "No hay solicitudes pendientes"
+                        }
+                        icono={
+                          !busqueda && !sinAsignaciones ? (
+                            <IconoCheck className="w-10 h-10 text-emerald-400 dark:text-emerald-500" />
+                          ) : undefined
+                        }
+                      />
                     </td>
                   </tr>
                 )}
@@ -309,11 +331,11 @@ export default function PanelTH({
 
               {pendientesFiltradas.length > 0 && (
                 <tfoot>
-                  <tr className="border-t border-neutral-200 bg-neutral-100/70 font-semibold">
+                  <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-100/70 dark:bg-neutral-800/60 font-semibold">
                     <td className="px-4 py-3" colSpan={5}>
                       Total ({pendientesFiltradas.length} {pendientesFiltradas.length === 1 ? "solicitud" : "solicitudes"})
                     </td>
-                    <td className="px-4 py-3">${totalGeneral.toFixed(2)}</td>
+                    <td className="px-4 py-3">{formatearMoneda(totalGeneral)}</td>
                     <td colSpan={2}></td>
                   </tr>
                 </tfoot>
@@ -325,15 +347,15 @@ export default function PanelTH({
         </div>
       </div>
 
-      <Modal abierto={!!idAAprobar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto text-2xl">✓</div>
-            <p className="font-semibold text-neutral-900">¿Aprobar esta solicitud?</p>
+      <Modal abierto={!!idAAprobar} onCerrar={() => setIdAAprobar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Aprobar esta solicitud?</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setIdAAprobar(null)}
                 disabled={aprobando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -348,15 +370,15 @@ export default function PanelTH({
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLote} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto text-2xl">✓</div>
-            <p className="font-semibold text-neutral-900">¿Aprobar {seleccionadas.size} solicitudes?</p>
+      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Aprobar {seleccionadas.size} solicitudes?</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmandoLote(false)}
                 disabled={aprobandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -371,10 +393,10 @@ export default function PanelTH({
             </div>
       </Modal>
 
-      <Modal abierto={!!idADevolver} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idADevolver} onCerrar={() => setIdADevolver(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">Devolver para corrección</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <h2 className="font-semibold text-neutral-900 dark:text-white">Devolver para corrección</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                 La solicitud sigue pendiente; el colaborador verá esta nota y podrá corregirla
               </p>
             </div>
@@ -383,7 +405,7 @@ export default function PanelTH({
               onChange={(e) => setComentarioDevolucion(e.target.value.toUpperCase())}
               rows={3}
               autoFocus
-              className="w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
+              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
               placeholder="Ej: Ruta incorrecta para tu área, favor corregir..."
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -391,7 +413,7 @@ export default function PanelTH({
               <button
                 onClick={() => setIdADevolver(null)}
                 disabled={devolviendo}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
               >
                 Cancelar
               </button>

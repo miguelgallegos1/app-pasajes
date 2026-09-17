@@ -12,9 +12,10 @@ import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
-import { IconoCopiar } from "./Icons";
+import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar } from "./Icons";
 import { useToast } from "./Toast";
 import { ETIQUETAS_ROL } from "../lib/roles";
+import MenuAcciones from "./MenuAcciones";
 
 type Asignacion = { id: string; etiqueta: string };
 type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; asignaciones: Asignacion[] };
@@ -225,10 +226,10 @@ export default function PanelUsuariosAdmin({
         </button>
       </div>
 
-      <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
-            <thead className="bg-neutral-100/70 text-neutral-500 text-left">
+            <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium w-12">N°</th>
                 <th className="px-4 py-3 font-medium">Nombre</th>
@@ -240,11 +241,11 @@ export default function PanelUsuariosAdmin({
             </thead>
             <tbody>
               {usuarios.map((u) => (
-                <tr key={u.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
-                  <td className="px-4 py-3 text-neutral-400">{u.numero}</td>
+                <tr key={u.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
+                  <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">{u.numero}</td>
                   <td className="px-4 py-3">{u.nombre}</td>
-                  <td className="px-4 py-3 text-neutral-600">{ETIQUETAS_ROL[u.rol] ?? u.rol}</td>
-                  <td className="px-4 py-3 text-neutral-500">
+                  <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300">{ETIQUETAS_ROL[u.rol] ?? u.rol}</td>
+                  <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400">
                     {ROLES_CON_ALCANCE.includes(u.rol) ? `${u.asignaciones.length} asignada(s)` : "—"}
                   </td>
                   <td className="px-4 py-3">
@@ -256,35 +257,26 @@ export default function PanelUsuariosAdmin({
                       {u.activo ? "Activo" : "Inactivo"}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={() => abrirEditar(u)}
-                        className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
-                      >
-                        Editar
-                      </button>
-                      {ROLES_CON_ALCANCE.includes(u.rol) && (
-                        <button
-                          onClick={() => setIdAreas(u.id)}
-                          className="text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-full transition"
-                        >
-                          Áreas
-                        </button>
-                      )}
-                      <button
-                        onClick={() => { setGestionando(u); setErrorGestion(""); setConfirmandoEliminar(false); }}
-                        className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
-                      >
-                        Gestionar
-                      </button>
-                    </div>
+                  <td className="px-4 py-3 text-right">
+                    <MenuAcciones
+                      acciones={[
+                        { label: "Editar", onClick: () => abrirEditar(u) },
+                        ...(ROLES_CON_ALCANCE.includes(u.rol)
+                          ? [{ label: "Áreas", onClick: () => setIdAreas(u.id) }]
+                          : []),
+                        {
+                          label: "Gestionar",
+                          tono: "peligro" as const,
+                          onClick: () => { setGestionando(u); setErrorGestion(""); setConfirmandoEliminar(false); },
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
               {usuarios.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400 dark:text-neutral-500">
                     Aún no hay usuarios administrativos creados
                   </td>
                 </tr>
@@ -297,15 +289,16 @@ export default function PanelUsuariosAdmin({
       {/* Modal: Crear/Editar usuario */}
       <Modal
         abierto={modalAbierto && !confirmandoResetPin}
-        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
+        onCerrar={() => setModalAbierto(false)}
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
       >
-            <h2 className="text-lg font-bold text-neutral-900">
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
               {editandoId ? "Editar usuario" : "Nuevo usuario"}
             </h2>
 
             {!editandoId && (
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                   PIN de acceso
                 </label>
                 <div className="mt-1.5 flex gap-1.5">
@@ -313,28 +306,28 @@ export default function PanelUsuariosAdmin({
                     value={generandoPin ? "" : pin}
                     readOnly
                     placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
+                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 dark:text-white outline-none"
                   />
                   <button
                     type="button"
                     onClick={copiarPin}
                     disabled={!pin || generandoPin}
                     title="Copiar PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                   >
-                    {pinCopiado ? "✓" : <IconoCopiar className="w-4 h-4" />}
+                    {pinCopiado ? <IconoCheck className="w-4 h-4" /> : <IconoCopiar className="w-4 h-4" />}
                   </button>
                   <button
                     type="button"
                     onClick={generarPin}
                     disabled={generandoPin}
                     title="Generar otro PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                   >
-                    ↻
+                    <IconoRefrescar className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-xs text-neutral-400 mt-1">Copialo y comunícaselo al usuario para su primer ingreso</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Copialo y comunícaselo al usuario para su primer ingreso</p>
               </div>
             )}
 
@@ -351,13 +344,13 @@ export default function PanelUsuariosAdmin({
             {editandoId && reseteandoPin && (
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                     Nuevo PIN de acceso
                   </label>
                   <button
                     type="button"
                     onClick={() => { setReseteandoPin(false); setPin(""); }}
-                    className="text-xs text-neutral-400 hover:text-neutral-600 transition"
+                    className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 transition"
                   >
                     Cancelar
                   </button>
@@ -367,25 +360,25 @@ export default function PanelUsuariosAdmin({
                     value={generandoPin ? "" : pin}
                     readOnly
                     placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
+                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 dark:text-white outline-none"
                   />
                   <button
                     type="button"
                     onClick={copiarPin}
                     disabled={!pin || generandoPin}
                     title="Copiar PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                   >
-                    {pinCopiado ? "✓" : <IconoCopiar className="w-4 h-4" />}
+                    {pinCopiado ? <IconoCheck className="w-4 h-4" /> : <IconoCopiar className="w-4 h-4" />}
                   </button>
                   <button
                     type="button"
                     onClick={generarPin}
                     disabled={generandoPin}
                     title="Generar otro PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                   >
-                    ↻
+                    <IconoRefrescar className="w-4 h-4" />
                   </button>
                 </div>
                 <p className="text-xs text-amber-600 mt-1">
@@ -395,18 +388,18 @@ export default function PanelUsuariosAdmin({
             )}
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Nombre</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Nombre</label>
               <input
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value.toUpperCase())}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: ANA RODRÍGUEZ"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rol</label>
-              <div className="mt-1.5 flex flex-wrap bg-neutral-100 rounded-xl p-1 gap-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rol</label>
+              <div className="mt-1.5 flex flex-wrap bg-neutral-100 dark:bg-neutral-800 rounded-xl p-1 gap-1">
                 {[
                   { value: "ADMIN_TH", label: "TH" },
                   { value: "COORDINADOR", label: "Coordinador" },
@@ -419,7 +412,7 @@ export default function PanelUsuariosAdmin({
                     type="button"
                     onClick={() => setRol(op.value)}
                     className={`flex-1 min-w-[80px] text-xs font-semibold py-2 rounded-lg transition ${
-                      rol === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+                      rol === op.value ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm" : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
                     }`}
                   >
                     {op.label}
@@ -438,7 +431,7 @@ export default function PanelUsuariosAdmin({
             <div className="flex gap-2 justify-end pt-1">
               <button
                 onClick={() => setModalAbierto(false)}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
               >
                 Cancelar
               </button>
@@ -454,17 +447,17 @@ export default function PanelUsuariosAdmin({
       </Modal>
 
       {/* Modal: advertencia antes de resetear el PIN */}
-      <Modal abierto={confirmandoResetPin} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-2xl">!</div>
-        <p className="font-semibold text-neutral-900">¿Resetear el PIN de acceso?</p>
-        <p className="text-sm text-neutral-500">
+      <Modal abierto={confirmandoResetPin} onCerrar={() => setConfirmandoResetPin(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+        <p className="font-semibold text-neutral-900 dark:text-white">¿Resetear el PIN de acceso?</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           El PIN actual dejará de funcionar en cuanto guardes los cambios. Vas a tener que comunicarle el nuevo PIN al usuario.
         </p>
         <div className="flex gap-2 justify-center pt-1">
           <button
             type="button"
             onClick={() => setConfirmandoResetPin(false)}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-300 hover:bg-neutral-100 rounded-xl transition"
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
           >
             Cancelar
           </button>
@@ -479,10 +472,10 @@ export default function PanelUsuariosAdmin({
       </Modal>
 
       {/* Modal: Gestionar (Desactivar/Reactivar + Eliminar) */}
-      <Modal abierto={!!gestionando && !confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!gestionando && !confirmandoEliminar} onCerrar={() => setGestionando(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">{gestionando?.nombre}</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">{ETIQUETAS_ROL[gestionando?.rol ?? ""] ?? gestionando?.rol}</p>
+              <h2 className="font-semibold text-neutral-900 dark:text-white">{gestionando?.nombre}</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{ETIQUETAS_ROL[gestionando?.rol ?? ""] ?? gestionando?.rol}</p>
             </div>
 
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
@@ -492,19 +485,19 @@ export default function PanelUsuariosAdmin({
                 <button
                   onClick={() => cambiarEstado(false)}
                   disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 hover:bg-neutral-50 transition disabled:opacity-50"
+                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
                 >
-                  <p className="text-sm font-medium text-neutral-800">Desactivar</p>
-                  <p className="text-xs text-neutral-500">No podrá iniciar sesión, pero conserva su historial. Se puede reactivar luego.</p>
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Desactivar</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">No podrá iniciar sesión, pero conserva su historial. Se puede reactivar luego.</p>
                 </button>
               ) : (
                 <button
                   onClick={() => cambiarEstado(true)}
                   disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 hover:bg-neutral-50 transition disabled:opacity-50"
+                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
                 >
-                  <p className="text-sm font-medium text-neutral-800">Reactivar</p>
-                  <p className="text-xs text-neutral-500">Vuelve a poder iniciar sesión normalmente.</p>
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reactivar</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Vuelve a poder iniciar sesión normalmente.</p>
                 </button>
               )}
 
@@ -514,7 +507,7 @@ export default function PanelUsuariosAdmin({
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   Solo funciona si nunca aprobó ni pagó nada. Si tiene historial, esta opción se bloqueará automáticamente.
                 </p>
               </button>
@@ -523,22 +516,22 @@ export default function PanelUsuariosAdmin({
             <button
               onClick={() => setGestionando(null)}
               disabled={procesando}
-              className="w-full text-center text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl py-2.5 transition"
+              className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
             >
               Cancelar
             </button>
       </Modal>
 
-      <Modal abierto={confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
-            <p className="font-semibold text-neutral-900">¿Eliminar a {gestionando?.nombre}?</p>
-            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
+      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar a {gestionando?.nombre}?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmandoEliminar(false)}
                 disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -662,18 +655,19 @@ function ModalAreasTH({
   return (
     <Modal
       abierto={abierto}
-      className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
+      onCerrar={onCerrar}
+      className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
     >
-        <h2 className="text-lg font-bold text-neutral-900">Áreas de {usuario?.nombre}</h2>
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Áreas de {usuario?.nombre}</h2>
 
         <div className="flex flex-wrap gap-2">
           {(usuario?.asignaciones ?? []).map((a) => (
             <span
               key={a.id}
-              className="inline-flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 text-xs px-3 py-1.5 rounded-full"
+              className="inline-flex items-center gap-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs px-3 py-1.5 rounded-full"
             >
               {a.etiqueta}
-              <button onClick={() => setIdAQuitar(a.id)} className="text-neutral-400 hover:text-red-500 transition">
+              <button onClick={() => setIdAQuitar(a.id)} className="text-neutral-400 dark:text-neutral-500 hover:text-red-500 transition">
                 ×
               </button>
             </span>
@@ -719,18 +713,18 @@ function ModalAreasTH({
 
         <button
           onClick={onCerrar}
-          className="w-full text-center text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl py-2.5 transition"
+          className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
         >
           Cerrar
         </button>
 
-        <Modal abierto={!!idAQuitar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-              <p className="font-semibold text-neutral-900">¿Quitar esta asignación?</p>
+        <Modal abierto={!!idAQuitar} onCerrar={() => setIdAQuitar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+              <p className="font-semibold text-neutral-900 dark:text-white">¿Quitar esta asignación?</p>
               <div className="flex gap-2 justify-center pt-1">
                 <button
                   onClick={() => setIdAQuitar(null)}
                   disabled={quitando}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                 >
                   Cancelar
                 </button>
@@ -744,12 +738,12 @@ function ModalAreasTH({
               </div>
         </Modal>
 
-        <Modal abierto={!!confirmacion} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-2xl">!</div>
-              <p className="font-semibold text-neutral-900">
+        <Modal abierto={!!confirmacion} onCerrar={() => setConfirmacion(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+              <p className="font-semibold text-neutral-900 dark:text-white">
                 {confirmacion?.tipo === "achicar" ? "¿Achicar el acceso?" : "¿Ampliar el acceso?"}
               </p>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 {confirmacion?.tipo === "achicar" ? (
                   <>
                     Ya tiene acceso a <strong>{confirmacion.cubrePorEtiqueta}</strong>. Si continuás, eso se
@@ -767,7 +761,7 @@ function ModalAreasTH({
                 <button
                   onClick={() => setConfirmacion(null)}
                   disabled={guardando}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                 >
                   Cancelar
                 </button>

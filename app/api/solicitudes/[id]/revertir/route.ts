@@ -1,7 +1,9 @@
 // app/api/solicitudes/[id]/revertir/route.ts
-// PATCH: Talento Humano (o Super Admin) retrocede una solicitud APROBADA
-// de vuelta a PENDIENTE, por si se aprobó por error. No aplica a
-// solicitudes ya PAGADAS (revertir un pago ya hecho es otro problema).
+// PATCH: Talento Humano retrocede una solicitud APROBADA de vuelta a
+// PENDIENTE, por si se aprobó por error. Coordinación también lo usa para
+// reportar una discrepancia al revisar (la devuelve a TH para corregirla).
+// No aplica a solicitudes ya PAGADAS (revertir un pago ya hecho es otro
+// problema).
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
@@ -13,7 +15,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
+  if (!session || !["ADMIN_TH", "COORDINADOR", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
@@ -24,8 +26,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Indica el motivo de la corrección" }, { status: 400 });
   }
 
-  // Un TH con áreas asignadas solo puede revertir solicitudes de rutas
-  // dentro de su alcance, igual que en aprobar-lote.
+  // Con áreas asignadas, TH y Coordinación solo pueden revertir solicitudes
+  // de rutas dentro de su propio alcance, igual que en aprobar-lote.
   const { sinRestriccion, condicion } = await obtenerCondicionRutaTH(session.id, session.rol);
   if (condicion === null) {
     return NextResponse.json({ error: "No tienes áreas asignadas" }, { status: 403 });

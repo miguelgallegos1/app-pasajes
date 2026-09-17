@@ -7,11 +7,17 @@
 "use client";
 
 import { useState } from "react";
+import { formatearMoneda } from "../lib/formato";
+import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
+import TablaEsqueleto from "./TablaEsqueleto";
+import EstadoVacio from "./EstadoVacio";
+import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
 
 type Fila = {
   id: string;
@@ -21,6 +27,15 @@ type Fila = {
   estado: string;
   rutaLabel: string;
   nombreColaborador: string;
+};
+
+type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
+const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
+  fecha: (f) => f.fecha,
+  nombreColaborador: (f) => f.nombreColaborador,
+  rutaLabel: (f) => f.rutaLabel,
+  montoTotal: (f) => f.montoTotal,
+  estado: (f) => f.estado,
 };
 
 const ESTILOS_ESTADO: Record<string, string> = {
@@ -45,6 +60,12 @@ export default function PanelHistorialColaborador({
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+
+  const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(
+    items ?? [],
+    (f, campo) => VALOR_ORDEN[campo](f),
+    "historial-colaborador"
+  );
 
   const opcionesColaborador = [
     { id: "", label: "Todo mi equipo" },
@@ -90,16 +111,16 @@ export default function PanelHistorialColaborador({
         </span>
       </div>
 
-      <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4">
+      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
         <div className={`grid grid-cols-1 sm:grid-cols-2 ${esSupervisor ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-3`}>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rango de fechas</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
             <div className="mt-1.5">
               <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Estado</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Estado</label>
             <div className="mt-1.5">
               <SelectorModerno
                 opciones={[
@@ -115,7 +136,7 @@ export default function PanelHistorialColaborador({
           </div>
           {esSupervisor && (
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Colaborador</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
               <div className="mt-1.5">
                 <ComboboxBuscable
                   opciones={opcionesColaborador}
@@ -139,30 +160,34 @@ export default function PanelHistorialColaborador({
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
-      {items && (
-        <div className="bg-white text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+      {cargando ? (
+        <TablaEsqueleto columnas={esSupervisor ? 6 : 5} />
+      ) : items && (
+        <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[680px]">
-              <thead className="bg-neutral-100 text-neutral-500 text-left">
+              <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>
-                  <th className="px-4 py-3 font-medium">Fecha</th>
-                  {esSupervisor && <th className="px-4 py-3 font-medium">Colaborador</th>}
-                  <th className="px-4 py-3 font-medium">Ruta</th>
-                  <th className="px-4 py-3 font-medium">Valor</th>
-                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <EncabezadoOrdenable campo="fecha" ordenActivo={orden} onOrdenar={ordenar}>Fecha</EncabezadoOrdenable>
+                  {esSupervisor && (
+                    <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
+                  )}
+                  <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="estado" ordenActivo={orden} onOrdenar={ordenar}>Estado</EncabezadoOrdenable>
                 </tr>
               </thead>
               <tbody>
-                {items.map((s) => (
-                  <tr key={s.id} className="border-t border-neutral-100 hover:bg-neutral-50 transition">
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
+                {itemsOrdenados.map((s) => (
+                  <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
+                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
                     {esSupervisor && <td className="px-4 py-3">{s.nombreColaborador}</td>}
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
-                    <td className="px-4 py-3">${s.montoTotal.toFixed(2)}</td>
+                    <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
+                      <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
                         {s.estado}
                       </span>
                     </td>
@@ -170,17 +195,17 @@ export default function PanelHistorialColaborador({
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={esSupervisor ? 6 : 5} className="px-4 py-10 text-center text-neutral-400">
-                      No hay resultados en ese rango
+                    <td colSpan={esSupervisor ? 6 : 5} className="px-4 py-10">
+                      <EstadoVacio mensaje="No hay resultados en ese rango" />
                     </td>
                   </tr>
                 )}
               </tbody>
               {items.length > 0 && (
                 <tfoot>
-                  <tr className="border-t border-neutral-200 bg-neutral-50 font-semibold">
+                  <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 font-semibold">
                     <td className="px-4 py-3" colSpan={esSupervisor ? 4 : 3}>Total del rango</td>
-                    <td className="px-4 py-3" colSpan={2}>${totalMonto.toFixed(2)}</td>
+                    <td className="px-4 py-3" colSpan={2}>{formatearMoneda(totalMonto)}</td>
                   </tr>
                 </tfoot>
               )}

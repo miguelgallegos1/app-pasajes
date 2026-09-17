@@ -5,6 +5,7 @@
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
+import { formatearMoneda } from "../lib/formato";
 import { useRouter } from "next/navigation";
 import CalendarioSelector from "./CalendarioSelector";
 import Spinner from "./Spinner";
@@ -149,16 +150,16 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
         </span>
       </div>
 
-      <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4 max-w-2xl">
+      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4 max-w-2xl">
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Día de origen</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Día de origen</label>
           <div className="mt-1.5"><CalendarioSelector value={fechaOrigen} onChange={cambiarFechaOrigen} /></div>
         </div>
 
         {fechaOrigen && (
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 Rutas de ese día{solicitudesOrigen.length > 0 && ` (${solicitudesOrigen.length})`}
               </label>
               {solicitudesOrigen.length > 0 && (
@@ -171,18 +172,18 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
                 </button>
               )}
             </div>
-            <div className="bg-white border border-neutral-200 rounded-xl divide-y divide-neutral-100 max-h-72 overflow-y-auto">
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl divide-y divide-neutral-100 dark:divide-neutral-800 max-h-72 overflow-y-auto">
               {cargandoOrigen ? (
-                <div className="flex items-center gap-2 px-3.5 py-4 text-sm text-neutral-400">
+                <div className="flex items-center gap-2 px-3.5 py-4 text-sm text-neutral-400 dark:text-neutral-500">
                   <Spinner className="w-4 h-4" /> Buscando...
                 </div>
               ) : solicitudesOrigen.length === 0 ? (
-                <p className="px-3.5 py-4 text-sm text-neutral-400 text-center">Sin solicitudes registradas ese día</p>
+                <p className="px-3.5 py-4 text-sm text-neutral-400 dark:text-neutral-500 text-center">Sin solicitudes registradas ese día</p>
               ) : (
                 solicitudesOrigen.map((s) => (
                   <label
                     key={s.id}
-                    className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm cursor-pointer hover:bg-neutral-50"
+                    className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
                   >
                     <input
                       type="checkbox"
@@ -194,7 +195,7 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
                       {esSupervisor && <span className="font-medium">{s.nombreColaborador} · </span>}
                       {s.rutaLabel}
                     </span>
-                    <span className="text-neutral-500 shrink-0">${s.valor.toFixed(2)}</span>
+                    <span className="text-neutral-500 dark:text-neutral-400 shrink-0">{formatearMoneda(s.valor)}</span>
                     <span
                       className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                         ESTILOS_ESTADO[s.estado] ?? "bg-neutral-100 text-neutral-600"
@@ -210,7 +211,7 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
         )}
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Día de destino</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Día de destino</label>
           <div className="mt-1.5"><CalendarioSelector value={fechaDestino} onChange={setFechaDestino} fechaMinima={fechaMinima} /></div>
           {fechaDestino && fechaDestino === fechaOrigen && (
             <p className="text-xs text-amber-600 mt-1">El día de destino no puede ser igual al de origen.</p>
@@ -224,6 +225,15 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
             type="button"
             disabled={seleccionadas.size === 0 || !fechaDestino || fechaDestino === fechaOrigen || copiando}
             onClick={confirmarCopiar}
+            title={
+              seleccionadas.size === 0
+                ? "Elegí al menos una ruta para copiar"
+                : !fechaDestino
+                ? "Elegí un día de destino"
+                : fechaDestino === fechaOrigen
+                ? "El día de destino no puede ser igual al de origen"
+                : undefined
+            }
             className="px-5 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40 transition shadow-sm hover:shadow-md flex items-center gap-2"
           >
             {copiando && <Spinner className="w-4 h-4" />}

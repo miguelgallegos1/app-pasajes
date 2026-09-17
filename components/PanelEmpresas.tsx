@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "./Modal";
+import { IconoAlerta } from "./Icons";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 
@@ -184,7 +185,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Columna 1: Empresas */}
-        <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 space-y-2">
+        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm">Empresas</h2>
             <button
@@ -199,13 +200,13 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
               <div
                 key={e.id}
                 onClick={() => elegirEmpresa(e.id)}
-                className={`px-3 py-2.5 rounded-xl cursor-pointer transition ${
+                className={`px-3 py-2.5 rounded-xl cursor-pointer transition shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
                   e.id === empresaId ? "bg-orange-500 text-black" : "bg-white hover:bg-neutral-100"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium truncate">
-                    <span className={e.id === empresaId ? "text-black/60" : "text-neutral-400"}>{e.numero}.</span>{" "}
+                    <span className={e.id === empresaId ? "text-black/60" : "text-neutral-400 dark:text-neutral-500"}>{e.numero}.</span>{" "}
                     {e.nombre}
                   </span>
                   {!e.activo && (
@@ -217,7 +218,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                 <div className="flex gap-2 mt-1">
                   <button
                     onClick={(ev) => { ev.stopPropagation(); abrirEditarEmpresa(e); }}
-                    className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-black/70" : "text-neutral-500"}`}
+                    className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-black/70" : "text-neutral-500 dark:text-neutral-400"}`}
                   >
                     Editar
                   </button>
@@ -228,19 +229,19 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                       setErrorGestion("");
                       setConfirmandoEliminar(false);
                     }}
-                    className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-black/70" : "text-neutral-500"}`}
+                    className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-black/70" : "text-neutral-500 dark:text-neutral-400"}`}
                   >
                     Gestionar
                   </button>
                 </div>
               </div>
             ))}
-            {empresas.length === 0 && <p className="text-xs text-neutral-400 px-1">Aún no hay empresas</p>}
+            {empresas.length === 0 && <p className="text-xs text-neutral-400 dark:text-neutral-500 px-1">Aún no hay empresas</p>}
           </div>
         </div>
 
         {/* Columna 2: Sitios */}
-        <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 space-y-2">
+        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm">Sitios</h2>
             <button
@@ -256,7 +257,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
               <div
                 key={s.id}
                 onClick={() => setSitioId(s.id)}
-                className={`px-3 py-2.5 rounded-xl cursor-pointer transition ${
+                className={`px-3 py-2.5 rounded-xl cursor-pointer transition shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
                   s.id === sitioId ? "bg-orange-500 text-black" : "bg-white hover:bg-neutral-100"
                 }`}
               >
@@ -264,7 +265,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                 <div className="flex gap-2 mt-1">
                   <button
                     onClick={(ev) => { ev.stopPropagation(); abrirEditarSitio(s); }}
-                    className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-black/70" : "text-neutral-500"}`}
+                    className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-black/70" : "text-neutral-500 dark:text-neutral-400"}`}
                   >
                     Editar
                   </button>
@@ -275,7 +276,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                       setErrorGestion("");
                       setConfirmandoEliminar(false);
                     }}
-                    className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-black/70" : "text-neutral-500"}`}
+                    className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-black/70" : "text-neutral-500 dark:text-neutral-400"}`}
                   >
                     Gestionar
                   </button>
@@ -283,14 +284,14 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
               </div>
             ))}
             {empresaSeleccionada && empresaSeleccionada.sitios.length === 0 && (
-              <p className="text-xs text-neutral-400 px-1">Esta empresa no tiene sitios aún</p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 px-1">Esta empresa no tiene sitios aún</p>
             )}
-            {!empresaSeleccionada && <p className="text-xs text-neutral-400 px-1">Elige una empresa primero</p>}
+            {!empresaSeleccionada && <p className="text-xs text-neutral-400 dark:text-neutral-500 px-1">Elige una empresa primero</p>}
           </div>
         </div>
 
         {/* Columna 3: Áreas */}
-        <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 space-y-2">
+        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-2">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm">Áreas</h2>
             <button
@@ -303,10 +304,10 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
           </div>
           <div className="space-y-1.5">
             {(sitioSeleccionado?.areas ?? []).map((a) => (
-              <div key={a.id} className="px-3 py-2.5 rounded-xl bg-white">
+              <div key={a.id} className="px-3 py-2.5 rounded-xl bg-white dark:bg-neutral-800">
                 <span className="text-sm font-medium block truncate">{a.nombre}</span>
                 <div className="flex gap-2 mt-1">
-                  <button onClick={() => abrirEditarArea(a)} className="text-[11px] font-medium underline text-neutral-500">
+                  <button onClick={() => abrirEditarArea(a)} className="text-[11px] font-medium underline text-neutral-500 dark:text-neutral-400">
                     Editar
                   </button>
                   <button
@@ -315,7 +316,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                       setErrorGestion("");
                       setConfirmandoEliminar(false);
                     }}
-                    className="text-[11px] font-medium underline text-neutral-500"
+                    className="text-[11px] font-medium underline text-neutral-500 dark:text-neutral-400"
                   >
                     Gestionar
                   </button>
@@ -323,9 +324,9 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
               </div>
             ))}
             {sitioSeleccionado && sitioSeleccionado.areas.length === 0 && (
-              <p className="text-xs text-neutral-400 px-1">Este sitio no tiene áreas aún</p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 px-1">Este sitio no tiene áreas aún</p>
             )}
-            {!sitioSeleccionado && <p className="text-xs text-neutral-400 px-1">Elige un sitio primero</p>}
+            {!sitioSeleccionado && <p className="text-xs text-neutral-400 dark:text-neutral-500 px-1">Elige un sitio primero</p>}
           </div>
         </div>
       </div>
@@ -333,41 +334,42 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       {/* Modal: Crear/Editar */}
       <Modal
         abierto={!!modal}
-        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
+        onCerrar={() => setModal(null)}
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
       >
-            <h2 className="text-lg font-bold text-neutral-900">
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
               {modal?.id ? "Editar" : "Nueva"}{" "}
               {modal?.tipo === "empresa" ? "Empresa" : modal?.tipo === "sitio" ? "Sitio" : "Área"}
             </h2>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Nombre</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Nombre</label>
               <input
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value.toUpperCase())}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 autoFocus
               />
             </div>
 
             {modal?.tipo === "empresa" && (
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">RUC (opcional)</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">RUC (opcional)</label>
                 <input
                   value={extra}
                   onChange={(e) => setExtra(e.target.value.toUpperCase())}
-                  className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 />
               </div>
             )}
 
             {modal?.tipo === "sitio" && (
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Dirección (opcional)</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Dirección (opcional)</label>
                 <input
                   value={extra}
                   onChange={(e) => setExtra(e.target.value.toUpperCase())}
-                  className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 />
               </div>
             )}
@@ -377,7 +379,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
             <div className="flex gap-2 justify-end pt-1">
               <button
                 onClick={() => setModal(null)}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
               >
                 Cancelar
               </button>
@@ -393,10 +395,10 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       </Modal>
 
       {/* Modal: Gestionar (Desactivar/Reactivar solo Empresa, + Eliminar en los 3) */}
-      <Modal abierto={!!gestionando && !confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!gestionando && !confirmandoEliminar} onCerrar={() => setGestionando(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">{gestionando?.nombre}</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer</p>
+              <h2 className="font-semibold text-neutral-900 dark:text-white">{gestionando?.nombre}</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Elige qué hacer</p>
             </div>
 
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
@@ -407,19 +409,19 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                   <button
                     onClick={() => cambiarEstadoEmpresa(false)}
                     disabled={procesando}
-                    className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 hover:bg-neutral-50 transition disabled:opacity-50"
+                    className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
                   >
-                    <p className="text-sm font-medium text-neutral-800">Desactivar</p>
-                    <p className="text-xs text-neutral-500">No aparecerá disponible para nuevos sitios/rutas. Se puede reactivar luego.</p>
+                    <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Desactivar</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">No aparecerá disponible para nuevos sitios/rutas. Se puede reactivar luego.</p>
                   </button>
                 ) : (
                   <button
                     onClick={() => cambiarEstadoEmpresa(true)}
                     disabled={procesando}
-                    className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 hover:bg-neutral-50 transition disabled:opacity-50"
+                    className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
                   >
-                    <p className="text-sm font-medium text-neutral-800">Reactivar</p>
-                    <p className="text-xs text-neutral-500">Vuelve a estar disponible.</p>
+                    <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reactivar</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Vuelve a estar disponible.</p>
                   </button>
                 )
               )}
@@ -430,7 +432,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   {gestionando?.tieneHijos
                     ? `No disponible: tiene ${ETIQUETA_HIJOS[gestionando!.tipo]} asociados.`
                     : "La borra por completo. No se puede deshacer."}
@@ -441,22 +443,22 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
             <button
               onClick={() => setGestionando(null)}
               disabled={procesando}
-              className="w-full text-center text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl py-2.5 transition"
+              className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
             >
               Cancelar
             </button>
       </Modal>
 
-      <Modal abierto={confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
-            <p className="font-semibold text-neutral-900">¿Eliminar {gestionando?.nombre}?</p>
-            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
+      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar {gestionando?.nombre}?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmandoEliminar(false)}
                 disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>

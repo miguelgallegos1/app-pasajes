@@ -114,11 +114,12 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
     <>
       <Modal
         abierto={abierto}
-        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
+        onCerrar={onCerrar}
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
       >
         <div>
-          <h2 className="text-lg font-bold text-neutral-900">Acceso biométrico</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-white">Acceso biométrico</h2>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
             Entra con Face ID, huella o Windows Hello en vez de tu PIN. Es adicional: tu PIN siempre sigue funcionando.
           </p>
         </div>
@@ -133,7 +134,7 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
           <button
             onClick={activar}
             disabled={registrando}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition shadow-sm hover:shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
           >
             {registrando && <Spinner className="w-4 h-4" />}
             {registrando ? "Verificando..." : "Activar en este dispositivo"}
@@ -143,19 +144,19 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Dispositivos activados</p>
-          {cargando && <Spinner className="w-4 h-4 text-neutral-400" />}
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Dispositivos activados</p>
+          {cargando && <Spinner className="w-4 h-4 text-neutral-400 dark:text-neutral-500" />}
           {!cargando && credenciales?.length === 0 && (
-            <p className="text-sm text-neutral-400">Todavía no activaste el acceso biométrico en ningún dispositivo.</p>
+            <p className="text-sm text-neutral-400 dark:text-neutral-500">Todavía no activaste el acceso biométrico en ningún dispositivo.</p>
           )}
           {credenciales?.map((c) => (
             <div
               key={c.id}
-              className="flex items-center justify-between gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2.5"
+              className="flex items-center justify-between gap-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3.5 py-2.5"
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium text-neutral-800 truncate">{c.dispositivo || "Dispositivo sin nombre"}</p>
-                <p className="text-xs text-neutral-400">
+                <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">{c.dispositivo || "Dispositivo sin nombre"}</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">
                   {c.ultimoUso ? `Último uso: ${new Date(c.ultimoUso).toLocaleDateString()}` : "Nunca usado"}
                 </p>
               </div>
@@ -168,7 +169,7 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
 
         <button
           onClick={onCerrar}
-          className="w-full text-center text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl py-2.5 transition"
+          className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
         >
           Cerrar
         </button>
@@ -176,16 +177,17 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
 
       <Modal
         abierto={!!idAQuitar}
+        onCerrar={() => setIdAQuitar(null)}
         variante="centro"
-        className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl"
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl"
       >
-        <p className="font-semibold text-neutral-900">¿Quitar este dispositivo?</p>
-        <p className="text-sm text-neutral-500">Ya no vas a poder entrar con biometría desde ahí.</p>
+        <p className="font-semibold text-neutral-900 dark:text-white">¿Quitar este dispositivo?</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Ya no vas a poder entrar con biometría desde ahí.</p>
         <div className="flex gap-2 justify-center pt-1">
           <button
             onClick={() => setIdAQuitar(null)}
             disabled={quitando}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
           >
             Cancelar
           </button>

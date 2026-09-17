@@ -7,12 +7,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { formatearMoneda } from "../lib/formato";
 import RangoFechasSelector from "./RangoFechasSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Spinner from "./Spinner";
 import { fechaHoyTexto } from "../lib/fechas";
 import GraficoBarrasMensual, { type FilaMes } from "./GraficoBarrasMensual";
 import GraficoPastelAreas from "./GraficoPastelAreas";
+import AlertaPendientes from "./AlertaPendientes";
+import type { AlertaPendiente } from "../lib/alertasPendientes";
 
 type KPI = { cantidad: number; total: number };
 type Datos = {
@@ -30,20 +33,22 @@ type Area = { id: string; nombre: string; sitioId: string };
 // Mismo mapeo de color que en GraficoBarrasMensual — un estado siempre
 // se ve del mismo color en toda la pantalla (tarjeta, leyenda y barra).
 const TARJETAS_KPI = [
-  { clave: "pendientes" as const, label: "Pendientes", color: "#eda100", fondo: "bg-amber-50", texto: "text-amber-800" },
-  { clave: "aprobadas" as const, label: "Aprobadas", color: "#1baf7a", fondo: "bg-green-50", texto: "text-green-800" },
-  { clave: "revisadas" as const, label: "Revisadas", color: "#2a78d6", fondo: "bg-sky-50", texto: "text-sky-800" },
-  { clave: "pagadas" as const, label: "Pagadas", color: "#eb6834", fondo: "bg-orange-50", texto: "text-orange-800" },
+  { clave: "pendientes" as const, label: "Pendientes", color: "#eda100", fondo: "bg-amber-50 dark:bg-amber-500/10", texto: "text-amber-800 dark:text-amber-400" },
+  { clave: "aprobadas" as const, label: "Aprobadas", color: "#1baf7a", fondo: "bg-green-50 dark:bg-green-500/10", texto: "text-green-800 dark:text-green-400" },
+  { clave: "revisadas" as const, label: "Revisadas", color: "#2a78d6", fondo: "bg-sky-50 dark:bg-sky-500/10", texto: "text-sky-800 dark:text-sky-400" },
+  { clave: "pagadas" as const, label: "Pagadas", color: "#eb6834", fondo: "bg-orange-50 dark:bg-orange-500/10", texto: "text-orange-800 dark:text-orange-400" },
 ];
 
 export default function PanelDashboard({
   empresas,
   sitios,
   areas,
+  alerta,
 }: {
   empresas: Empresa[];
   sitios: Sitio[];
   areas: Area[];
+  alerta: AlertaPendiente | null;
 }) {
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
@@ -107,16 +112,18 @@ export default function PanelDashboard({
         <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Resumen del período seleccionado</span>
       </div>
 
-      <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-3">
+      <AlertaPendientes alerta={alerta} />
+
+      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
         <div className="max-w-xs">
-          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rango de fechas</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
           <div className="mt-1.5">
             <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
           </div>
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1.5">Filtrar por (opcional)</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400 mb-1.5">Filtrar por (opcional)</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <ComboboxBuscable
               opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
@@ -150,28 +157,31 @@ export default function PanelDashboard({
             {TARJETAS_KPI.map((t) => {
               const kpi = datos[t.clave];
               return (
-                <div key={t.clave} className={`${t.fondo} border border-black/5 rounded-2xl p-4 sm:p-5`}>
+                <div
+                  key={t.clave}
+                  className={`${t.fondo} border border-black/5 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-sm transition hover:shadow-md hover:-translate-y-0.5`}
+                >
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
                     <p className={`text-xs font-semibold uppercase tracking-wide ${t.texto}`}>{t.label}</p>
                   </div>
-                  <p className="text-2xl sm:text-3xl font-bold text-neutral-900 mt-1.5">{kpi.cantidad}</p>
-                  <p className={`text-sm ${t.texto} mt-0.5`}>${kpi.total.toFixed(2)}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white mt-1.5">{kpi.cantidad}</p>
+                  <p className={`text-sm ${t.texto} mt-0.5`}>{formatearMoneda(kpi.total)}</p>
                 </div>
               );
             })}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5">
-              <h2 className="font-semibold text-sm text-neutral-800">Solicitudes por mes</h2>
-              <p className="text-xs text-neutral-400 mb-3">Últimos 6 meses, por estado</p>
+            <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition hover:shadow-md hover:-translate-y-0.5">
+              <h2 className="font-semibold text-sm text-neutral-800 dark:text-neutral-200">Solicitudes por mes</h2>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-3">Últimos 6 meses, por estado</p>
               <GraficoBarrasMensual key={version} datos={datos.tendenciaMensual} />
             </div>
 
-            <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5">
-              <h2 className="font-semibold text-sm text-neutral-800">Gasto por Área</h2>
-              <p className="text-xs text-neutral-400 mb-3">Aprobado + Revisado + Pagado, período seleccionado</p>
+            <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition hover:shadow-md hover:-translate-y-0.5">
+              <h2 className="font-semibold text-sm text-neutral-800 dark:text-neutral-200">Gasto por Área</h2>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 mb-3">Aprobado + Revisado + Pagado, período seleccionado</p>
               <GraficoPastelAreas key={version} datos={datos.gastoPorArea} />
             </div>
           </div>

@@ -13,6 +13,8 @@ import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
+import EstadoVacio from "./EstadoVacio";
+import Avatar from "./Avatar";
 
 type Colaborador = {
   id: string;
@@ -255,7 +257,7 @@ export default function PanelAsignacionEquipo({
             <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo supervisores activos" />
           </div>
 
-          <div className="bg-neutral-50 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+          <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <div className="max-h-[480px] overflow-y-auto divide-y divide-neutral-200/70">
               {supervisoresPagina.map((c) => {
                 const activo = c.id === supervisorSeleccionadoId;
@@ -266,27 +268,36 @@ export default function PanelAsignacionEquipo({
                     type="button"
                     onClick={() => seleccionarSupervisor(c)}
                     className={`w-full text-left px-4 py-3 transition ${
-                      activo ? "bg-orange-50" : "hover:bg-neutral-100/60"
+                      activo ? "bg-orange-50 dark:bg-orange-500/10" : "hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60"
                     }`}
                   >
-                    <p className={`text-sm font-medium ${activo ? "text-orange-700" : "text-neutral-800"}`}>
-                      {c.nombreCompleto}
-                    </p>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      {c.codigoNomina ?? "Sin código"} · {c.areaNombre}
-                    </p>
-                    <p className="text-[11px] font-semibold mt-1 text-neutral-400">
-                      {cantidad} persona{cantidad === 1 ? "" : "s"} a cargo
-                    </p>
+                    <div className="flex items-start gap-2.5">
+                      <Avatar nombre={c.nombreCompleto} className="w-8 h-8 text-xs mt-0.5" />
+                      <div className="min-w-0">
+                        <p className={`text-sm font-medium truncate ${activo ? "text-orange-700" : "text-neutral-800 dark:text-neutral-200"}`}>
+                          {c.nombreCompleto}
+                        </p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          {c.codigoNomina ?? "Sin código"} · {c.areaNombre}
+                        </p>
+                        <p className="text-[11px] font-semibold mt-1 text-neutral-400 dark:text-neutral-500">
+                          {cantidad} persona{cantidad === 1 ? "" : "s"} a cargo
+                        </p>
+                      </div>
+                    </div>
                   </button>
                 );
               })}
               {supervisoresFiltrados.length === 0 && (
-                <p className="px-4 py-10 text-center text-sm text-neutral-400">
-                  {busqueda || empresaFiltro || sitioFiltro || areaFiltro
-                    ? "Sin resultados para esos filtros"
-                    : "No hay supervisores registrados"}
-                </p>
+                <div className="px-4 py-10">
+                  <EstadoVacio
+                    mensaje={
+                      busqueda || empresaFiltro || sitioFiltro || areaFiltro
+                        ? "Sin resultados para esos filtros"
+                        : "No hay supervisores registrados"
+                    }
+                  />
+                </div>
               )}
             </div>
             <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
@@ -294,16 +305,16 @@ export default function PanelAsignacionEquipo({
         </div>
 
         {/* Columna derecha: equipo del supervisor seleccionado */}
-        <div className="flex-1 min-w-0 w-full bg-neutral-50 rounded-2xl shadow-sm ring-1 ring-black/5 p-5">
+        <div className="flex-1 min-w-0 w-full bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 p-5">
           {!supervisorSeleccionado ? (
-            <div className="py-16 text-center text-sm text-neutral-400">
+            <div className="py-16 text-center text-sm text-neutral-400 dark:text-neutral-500">
               Elegí un supervisor de la lista para armar su equipo
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <h2 className="text-base font-bold text-neutral-900">{supervisorSeleccionado.nombreCompleto}</h2>
-                <p className="text-xs text-neutral-500 mt-0.5">{supervisorSeleccionado.areaNombre}</p>
+                <h2 className="text-base font-bold text-neutral-900 dark:text-white">{supervisorSeleccionado.nombreCompleto}</h2>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{supervisorSeleccionado.areaNombre}</p>
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -311,27 +322,27 @@ export default function PanelAsignacionEquipo({
                   value={busquedaMiembro}
                   onChange={(e) => setBusquedaMiembro(e.target.value)}
                   placeholder="Buscar colaborador..."
-                  className="flex-1 rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white px-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 />
                 <div className="flex gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={marcarTodos}
-                    className="text-xs font-medium text-neutral-600 border border-neutral-300 px-3 py-2 rounded-lg hover:bg-neutral-100 transition"
+                    className="text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                   >
                     Marcar todos
                   </button>
                   <button
                     type="button"
                     onClick={desmarcarTodos}
-                    className="text-xs font-medium text-neutral-600 border border-neutral-300 px-3 py-2 rounded-lg hover:bg-neutral-100 transition"
+                    className="text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                   >
                     Ninguno
                   </button>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
+              <div className="bg-white dark:bg-neutral-900 rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
                 <div className="max-h-[380px] overflow-y-auto divide-y divide-neutral-100">
                   {candidatosVisibles.map((c) => {
                     const marcado = miembroIdsSeleccionados.includes(c.id);
@@ -340,7 +351,7 @@ export default function PanelAsignacionEquipo({
                     return (
                       <label
                         key={c.id}
-                        className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-neutral-50 transition"
+                        className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition"
                       >
                         <input
                           type="checkbox"
@@ -349,9 +360,9 @@ export default function PanelAsignacionEquipo({
                           className="w-4 h-4 accent-orange-500 rounded shrink-0"
                         />
                         <span className="flex-1 min-w-0">
-                          <span className="text-neutral-800">{c.nombreCompleto}</span>
+                          <span className="text-neutral-800 dark:text-neutral-200">{c.nombreCompleto}</span>
                           {c.esSupervisor && (
-                            <span className="ml-1.5 text-[10px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                            <span className="ml-1.5 text-[10px] font-semibold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 px-1.5 py-0.5 rounded">
                               SUPERVISOR
                             </span>
                           )}
@@ -361,21 +372,25 @@ export default function PanelAsignacionEquipo({
                             </span>
                           )}
                         </span>
-                        <span className="text-neutral-400 text-xs shrink-0">{c.codigoNomina ?? "—"}</span>
+                        <span className="text-neutral-400 dark:text-neutral-500 text-xs shrink-0">{c.codigoNomina ?? "—"}</span>
                       </label>
                     );
                   })}
                   {candidatosVisibles.length === 0 && (
-                    <p className="px-4 py-10 text-center text-sm text-neutral-400">
-                      {candidatosDelArea.length === 0
-                        ? "No hay más colaboradores en esta área"
-                        : "Sin resultados para esa búsqueda"}
-                    </p>
+                    <div className="px-4 py-10">
+                      <EstadoVacio
+                        mensaje={
+                          candidatosDelArea.length === 0
+                            ? "No hay más colaboradores en esta área"
+                            : "Sin resultados para esa búsqueda"
+                        }
+                      />
+                    </div>
                   )}
                 </div>
               </div>
 
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-neutral-400 dark:text-neutral-500">
                 {miembroIdsSeleccionados.length} de {candidatosDelArea.length} colaboradores de su área le reportan a{" "}
                 {supervisorSeleccionado.nombreCompleto.split(" ")[0]}.
               </p>

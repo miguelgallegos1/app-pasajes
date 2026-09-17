@@ -5,6 +5,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { formatearMoneda } from "../lib/formato";
+import { IconoAlerta } from "./Icons";
+import EstadoVacio from "./EstadoVacio";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
@@ -12,6 +15,7 @@ import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
+import MenuAcciones from "./MenuAcciones";
 
 type Ruta = {
   id: string;
@@ -365,10 +369,10 @@ export default function PanelRutasTH({
         </div>
       </div>
 
-      <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[680px]">
-            <thead className="bg-neutral-100/70 text-neutral-500 text-left">
+            <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
               <tr>
                 {esSuperAdmin && (
                   <th className="px-4 py-3 w-8">
@@ -389,7 +393,7 @@ export default function PanelRutasTH({
             </thead>
             <tbody>
               {rutasPagina.map((r) => (
-                <tr key={r.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                <tr key={r.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                   {esSuperAdmin && (
                     <td className="px-4 py-3">
                       <input
@@ -400,7 +404,7 @@ export default function PanelRutasTH({
                       />
                     </td>
                   )}
-                  <td className="px-4 py-3 text-neutral-400">{r.numero}</td>
+                  <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">{r.numero}</td>
                   <td className="px-4 py-3 text-neutral-600">
                     {r.nombre}
                     {r.colaboradorExclusivoNombre && (
@@ -409,7 +413,7 @@ export default function PanelRutasTH({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">${r.valor.toFixed(2)}</td>
+                  <td className="px-4 py-3">{formatearMoneda(r.valor)}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
@@ -419,32 +423,32 @@ export default function PanelRutasTH({
                       {r.activo ? "Activa" : "Inactiva"}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={() => abrirEditar(r)}
-                        className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => { setIdGestionar(r.id); setErrorGestion(""); setConfirmandoEliminar(false); }}
-                        className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
-                      >
-                        Gestionar
-                      </button>
-                    </div>
+                  <td className="px-4 py-3 text-right">
+                    <MenuAcciones
+                      acciones={[
+                        { label: "Editar", onClick: () => abrirEditar(r) },
+                        {
+                          label: "Gestionar",
+                          tono: "peligro",
+                          onClick: () => { setIdGestionar(r.id); setErrorGestion(""); setConfirmandoEliminar(false); },
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
               {rutasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={esSuperAdmin ? 6 : 5} className="px-4 py-10 text-center text-neutral-400">
-                    {busqueda || empresaFiltro || sitioFiltro || areaFiltro
-                      ? "Sin resultados para esos filtros"
-                      : soloActivas
-                      ? "No hay rutas activas"
-                      : "Aún no hay rutas creadas"}
+                  <td colSpan={esSuperAdmin ? 6 : 5} className="px-4 py-10">
+                    <EstadoVacio
+                      mensaje={
+                        busqueda || empresaFiltro || sitioFiltro || areaFiltro
+                          ? "Sin resultados para esos filtros"
+                          : soloActivas
+                          ? "No hay rutas activas"
+                          : "Aún no hay rutas creadas"
+                      }
+                    />
                   </td>
                 </tr>
               )}
@@ -456,13 +460,14 @@ export default function PanelRutasTH({
 
       <Modal
         abierto={modalAbierto}
-        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
+        onCerrar={() => setModalAbierto(false)}
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
       >
-            <h2 className="text-lg font-bold text-neutral-900">{editandoId ? "Editar ruta" : "Nueva ruta"}</h2>
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">{editandoId ? "Editar ruta" : "Nueva ruta"}</h2>
 
             {!editandoId && (
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Área</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
                 <div className="mt-1.5">
                   <ComboboxBuscable
                     opciones={areasDisponibles}
@@ -475,28 +480,28 @@ export default function PanelRutasTH({
             )}
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 Nombre de la ruta
               </label>
               <input
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value.toUpperCase())}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: EL YAZNÁN - CAYAMBE - TABACUNDO"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Valor</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Valor</label>
               <div className="mt-1.5 relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">$</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500 text-sm">$</span>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
                   value={valor}
                   onChange={(e) => setValor(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-200 pl-7 pr-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white pl-7 pr-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                   placeholder="0.90"
                 />
               </div>
@@ -507,7 +512,7 @@ export default function PanelRutasTH({
             <div className="flex gap-2 justify-end pt-1">
               <button
                 onClick={() => setModalAbierto(false)}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
               >
                 Cancelar
               </button>
@@ -522,10 +527,10 @@ export default function PanelRutasTH({
             </div>
       </Modal>
 
-      <Modal abierto={!!idGestionar && !confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idGestionar && !confirmandoEliminar} onCerrar={() => setIdGestionar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">{rutaGestionar?.nombre}</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer con esta ruta</p>
+              <h2 className="font-semibold text-neutral-900 dark:text-white">{rutaGestionar?.nombre}</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Elige qué hacer con esta ruta</p>
             </div>
 
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
@@ -535,19 +540,19 @@ export default function PanelRutasTH({
                 <button
                   onClick={() => cambiarEstado(false)}
                   disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 hover:bg-neutral-50 transition disabled:opacity-50"
+                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
                 >
-                  <p className="text-sm font-medium text-neutral-800">Desactivar</p>
-                  <p className="text-xs text-neutral-500">Deja de estar disponible para nuevas solicitudes. Se puede reactivar luego.</p>
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Desactivar</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Deja de estar disponible para nuevas solicitudes. Se puede reactivar luego.</p>
                 </button>
               ) : (
                 <button
                   onClick={() => cambiarEstado(true)}
                   disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 hover:bg-neutral-50 transition disabled:opacity-50"
+                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
                 >
-                  <p className="text-sm font-medium text-neutral-800">Reactivar</p>
-                  <p className="text-xs text-neutral-500">Vuelve a estar disponible para nuevas solicitudes.</p>
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reactivar</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Vuelve a estar disponible para nuevas solicitudes.</p>
                 </button>
               )}
 
@@ -557,7 +562,7 @@ export default function PanelRutasTH({
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   {rutaGestionar?.tieneSolicitudes
                     ? "No disponible: tiene solicitudes registradas en su historial."
                     : "La borra por completo. No se puede deshacer."}
@@ -568,22 +573,22 @@ export default function PanelRutasTH({
             <button
               onClick={() => setIdGestionar(null)}
               disabled={procesando}
-              className="w-full text-center text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl py-2.5 transition"
+              className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
             >
               Cancelar
             </button>
       </Modal>
 
-      <Modal abierto={confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
-            <p className="font-semibold text-neutral-900">¿Eliminar &quot;{rutaGestionar?.nombre}&quot;?</p>
-            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
+      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar &quot;{rutaGestionar?.nombre}&quot;?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmandoEliminar(false)}
                 disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -597,10 +602,10 @@ export default function PanelRutasTH({
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLote} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
-            <p className="font-semibold text-neutral-900">¿Eliminar {seleccionadas.size} ruta(s)?</p>
-            <p className="text-sm text-neutral-500">
+      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar {seleccionadas.size} ruta(s)?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               Esta acción no se puede deshacer. Las que tengan solicitudes registradas se omiten automáticamente.
             </p>
             {errorLote && <p className="text-sm text-red-600">{errorLote}</p>}
@@ -608,7 +613,7 @@ export default function PanelRutasTH({
               <button
                 onClick={() => setConfirmandoLote(false)}
                 disabled={eliminandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>

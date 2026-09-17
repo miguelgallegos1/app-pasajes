@@ -8,15 +8,19 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
-import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa } from "./Icons";
 import BotonTema from "./BotonTema";
+import NotificacionesMenu from "./NotificacionesMenu";
+import Modal from "./Modal";
 import Footer from "./Footer";
+import CommandPalette, { type ItemPaleta } from "./CommandPalette";
+import Breadcrumbs from "./Breadcrumbs";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -144,6 +148,14 @@ function grupoActivo(entradas: EntradaMenu[], pathname: string): string | null {
   return null;
 }
 
+// Aplana el menú (ítems sueltos + los de cada grupo) para la paleta de
+// comandos: ahí no importa la jerarquía, solo poder buscar por nombre.
+function aplanarMenu(entradas: EntradaMenu[]): ItemPaleta[] {
+  return entradas.flatMap((entrada) =>
+    esGrupo(entrada) ? entrada.items.map((item) => ({ ...item, grupo: entrada.grupo })) : [entrada]
+  );
+}
+
 function Avatar({ fotoUrl, nombreCompleto, iniciales }: { fotoUrl?: string | null; nombreCompleto: string; iniciales: string }) {
   return fotoUrl ? (
     <img src={fotoUrl} alt={nombreCompleto} className="w-8 h-8 rounded-full object-cover" />
@@ -163,7 +175,7 @@ function ItemLink({ item, activo, onClick }: { item: ItemMenu; activo: boolean; 
       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
         activo
           ? "bg-orange-500 text-black shadow-[0_0_10px_rgba(249,115,22,0.3)]"
-          : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800/70"
+          : "text-neutral-600 hover:bg-neutral-100 hover:shadow-sm hover:-translate-y-0.5 dark:text-neutral-300 dark:hover:bg-neutral-800/70"
       }`}
     >
       <Icono className="w-4 h-4 shrink-0" />
@@ -244,6 +256,8 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [confirmandoSalir, setConfirmandoSalir] = useState(false);
+  const [paletaAbierta, setPaletaAbierta] = useState(false);
   const [biometriaAbierta, setBiometriaAbierta] = useState(false);
   // Recién montamos (y con eso, descargamos) el modal la primera vez que
   // alguien lo pide — así el código de WebAuthn no viaja en cada página.
@@ -254,6 +268,18 @@ export default function AppShell({
   };
   const pathname = usePathname();
   const items = rol === "COLABORADOR" ? construirMenuColaborador(esSupervisor) : MENU_POR_ROL[rol] ?? [];
+  const itemsPaleta = aplanarMenu(items);
+
+  useEffect(() => {
+    const alPresionar = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletaAbierta((a) => !a);
+      }
+    };
+    window.addEventListener("keydown", alPresionar);
+    return () => window.removeEventListener("keydown", alPresionar);
+  }, []);
 
   const [gruposAbiertos, setGruposAbiertos] = useState<Set<string>>(new Set());
 
@@ -298,10 +324,15 @@ export default function AppShell({
   return (
     <div className="min-h-screen bg-neutral-100 text-neutral-900 dark:bg-neutral-950 dark:text-white flex flex-col">
       {/* ---------- Header (todo el ancho, todas las pantallas): logo+nombre+rol a la izquierda, usuario a la derecha ---------- */}
-      <header className="flex items-center justify-between gap-3 pl-2 pr-4 md:pl-3 md:pr-6 py-2.5 md:py-3 bg-white border-b border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 sticky top-0 z-30 shrink-0">
+      {/* Alto fijo (h-14/h-16), no por padding+contenido: así el offset
+          "top" que usan el loading bar y los encabezados de tabla sticky
+          (top-14 md:top-16) coincide siempre con la altura real del header,
+          en vez de ser una aproximación que se puede desalinear. */}
+      <header className="flex items-center justify-between gap-3 pl-2 pr-4 md:pl-3 md:pr-6 h-14 md:h-16 bg-white border-b border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 sticky top-0 z-30 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setMenuAbierto(true)}
+            aria-label="Abrir menú"
             className="md:hidden shrink-0 p-2 text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 shadow-md shadow-neutral-300/50 dark:text-neutral-300 dark:hover:text-white dark:bg-neutral-800/80 dark:hover:bg-neutral-800 dark:shadow-black/30 rounded-lg transition"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -315,11 +346,22 @@ export default function AppShell({
           </div>
         </div>
         <div className="flex items-center gap-1 min-w-0 shrink-0">
+          <button
+            onClick={() => setPaletaAbierta(true)}
+            title="Buscar (Ctrl+K)"
+            className="hidden sm:flex items-center gap-1.5 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 px-2.5 py-1.5 rounded-lg transition mr-1"
+          >
+            <IconoLupa className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">Buscar</span>
+            <kbd className="text-[10px] font-semibold border border-neutral-300 dark:border-neutral-700 rounded px-1 py-0.5 ml-0.5">Ctrl K</kbd>
+          </button>
           <span className="hidden md:block text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap mr-1">{nombreCompleto}</span>
+          <NotificacionesMenu rol={rol} />
           <BotonTema />
           <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
         </div>
       </header>
+      {paletaAbierta && <CommandPalette items={itemsPaleta} rol={rol} onCerrar={() => setPaletaAbierta(false)} />}
 
       <div className="flex-1 flex min-h-0">
         {/* ---------- Sidebar (solo escritorio) ---------- */}
@@ -338,7 +380,7 @@ export default function AppShell({
               <IconoHuella className="w-4 h-4" />
             </button>
             <button
-              onClick={cerrarSesion}
+              onClick={() => setConfirmandoSalir(true)}
               title="Cerrar sesión"
               className="text-neutral-500 hover:text-red-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-red-400 dark:hover:bg-neutral-800 p-1.5 rounded-lg transition"
             >
@@ -366,6 +408,7 @@ export default function AppShell({
               <span className="font-bold text-sm">{APP_NOMBRE}</span>
               <button
                 onClick={() => setMenuAbierto(false)}
+                aria-label="Cerrar menú"
                 className="text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 rounded-lg w-7 h-7 flex items-center justify-center text-xl leading-none transition"
               >
                 ×
@@ -387,7 +430,7 @@ export default function AppShell({
               <IconoHuella className="w-4 h-4" /> Acceso biométrico
             </button>
             <button
-              onClick={cerrarSesion}
+              onClick={() => { setMenuAbierto(false); setConfirmandoSalir(true); }}
               className="flex items-center gap-2 text-sm text-neutral-500 hover:text-red-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-red-400 dark:hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
             >
               <IconoSalir className="w-4 h-4" /> Cerrar sesión
@@ -396,6 +439,7 @@ export default function AppShell({
         </div>
 
         <main className="flex-1 min-w-0 flex flex-col">
+          <Breadcrumbs items={itemsPaleta} />
           <div className="flex-1">{children}</div>
           <Footer />
         </main>
@@ -405,6 +449,30 @@ export default function AppShell({
       {biometriaMontada && (
         <ModalBiometria abierto={biometriaAbierta} onCerrar={() => setBiometriaAbierta(false)} />
       )}
+
+      <Modal abierto={confirmandoSalir} onCerrar={() => setConfirmandoSalir(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+          <IconoSalir className="w-5 h-5" />
+        </div>
+        <div>
+          <p className="font-semibold text-neutral-900 dark:text-white">¿Cerrar sesión?</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Vas a tener que ingresar tu PIN de nuevo para volver a entrar.</p>
+        </div>
+        <div className="flex gap-2 justify-center pt-1">
+          <button
+            onClick={() => setConfirmandoSalir(false)}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={cerrarSesion}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl transition"
+          >
+            Sí, salir
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

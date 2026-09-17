@@ -7,7 +7,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { formatearMoneda } from "../lib/formato";
+import { IconoCheck } from "./Icons";
+import EstadoVacio from "./EstadoVacio";
+import Avatar from "./Avatar";
+import SelectorVista from "./SelectorVista";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
@@ -32,14 +36,17 @@ const POR_PAGINA = 8;
 export default function PanelCoordinador({
   esSuperAdmin,
   sinAsignaciones,
-  aprobadas,
+  aprobadas: aprobadasIniciales,
 }: {
   esSuperAdmin: boolean;
   sinAsignaciones: boolean;
   aprobadas: Aprobada[];
 }) {
-  const router = useRouter();
   const toast = useToast();
+
+  // Copia local editable: al revisar/devolver se quita la fila al instante,
+  // sin esperar un router.refresh() ni volver a pedir la lista al servidor.
+  const [aprobadas, setAprobadas] = useState(aprobadasIniciales);
 
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [busqueda, setBusqueda] = useState("");
@@ -143,7 +150,7 @@ export default function PanelCoordinador({
         return;
       }
       toast.exito("Solicitud marcada como revisada");
-      router.refresh();
+      setAprobadas((prev) => prev.filter((s) => s.id !== idARevisar));
     } catch {
       setIdARevisar(null);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -170,8 +177,9 @@ export default function PanelCoordinador({
         return;
       }
       toast.exito("Solicitudes marcadas como revisadas");
+      const idsRevisados = new Set(seleccionadas);
+      setAprobadas((prev) => prev.filter((s) => !idsRevisados.has(s.id)));
       setSeleccionadas(new Set());
-      router.refresh();
     } catch {
       setConfirmandoLote(false);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -196,7 +204,7 @@ export default function PanelCoordinador({
     setEnviandoDiscrepancia(true);
     setError("");
     try {
-      const res = await fetch(`/api/solicitudes/${idADiscrepancia}/devolver-revision`, {
+      const res = await fetch(`/api/solicitudes/${idADiscrepancia}/revertir`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ motivo: motivoDiscrepancia }),
@@ -207,9 +215,9 @@ export default function PanelCoordinador({
         toast.error(data.error ?? "No se pudo devolver la solicitud");
         return;
       }
-      toast.exito("Solicitud devuelta a Aprobada");
+      toast.exito("Solicitud devuelta a Talento Humano");
+      setAprobadas((prev) => prev.filter((s) => s.id !== idADiscrepancia));
       setIdADiscrepancia(null);
-      router.refresh();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -219,10 +227,10 @@ export default function PanelCoordinador({
   };
 
   const filaAcciones = (s: Aprobada) => (
-    <div className="flex items-center justify-between gap-2 bg-white rounded-lg px-3 py-2 ring-1 ring-black/5 text-sm">
+    <div className="flex items-center justify-between gap-2 bg-white dark:bg-neutral-900 rounded-lg px-3 py-2 ring-1 ring-black/5 dark:ring-white/10 text-sm">
       <div className="min-w-0">
-        <p className="font-mono font-bold tracking-widest text-neutral-500 text-xs">{s.codigo}</p>
-        <p className="text-neutral-600">{formatearFecha(s.fecha)} · ${s.montoTotal.toFixed(2)}</p>
+        <p className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{s.codigo}</p>
+        <p className="text-neutral-600">{formatearFecha(s.fecha)} · {formatearMoneda(s.montoTotal)}</p>
       </div>
       <div className="flex gap-1.5 shrink-0">
         <button
@@ -273,27 +281,11 @@ export default function PanelCoordinador({
             placeholder="Buscar por código, colaborador o ruta..."
             className="w-full sm:max-w-sm rounded-xl border border-neutral-300 bg-white text-neutral-900 px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
           />
-          <div className="flex bg-neutral-100 border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl p-1 gap-1 self-start">
-            {[
-              { value: "lista" as const, label: "Lista" },
-              { value: "colaborador" as const, label: "Por colaborador" },
-            ].map((op) => (
-              <button
-                key={op.value}
-                type="button"
-                onClick={() => setVista(op.value)}
-                className={`text-xs font-semibold px-3 py-2 rounded-lg transition ${
-                  vista === op.value ? "bg-white text-neutral-900" : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-                }`}
-              >
-                {op.label}
-              </button>
-            ))}
-          </div>
+          <SelectorVista valor={vista} onCambiar={setVista} className="self-start" />
         </div>
 
         {vista === "colaborador" ? (
-          <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+          <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <TablaAgrupadaColaborador
               filas={filasColaborador}
               cargarSubfilas={(colaboradorId) => {
@@ -312,10 +304,10 @@ export default function PanelCoordinador({
             />
           </div>
         ) : (
-          <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+          <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[680px]">
-                <thead className="bg-neutral-100/70 text-neutral-500 text-left">
+                <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                   <tr>
                     <th className="px-4 py-3 w-10">
                       <input
@@ -335,7 +327,7 @@ export default function PanelCoordinador({
                 </thead>
                 <tbody>
                   {aprobadasPagina.map((s) => (
-                    <tr key={s.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                    <tr key={s.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
@@ -344,11 +336,16 @@ export default function PanelCoordinador({
                           className="w-4 h-4 accent-orange-500 rounded"
                         />
                       </td>
-                      <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
+                      <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
                       <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
-                      <td className="px-4 py-3">{s.nombreColaborador}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar nombre={s.nombreColaborador} className="w-7 h-7 text-[11px]" />
+                          <span>{s.nombreColaborador}</span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
-                      <td className="px-4 py-3">${s.montoTotal.toFixed(2)}</td>
+                      <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1.5">
                           <button
@@ -369,23 +366,27 @@ export default function PanelCoordinador({
                   ))}
                   {aprobadasFiltradas.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-neutral-400">
-                        {busqueda
-                          ? "Sin resultados para esa búsqueda"
-                          : sinAsignaciones
-                          ? "Sin áreas asignadas"
-                          : "No hay solicitudes aprobadas pendientes de revisión"}
+                      <td colSpan={7} className="px-4 py-10">
+                        <EstadoVacio
+                          mensaje={
+                            busqueda
+                              ? "Sin resultados para esa búsqueda"
+                              : sinAsignaciones
+                              ? "Sin áreas asignadas"
+                              : "No hay solicitudes aprobadas pendientes de revisión"
+                          }
+                        />
                       </td>
                     </tr>
                   )}
                 </tbody>
                 {aprobadasFiltradas.length > 0 && (
                   <tfoot>
-                    <tr className="border-t border-neutral-200 bg-neutral-100/70 font-semibold">
+                    <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-100/70 dark:bg-neutral-800/60 font-semibold">
                       <td className="px-4 py-3" colSpan={4}>
                         Total ({aprobadasFiltradas.length} {aprobadasFiltradas.length === 1 ? "solicitud" : "solicitudes"})
                       </td>
-                      <td className="px-4 py-3">${totalGeneral.toFixed(2)}</td>
+                      <td className="px-4 py-3">{formatearMoneda(totalGeneral)}</td>
                       <td></td>
                     </tr>
                   </tfoot>
@@ -397,15 +398,15 @@ export default function PanelCoordinador({
         )}
       </div>
 
-      <Modal abierto={!!idARevisar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto text-2xl">✓</div>
-            <p className="font-semibold text-neutral-900">¿Marcar esta solicitud como revisada?</p>
+      <Modal abierto={!!idARevisar} onCerrar={() => setIdARevisar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar esta solicitud como revisada?</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setIdARevisar(null)}
                 disabled={revisando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -420,16 +421,16 @@ export default function PanelCoordinador({
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLote} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto text-2xl">✓</div>
-            <p className="font-semibold text-neutral-900">¿Marcar {seleccionadas.size} solicitudes como revisadas?</p>
-            <p className="text-sm text-neutral-500">Total: ${totalSeleccionado.toFixed(2)}</p>
+      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar {seleccionadas.size} solicitudes como revisadas?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Total: {formatearMoneda(totalSeleccionado)}</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmandoLote(false)}
                 disabled={revisandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -444,11 +445,11 @@ export default function PanelCoordinador({
             </div>
       </Modal>
 
-      <Modal abierto={!!idADiscrepancia} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idADiscrepancia} onCerrar={() => setIdADiscrepancia(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">Reportar discrepancia</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                La solicitud vuelve a Aprobada para que TH la corrija.
+              <h2 className="font-semibold text-neutral-900 dark:text-white">Reportar discrepancia</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                La solicitud vuelve a Pendiente para que Talento Humano la corrija.
               </p>
             </div>
             <textarea
@@ -456,7 +457,7 @@ export default function PanelCoordinador({
               onChange={(e) => setMotivoDiscrepancia(e.target.value.toUpperCase())}
               rows={3}
               autoFocus
-              className="w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
+              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
               placeholder="Ej: La ruta no corresponde al área del colaborador..."
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -464,7 +465,7 @@ export default function PanelCoordinador({
               <button
                 onClick={() => setIdADiscrepancia(null)}
                 disabled={enviandoDiscrepancia}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
               >
                 Cancelar
               </button>

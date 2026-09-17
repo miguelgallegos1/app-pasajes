@@ -7,12 +7,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { formatearMoneda } from "../lib/formato";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
+import EstadoVacio from "./EstadoVacio";
+import Avatar from "./Avatar";
 
 type Colaborador = {
   id: string;
@@ -226,7 +229,7 @@ export default function PanelAsignacionRutas({
             <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo activos" />
           </div>
 
-          <div className="bg-neutral-50 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+          <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <div className="max-h-[480px] overflow-y-auto divide-y divide-neutral-200/70">
               {colaboradoresPagina.map((c) => {
                 const activo = c.id === colaboradorSeleccionadoId;
@@ -237,31 +240,40 @@ export default function PanelAsignacionRutas({
                     type="button"
                     onClick={() => seleccionarColaborador(c)}
                     className={`w-full text-left px-4 py-3 transition ${
-                      activo ? "bg-orange-50" : "hover:bg-neutral-100/60"
+                      activo ? "bg-orange-50 dark:bg-orange-500/10" : "hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60"
                     }`}
                   >
-                    <p className={`text-sm font-medium ${activo ? "text-orange-700" : "text-neutral-800"}`}>
-                      {c.nombreCompleto}
-                    </p>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      {c.codigoNomina ?? "Sin código"} · {c.areaNombre}
-                    </p>
-                    <p className="text-[11px] font-semibold mt-1">
-                      {cantidad > 0 ? (
-                        <span className="text-orange-600">{cantidad} ruta{cantidad === 1 ? "" : "s"} exclusiva{cantidad === 1 ? "" : "s"}</span>
-                      ) : (
-                        <span className="text-neutral-400">Todas las rutas del área</span>
-                      )}
-                    </p>
+                    <div className="flex items-start gap-2.5">
+                      <Avatar nombre={c.nombreCompleto} className="w-8 h-8 text-xs mt-0.5" />
+                      <div className="min-w-0">
+                        <p className={`text-sm font-medium truncate ${activo ? "text-orange-700" : "text-neutral-800 dark:text-neutral-200"}`}>
+                          {c.nombreCompleto}
+                        </p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                          {c.codigoNomina ?? "Sin código"} · {c.areaNombre}
+                        </p>
+                        <p className="text-[11px] font-semibold mt-1">
+                          {cantidad > 0 ? (
+                            <span className="text-orange-600">{cantidad} ruta{cantidad === 1 ? "" : "s"} exclusiva{cantidad === 1 ? "" : "s"}</span>
+                          ) : (
+                            <span className="text-neutral-400 dark:text-neutral-500">Todas las rutas del área</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
                   </button>
                 );
               })}
               {colaboradoresFiltrados.length === 0 && (
-                <p className="px-4 py-10 text-center text-sm text-neutral-400">
-                  {busqueda || empresaFiltro || sitioFiltro || areaFiltro
-                    ? "Sin resultados para esos filtros"
-                    : "Aún no hay colaboradores registrados"}
-                </p>
+                <div className="px-4 py-10">
+                  <EstadoVacio
+                    mensaje={
+                      busqueda || empresaFiltro || sitioFiltro || areaFiltro
+                        ? "Sin resultados para esos filtros"
+                        : "Aún no hay colaboradores registrados"
+                    }
+                  />
+                </div>
               )}
             </div>
             <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
@@ -269,16 +281,16 @@ export default function PanelAsignacionRutas({
         </div>
 
         {/* Columna derecha: rutas del colaborador seleccionado */}
-        <div className="flex-1 min-w-0 w-full bg-neutral-50 rounded-2xl shadow-sm ring-1 ring-black/5 p-5">
+        <div className="flex-1 min-w-0 w-full bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 p-5">
           {!colaboradorSeleccionado ? (
-            <div className="py-16 text-center text-sm text-neutral-400">
+            <div className="py-16 text-center text-sm text-neutral-400 dark:text-neutral-500">
               Elegí un colaborador de la lista para asignarle sus rutas
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <h2 className="text-base font-bold text-neutral-900">{colaboradorSeleccionado.nombreCompleto}</h2>
-                <p className="text-xs text-neutral-500 mt-0.5">{colaboradorSeleccionado.areaNombre}</p>
+                <h2 className="text-base font-bold text-neutral-900 dark:text-white">{colaboradorSeleccionado.nombreCompleto}</h2>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{colaboradorSeleccionado.areaNombre}</p>
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -286,34 +298,34 @@ export default function PanelAsignacionRutas({
                   value={busquedaRuta}
                   onChange={(e) => setBusquedaRuta(e.target.value)}
                   placeholder="Buscar ruta..."
-                  className="flex-1 rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                  className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white px-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 />
                 <div className="flex gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={marcarTodas}
-                    className="text-xs font-medium text-neutral-600 border border-neutral-300 px-3 py-2 rounded-lg hover:bg-neutral-100 transition"
+                    className="text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                   >
                     Marcar todas
                   </button>
                   <button
                     type="button"
                     onClick={desmarcarTodas}
-                    className="text-xs font-medium text-neutral-600 border border-neutral-300 px-3 py-2 rounded-lg hover:bg-neutral-100 transition"
+                    className="text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                   >
                     Ninguna
                   </button>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
+              <div className="bg-white dark:bg-neutral-900 rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
                 <div className="max-h-[380px] overflow-y-auto divide-y divide-neutral-100">
                   {rutasVisibles.map((r) => {
                     const marcada = rutaIdsSeleccionadas.includes(r.id);
                     return (
                       <label
                         key={r.id}
-                        className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-neutral-50 transition"
+                        className="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition"
                       >
                         <input
                           type="checkbox"
@@ -321,22 +333,26 @@ export default function PanelAsignacionRutas({
                           onChange={() => alternarRuta(r.id)}
                           className="w-4 h-4 accent-orange-500 rounded shrink-0"
                         />
-                        <span className="flex-1 text-neutral-800">{r.nombre}</span>
-                        <span className="text-neutral-400 text-xs">${r.valor.toFixed(2)}</span>
+                        <span className="flex-1 text-neutral-800 dark:text-neutral-200">{r.nombre}</span>
+                        <span className="text-neutral-400 dark:text-neutral-500 text-xs">{formatearMoneda(r.valor)}</span>
                       </label>
                     );
                   })}
                   {rutasVisibles.length === 0 && (
-                    <p className="px-4 py-10 text-center text-sm text-neutral-400">
-                      {rutasDelColaborador.length === 0
-                        ? "Esta área no tiene rutas activas"
-                        : "Sin resultados para esa búsqueda"}
-                    </p>
+                    <div className="px-4 py-10">
+                      <EstadoVacio
+                        mensaje={
+                          rutasDelColaborador.length === 0
+                            ? "Esta área no tiene rutas activas"
+                            : "Sin resultados para esa búsqueda"
+                        }
+                      />
+                    </div>
                   )}
                 </div>
               </div>
 
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-neutral-400 dark:text-neutral-500">
                 {rutaIdsSeleccionadas.length === 0
                   ? "Sin ninguna marcada, sigue viendo todas las rutas del área (como siempre)."
                   : `Solo va a ver ${rutaIdsSeleccionadas.length} de las ${rutasDelColaborador.length} rutas de su área.`}

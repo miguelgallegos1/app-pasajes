@@ -22,19 +22,19 @@ export default function Paginacion({
       <button
         onClick={() => onCambiarPagina(paginaActual - 1)}
         disabled={paginaActual === 1 || deshabilitado}
-        className="px-3 py-1.5 text-xs font-medium rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent transition"
+        className="px-3 py-1.5 text-xs font-medium rounded-lg text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent transition"
       >
         ‹ Anterior
       </button>
 
-      <span className="text-xs text-neutral-400 px-2">
+      <span className="text-xs text-neutral-400 dark:text-neutral-500 px-2">
         Página {paginaActual} de {totalPaginas}
       </span>
 
       <button
         onClick={() => onCambiarPagina(paginaActual + 1)}
         disabled={paginaActual === totalPaginas || deshabilitado}
-        className="px-3 py-1.5 text-xs font-medium rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent transition"
+        className="px-3 py-1.5 text-xs font-medium rounded-lg text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent transition"
       >
         Siguiente ›
       </button>

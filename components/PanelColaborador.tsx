@@ -6,6 +6,8 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import { formatearMoneda } from "../lib/formato";
+import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
 import { useRouter } from "next/navigation";
 import CalendarioSelector from "./CalendarioSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -14,6 +16,8 @@ import Paginacion from "./Paginacion";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
+import EstadoVacio from "./EstadoVacio";
+import { IconoPregunta } from "./Icons";
 
 type Solicitud = {
   id: string;
@@ -41,7 +45,7 @@ const ESTILOS_ESTADO: Record<string, string> = {
 };
 
 const CLASE_CAMPO =
-  "mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm text-neutral-900 " +
+  "mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm text-neutral-900 dark:text-white " +
   "transition hover:border-neutral-300 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none";
 
 const POR_PAGINA = 8;
@@ -67,17 +71,26 @@ export default function PanelColaborador({
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
 
+  // Al eliminar, la fila se oculta al instante (con opción de deshacer)
+  // sin tocar el array que vino del servidor — así "Crear"/"Editar" siguen
+  // funcionando con su router.refresh() de siempre, sin pisarse con esto.
+  const [idsOcultos, setIdsOcultos] = useState<Set<string>>(new Set());
+  const solicitudesVisibles = useMemo(
+    () => (idsOcultos.size === 0 ? solicitudes : solicitudes.filter((s) => !idsOcultos.has(s.id))),
+    [solicitudes, idsOcultos]
+  );
+
   const solicitudesFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
-    if (!texto) return solicitudes;
-    return solicitudes.filter(
+    if (!texto) return solicitudesVisibles;
+    return solicitudesVisibles.filter(
       (s) =>
         s.codigo.toLowerCase().includes(texto) ||
         s.rutaLabel.toLowerCase().includes(texto) ||
         s.nombreColaborador.toLowerCase().includes(texto) ||
         (s.observaciones ?? "").toLowerCase().includes(texto)
     );
-  }, [solicitudes, busqueda]);
+  }, [solicitudesVisibles, busqueda]);
 
   const cambiarBusqueda = (v: string) => {
     setBusqueda(v);
@@ -90,8 +103,6 @@ export default function PanelColaborador({
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
 
-  const [idAEliminar, setIdAEliminar] = useState<string | null>(null);
-  const [eliminando, setEliminando] = useState(false);
 
   const [colaboradorSeleccionado, setColaboradorSeleccionado] = useState(colaboradorId);
   const [fecha, setFecha] = useState("");
@@ -119,7 +130,7 @@ export default function PanelColaborador({
   );
 
   const opcionesRutas = useMemo(
-    () => rutasDisponibles.map((r) => ({ id: r.id, label: `${r.label} — $${r.valor.toFixed(2)}` })),
+    () => rutasDisponibles.map((r) => ({ id: r.id, label: `${r.label} — ${formatearMoneda(r.valor)}` })),
     [rutasDisponibles]
   );
 
@@ -222,28 +233,37 @@ export default function PanelColaborador({
     }
   };
 
-  const confirmarEliminacion = async () => {
-    if (!idAEliminar) return;
-    setEliminando(true);
-    try {
-      const res = await fetch(`/api/solicitudes/${idAEliminar}`, { method: "DELETE" });
-      setIdAEliminar(null);
+  // Optimista con deshacer: la fila se oculta al toque; el DELETE real
+  // recién se manda si nadie tocó "Deshacer" en el toast.
+  const ocultar = (id: string) => setIdsOcultos((prev) => new Set(prev).add(id));
+  const mostrar = (id: string) =>
+    setIdsOcultos((prev) => {
+      const copia = new Set(prev);
+      copia.delete(id);
+      return copia;
+    });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "No se pudo eliminar");
-        toast.error(data.error ?? "No se pudo eliminar la solicitud");
-        return;
+  const eliminarConDeshacer = (s: Solicitud) => {
+    ocultar(s.id);
+    toast.deshacer(
+      "Solicitud eliminada",
+      () => mostrar(s.id),
+      async () => {
+        try {
+          const res = await fetch(`/api/solicitudes/${s.id}`, { method: "DELETE" });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            toast.error(data.error ?? "No se pudo eliminar la solicitud");
+            mostrar(s.id);
+            return;
+          }
+          router.refresh();
+        } catch {
+          toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+          mostrar(s.id);
+        }
       }
-      toast.exito("Solicitud eliminada");
-      router.refresh();
-    } catch {
-      setIdAEliminar(null);
-      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-    } finally {
-      setEliminando(false);
-    }
+    );
   };
 
   return (
@@ -273,10 +293,10 @@ export default function PanelColaborador({
           />
         </div>
 
-        <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[760px]">
-              <thead className="bg-neutral-100/70 text-neutral-500 text-left">
+              <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>
                   <th className="px-4 py-3 font-medium">Fecha</th>
@@ -290,11 +310,11 @@ export default function PanelColaborador({
               </thead>
               <tbody>
                 {solicitudesPagina.map((s) => (
-                  <tr key={s.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
+                  <tr key={s.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
+                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(s.fecha)}</p>
-                      <p className="text-[11px] text-neutral-400">
+                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                         Registrado: {new Date(s.fechaSolicitud).toLocaleString("es-EC", {
                           day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                         })}
@@ -304,17 +324,17 @@ export default function PanelColaborador({
                       <td className="px-4 py-3">
                         {s.nombreColaborador}
                         {s.nombreColaborador === nombreCompleto && (
-                          <span className="text-[10px] text-neutral-400 ml-1">(yo)</span>
+                          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1">(yo)</span>
                         )}
                       </td>
                     )}
                     <td className="px-4 py-3">{s.rutaLabel}</td>
-                    <td className="px-4 py-3">${s.montoTotal.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-neutral-500 max-w-[180px] truncate" title={s.observaciones ?? ""}>
+                    <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
+                    <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400 max-w-[180px] truncate" title={s.observaciones ?? ""}>
                       {s.observaciones || "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
+                      <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
                         {s.estado}
                       </span>
                     </td>
@@ -328,7 +348,7 @@ export default function PanelColaborador({
                             Editar
                           </button>
                           <button
-                            onClick={() => setIdAEliminar(s.id)}
+                            onClick={() => eliminarConDeshacer(s)}
                             className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
                           >
                             Eliminar
@@ -340,8 +360,8 @@ export default function PanelColaborador({
                 ))}
                 {solicitudesFiltradas.length === 0 && (
                   <tr>
-                    <td colSpan={esSupervisor ? 8 : 7} className="px-4 py-10 text-center text-neutral-400">
-                      {busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"}
+                    <td colSpan={esSupervisor ? 8 : 7} className="px-4 py-10">
+                      <EstadoVacio mensaje={busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"} />
                     </td>
                   </tr>
                 )}
@@ -349,11 +369,11 @@ export default function PanelColaborador({
 
               {solicitudesFiltradas.length > 0 && (
                 <tfoot>
-                  <tr className="border-t border-neutral-200 bg-neutral-100/70 font-semibold">
+                  <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-100/70 dark:bg-neutral-800/60 font-semibold">
                     <td className="px-4 py-3" colSpan={esSupervisor ? 4 : 3}>
                       Total ({solicitudesFiltradas.length} {solicitudesFiltradas.length === 1 ? "solicitud" : "solicitudes"})
                     </td>
-                    <td className="px-4 py-3">${totalGeneral.toFixed(2)}</td>
+                    <td className="px-4 py-3">{formatearMoneda(totalGeneral)}</td>
                     <td colSpan={3}></td>
                   </tr>
                 </tfoot>
@@ -367,18 +387,19 @@ export default function PanelColaborador({
 
       <Modal
         abierto={modalAbierto && !confirmando}
-        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl"
+        onCerrar={() => setModalAbierto(false)}
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl"
       >
             <div>
-              <h2 className="text-lg font-bold text-neutral-900">
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
                 {modoEdicionId ? "Editar solicitud" : "Registrar pasaje del día"}
               </h2>
-              <p className="text-xs text-neutral-500 mt-0.5">Completa los datos del viaje</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Completa los datos del viaje</p>
             </div>
 
             {esSupervisor && !modoEdicionId && (
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                   ¿Para quién es esta solicitud?
                 </label>
                 <div className="mt-1.5">
@@ -393,14 +414,14 @@ export default function PanelColaborador({
             )}
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Fecha</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Fecha</label>
               <div className="mt-1.5">
                 <CalendarioSelector value={fecha} onChange={setFecha} fechaMinima={fechaMinima} />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Ruta</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ruta</label>
               <div className="mt-1.5">
                 <ComboboxBuscable
                   opciones={opcionesRutas}
@@ -413,18 +434,18 @@ export default function PanelColaborador({
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Valor</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Valor</label>
               <input
                 type="text"
                 readOnly
-                value={valorSeleccionado !== null ? `$${valorSeleccionado.toFixed(2)}` : ""}
+                value={valorSeleccionado !== null ? `${formatearMoneda(valorSeleccionado)}` : ""}
                 placeholder="Se llena al elegir la ruta"
-                className="mt-1.5 w-full rounded-xl border border-neutral-100 bg-neutral-50 text-neutral-600 px-3.5 py-3 text-sm cursor-not-allowed"
+                className="mt-1.5 w-full rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 text-neutral-600 dark:text-neutral-400 px-3.5 py-3 text-sm cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 Observaciones (opcional)
               </label>
               <textarea
@@ -442,7 +463,7 @@ export default function PanelColaborador({
               <button
                 type="button"
                 onClick={() => { setModalAbierto(false); setModoEdicionId(null); }}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
               >
                 Cancelar
               </button>
@@ -457,17 +478,17 @@ export default function PanelColaborador({
             </div>
       </Modal>
 
-      <Modal abierto={confirmando} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl">?</div>
-            <p className="font-semibold text-neutral-900">
+      <Modal abierto={confirmando} onCerrar={() => setConfirmando(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoPregunta className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">
               {modoEdicionId ? "¿Guardar los cambios?" : "¿Seguro que quieres registrar este pasaje?"}
             </p>
-            <p className="text-sm text-neutral-500">{formatearFecha(fecha)} · ${valorSeleccionado?.toFixed(2)}</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatearFecha(fecha)} · {formatearMoneda(valorSeleccionado ?? 0)}</p>
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmando(false)}
                 disabled={enviando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -479,29 +500,6 @@ export default function PanelColaborador({
                   {enviando && <Spinner className="w-4 h-4" />}
                   {enviando ? "Guardando..." : "Confirmar"}
                 </button>
-            </div>
-      </Modal>
-
-      <Modal abierto={!!idAEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
-            <p className="font-semibold text-neutral-900">¿Eliminar esta solicitud?</p>
-            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setIdAEliminar(null)}
-                disabled={eliminando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarEliminacion}
-                disabled={eliminando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {eliminando && <Spinner className="w-4 h-4" />}
-                {eliminando ? "Eliminando..." : "Eliminar"}
-              </button>
             </div>
       </Modal>
     </div>

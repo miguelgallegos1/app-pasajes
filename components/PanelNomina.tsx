@@ -7,7 +7,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { formatearMoneda } from "../lib/formato";
+import { IconoDinero } from "./Icons";
+import EstadoVacio from "./EstadoVacio";
+import Avatar from "./Avatar";
+import SelectorVista from "./SelectorVista";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
@@ -47,13 +51,16 @@ function opcionesUnicas<T>(items: T[], idKey: keyof T, labelKey: keyof T) {
 
 export default function PanelNomina({
   esSuperAdmin,
-  revisadas,
+  revisadas: revisadasIniciales,
 }: {
   esSuperAdmin: boolean;
   revisadas: Revisada[];
 }) {
-  const router = useRouter();
   const toast = useToast();
+
+  // Copia local editable: al pagar/devolver se quita la fila al instante,
+  // sin esperar un router.refresh() ni volver a pedir la lista al servidor.
+  const [revisadas, setRevisadas] = useState(revisadasIniciales);
 
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [busqueda, setBusqueda] = useState("");
@@ -193,7 +200,7 @@ export default function PanelNomina({
         return;
       }
       toast.exito("Solicitud marcada como pagada");
-      router.refresh();
+      setRevisadas((prev) => prev.filter((a) => a.id !== idAPagar));
     } catch {
       setIdAPagar(null);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -220,8 +227,9 @@ export default function PanelNomina({
         return;
       }
       toast.exito("Solicitudes marcadas como pagadas");
+      const idsPagados = new Set(seleccionadas);
+      setRevisadas((prev) => prev.filter((a) => !idsPagados.has(a.id)));
       setSeleccionadas(new Set());
-      router.refresh();
     } catch {
       setConfirmandoLote(false);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -258,8 +266,8 @@ export default function PanelNomina({
         return;
       }
       toast.exito("Solicitud devuelta a Aprobada");
+      setRevisadas((prev) => prev.filter((a) => a.id !== idANovedad));
       setIdANovedad(null);
-      router.refresh();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -269,10 +277,10 @@ export default function PanelNomina({
   };
 
   const filaAcciones = (a: Revisada) => (
-    <div className="flex items-center justify-between gap-2 bg-white rounded-lg px-3 py-2 ring-1 ring-black/5 text-sm">
+    <div className="flex items-center justify-between gap-2 bg-white dark:bg-neutral-900 rounded-lg px-3 py-2 ring-1 ring-black/5 dark:ring-white/10 text-sm">
       <div className="min-w-0">
-        <p className="font-mono font-bold tracking-widest text-neutral-500 text-xs">{a.codigo}</p>
-        <p className="text-neutral-600">{formatearFecha(a.fecha)} · ${a.montoTotal.toFixed(2)}</p>
+        <p className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{a.codigo}</p>
+        <p className="text-neutral-600">{formatearFecha(a.fecha)} · {formatearMoneda(a.montoTotal)}</p>
       </div>
       <div className="flex gap-1.5 shrink-0">
         <button
@@ -298,28 +306,28 @@ export default function PanelNomina({
         <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes revisadas listas para pagar</span>
       </div>
 
-      <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-3">
+      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Empresa</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Empresa</label>
             <div className="mt-1.5">
               <ComboboxBuscable opciones={empresasOpciones} value={empresaId} onChange={cambiarEmpresa} placeholder="Todas" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Sitio</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sitio</label>
             <div className="mt-1.5">
               <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Área</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
             <div className="mt-1.5">
               <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todas" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Colaborador</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
             <div className="mt-1.5">
               <ComboboxBuscable opciones={colaboradoresOpciones} value={colaboradorId} onChange={cambiarColaborador} placeholder="Todos" />
             </div>
@@ -332,23 +340,7 @@ export default function PanelNomina({
             placeholder="Buscar por código, colaborador o ruta..."
             className="w-full max-w-sm rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white px-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
           />
-          <div className="flex bg-neutral-100 border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl p-1 gap-1 self-start">
-            {[
-              { value: "lista" as const, label: "Lista" },
-              { value: "colaborador" as const, label: "Por colaborador" },
-            ].map((op) => (
-              <button
-                key={op.value}
-                type="button"
-                onClick={() => setVista(op.value)}
-                className={`text-xs font-semibold px-3 py-2 rounded-lg transition ${
-                  vista === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-                }`}
-              >
-                {op.label}
-              </button>
-            ))}
-          </div>
+          <SelectorVista valor={vista} onCambiar={setVista} className="self-start" />
         </div>
       </div>
 
@@ -356,7 +348,7 @@ export default function PanelNomina({
         <div className="flex-1 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">
           <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Mostrando</p>
           <p className="text-lg font-bold text-neutral-900 dark:text-white">
-            {revisadasFiltradas.length} {revisadasFiltradas.length === 1 ? "solicitud" : "solicitudes"} · ${totalGeneral.toFixed(2)}
+            {revisadasFiltradas.length} {revisadasFiltradas.length === 1 ? "solicitud" : "solicitudes"} · {formatearMoneda(totalGeneral)}
           </p>
         </div>
         {seleccionadas.size > 0 && (
@@ -364,7 +356,7 @@ export default function PanelNomina({
             <div>
               <p className="text-[11px] text-orange-600 dark:text-orange-400 uppercase tracking-wide">Seleccionadas</p>
               <p className="text-lg font-bold text-orange-700 dark:text-orange-300">
-                {seleccionadas.size} · ${totalSeleccionado.toFixed(2)}
+                {seleccionadas.size} · {formatearMoneda(totalSeleccionado)}
               </p>
             </div>
             <button
@@ -378,7 +370,7 @@ export default function PanelNomina({
       </div>
 
       {vista === "colaborador" ? (
-        <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <TablaAgrupadaColaborador
             filas={filasColaborador}
             cargarSubfilas={(colaboradorId) => {
@@ -396,10 +388,10 @@ export default function PanelNomina({
           />
         </div>
       ) : (
-        <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[720px]">
-              <thead className="bg-neutral-100/70 text-neutral-500 text-left">
+              <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 w-10">
                     <input
@@ -420,7 +412,7 @@ export default function PanelNomina({
               </thead>
               <tbody>
                 {revisadasPagina.map((a) => (
-                  <tr key={a.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
+                  <tr key={a.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
@@ -429,21 +421,26 @@ export default function PanelNomina({
                         className="w-4 h-4 accent-orange-500 rounded"
                       />
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{a.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{a.codigo}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(a.fecha)}</p>
                       {a.fechaRevision && (
-                        <p className="text-[11px] text-neutral-400">
+                        <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                           Revisada: {new Date(a.fechaRevision).toLocaleString("es-EC", {
                             day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                           })}
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3">{a.nombreColaborador}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar nombre={a.nombreColaborador} className="w-7 h-7 text-[11px]" />
+                        <span>{a.nombreColaborador}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-neutral-600">{a.empresaNombre} · {a.sitioNombre} · {a.areaNombre}</td>
                     <td className="px-4 py-3">{a.rutaNombre}</td>
-                    <td className="px-4 py-3">${a.montoTotal.toFixed(2)}</td>
+                    <td className="px-4 py-3">{formatearMoneda(a.montoTotal)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5">
                         <button
@@ -464,8 +461,8 @@ export default function PanelNomina({
                 ))}
                 {revisadasFiltradas.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-neutral-400">
-                      Sin resultados con esos filtros
+                    <td colSpan={8} className="px-4 py-10">
+                      <EstadoVacio mensaje="Sin resultados con esos filtros" />
                     </td>
                   </tr>
                 )}
@@ -476,16 +473,16 @@ export default function PanelNomina({
         </div>
       )}
 
-      <Modal abierto={!!idAPagar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl">$</div>
-            <p className="font-semibold text-neutral-900">¿Marcar esta solicitud como pagada?</p>
-            <p className="text-sm text-neutral-500">{revisadaAPagar?.nombreColaborador} · ${revisadaAPagar?.montoTotal.toFixed(2)}</p>
+      <Modal abierto={!!idAPagar} onCerrar={() => setIdAPagar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar esta solicitud como pagada?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">{revisadaAPagar?.nombreColaborador} · {formatearMoneda(revisadaAPagar?.montoTotal ?? 0)}</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setIdAPagar(null)}
                 disabled={pagando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -500,16 +497,16 @@ export default function PanelNomina({
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLote} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto text-2xl">$</div>
-            <p className="font-semibold text-neutral-900">¿Marcar {seleccionadas.size} solicitudes como pagadas?</p>
-            <p className="text-sm text-neutral-500">Total a pagar: ${totalSeleccionado.toFixed(2)}</p>
+      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar {seleccionadas.size} solicitudes como pagadas?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Total a pagar: {formatearMoneda(totalSeleccionado)}</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmandoLote(false)}
                 disabled={pagandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>
@@ -524,10 +521,10 @@ export default function PanelNomina({
             </div>
       </Modal>
 
-      <Modal abierto={!!idANovedad} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idANovedad} onCerrar={() => setIdANovedad(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">Reportar novedad</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <h2 className="font-semibold text-neutral-900 dark:text-white">Reportar novedad</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                 La solicitud vuelve a Aprobada para que Coordinación la revise de nuevo
               </p>
             </div>
@@ -536,7 +533,7 @@ export default function PanelNomina({
               onChange={(e) => setMotivoNovedad(e.target.value.toUpperCase())}
               rows={3}
               autoFocus
-              className="w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
+              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
               placeholder="Ej: El monto no coincide con la ruta registrada..."
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -544,7 +541,7 @@ export default function PanelNomina({
               <button
                 onClick={() => setIdANovedad(null)}
                 disabled={enviandoNovedad}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
               >
                 Cancelar
               </button>

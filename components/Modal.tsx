@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const DURACION_SALIDA_MS = 180;
 
@@ -14,6 +14,7 @@ export default function Modal({
   abierto,
   variante = "hoja",
   className = "",
+  onCerrar,
   children,
 }: {
   abierto: boolean;
@@ -21,10 +22,16 @@ export default function Modal({
   // "centro": siempre centrado, overlay más oscuro (confirmaciones)
   variante?: "hoja" | "centro";
   className?: string;
+  // Opcional para no romper algún uso que ya maneje su propio cierre, pero
+  // sin ella el modal no se puede cerrar con Escape ni tocando afuera —
+  // pasarla siempre que exista un botón "Cancelar" equivalente.
+  onCerrar?: () => void;
   children: ReactNode;
 }) {
   const [montado, setMontado] = useState(abierto);
   const [cerrando, setCerrando] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const elementoPrevioRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (abierto) {
@@ -42,6 +49,24 @@ export default function Modal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto]);
 
+  // Accesibilidad: foco al diálogo al abrir (para que el lector de
+  // pantalla anuncie su contenido), Escape para cerrar, y foco de vuelta
+  // en lo que lo abrió al cerrarse — todo opcional vía onCerrar.
+  useEffect(() => {
+    if (!abierto) return;
+    elementoPrevioRef.current = document.activeElement as HTMLElement | null;
+    const id = setTimeout(() => panelRef.current?.focus(), 10);
+    const alPresionar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCerrar?.();
+    };
+    window.addEventListener("keydown", alPresionar);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener("keydown", alPresionar);
+      elementoPrevioRef.current?.focus?.();
+    };
+  }, [abierto, onCerrar]);
+
   if (!montado) return null;
 
   const overlayBase =
@@ -54,9 +79,15 @@ export default function Modal({
       className={`fixed inset-0 ${overlayBase} ${cerrando ? "pointer-events-none" : ""} ${
         cerrando ? "animate-[overlay-out_0.18s_ease-in_forwards]" : "animate-[overlay-in_0.2s_ease-out]"
       }`}
+      onClick={() => onCerrar?.()}
     >
       <div
-        className={`${className} ${
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        className={`outline-none ${className} ${
           cerrando ? "animate-[panel-out_0.18s_ease-in_forwards]" : "animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]"
         }`}
       >

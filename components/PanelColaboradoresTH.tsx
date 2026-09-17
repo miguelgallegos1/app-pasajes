@@ -10,10 +10,15 @@ import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
+import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
-import { IconoCopiar } from "./Icons";
+import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar } from "./Icons";
+import EstadoVacio from "./EstadoVacio";
+import Avatar from "./Avatar";
+import MenuAcciones from "./MenuAcciones";
 import { useToast } from "./Toast";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
 
 type Colaborador = {
   id: string;
@@ -30,6 +35,15 @@ type Colaborador = {
   areaId: string;
   areaLabel: string;
   tieneSolicitudes: boolean;
+};
+
+type CampoOrden = "numero" | "codigoNomina" | "nombreCompleto" | "supervisorNombre" | "estado";
+const VALOR_ORDEN: Record<CampoOrden, (c: Colaborador) => string | number> = {
+  numero: (c) => c.numero,
+  codigoNomina: (c) => c.codigoNomina ?? "",
+  nombreCompleto: (c) => c.nombreCompleto,
+  supervisorNombre: (c) => c.supervisorNombre ?? "",
+  estado: (c) => c.estado,
 };
 
 type Opcion = { id: string; label: string };
@@ -56,7 +70,12 @@ export default function PanelColaboradoresTH({
   const router = useRouter();
   const toast = useToast();
 
-  const [busqueda, setBusqueda] = useState("");
+  // Precarga la búsqueda si se llegó desde la paleta de comandos con un
+  // resultado de colaborador (?q=...) — lectura directa del DOM, no
+  // useSearchParams, para no forzar un límite de Suspense en la página.
+  const [busqueda, setBusqueda] = useState(() =>
+    typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("q") ?? ""
+  );
   const [soloActivos, setSoloActivos] = useState(true); // arranca mostrando solo Activos
   const [paginaActual, setPaginaActual] = useState(1);
 
@@ -107,10 +126,16 @@ export default function PanelColaboradoresTH({
     });
   }, [colaboradores, busqueda, soloActivos, empresaFiltro, sitioFiltro, areaFiltro]);
 
-  const totalPaginas = Math.max(1, Math.ceil(colaboradoresFiltrados.length / POR_PAGINA));
+  const { orden, ordenar, itemsOrdenados: colaboradoresOrdenados } = useOrdenTabla<Colaborador, CampoOrden>(
+    colaboradoresFiltrados,
+    (c, campo) => VALOR_ORDEN[campo](c),
+    "th-colaboradores"
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(colaboradoresOrdenados.length / POR_PAGINA));
   const colaboradoresPagina = useMemo(
-    () => colaboradoresFiltrados.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
-    [colaboradoresFiltrados, paginaActual]
+    () => colaboradoresOrdenados.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
+    [colaboradoresOrdenados, paginaActual]
   );
 
   const cambiarBusqueda = (valor: string) => {
@@ -382,35 +407,40 @@ export default function PanelColaboradoresTH({
         </div>
       </div>
 
-      <div className="bg-neutral-50 text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[680px]">
-            <thead className="bg-neutral-100/70 text-neutral-500 text-left">
+            <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
               <tr>
-                <th className="px-4 py-3 font-medium w-12">N°</th>
-                <th className="px-4 py-3 font-medium">Código</th>
-                <th className="px-4 py-3 font-medium">Nombre</th>
-                <th className="px-4 py-3 font-medium">Supervisor</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
+                <EncabezadoOrdenable campo="numero" ordenActivo={orden} onOrdenar={ordenar} className="w-12">N°</EncabezadoOrdenable>
+                <EncabezadoOrdenable campo="codigoNomina" ordenActivo={orden} onOrdenar={ordenar}>Código</EncabezadoOrdenable>
+                <EncabezadoOrdenable campo="nombreCompleto" ordenActivo={orden} onOrdenar={ordenar}>Nombre</EncabezadoOrdenable>
+                <EncabezadoOrdenable campo="supervisorNombre" ordenActivo={orden} onOrdenar={ordenar}>Supervisor</EncabezadoOrdenable>
+                <EncabezadoOrdenable campo="estado" ordenActivo={orden} onOrdenar={ordenar}>Estado</EncabezadoOrdenable>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {colaboradoresPagina.map((c) => (
-                <tr key={c.id} className="border-t border-neutral-200/70 hover:bg-neutral-100/60 transition">
-                  <td className="px-4 py-3 text-neutral-400">{c.numero}</td>
-                  <td className="px-4 py-3 text-neutral-500">
+                <tr key={c.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
+                  <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">{c.numero}</td>
+                  <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400">
                     {c.codigoNomina ?? <span className="text-amber-600">Sin código</span>}
                   </td>
                   <td className="px-4 py-3">
-                    {c.nombreCompleto}
-                    {c.esSupervisor && (
-                      <span className="ml-1.5 text-[10px] font-semibold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
-                        SUPERVISOR
+                    <div className="flex items-center gap-2.5">
+                      <Avatar nombre={c.nombreCompleto} className="w-7 h-7 text-[11px]" />
+                      <span>
+                        {c.nombreCompleto}
+                        {c.esSupervisor && (
+                          <span className="ml-1.5 text-[10px] font-semibold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 px-1.5 py-0.5 rounded">
+                            SUPERVISOR
+                          </span>
+                        )}
                       </span>
-                    )}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-neutral-500">{c.supervisorNombre ?? "—"}</td>
+                  <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400">{c.supervisorNombre ?? "—"}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
@@ -420,32 +450,32 @@ export default function PanelColaboradoresTH({
                       {c.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={() => abrirEditar(c)}
-                        className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => { setIdGestionar(c.id); setErrorGestion(""); setConfirmandoEliminar(false); }}
-                        className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
-                      >
-                        Gestionar
-                      </button>
-                    </div>
+                  <td className="px-4 py-3 text-right">
+                    <MenuAcciones
+                      acciones={[
+                        { label: "Editar", onClick: () => abrirEditar(c) },
+                        {
+                          label: "Gestionar",
+                          tono: "peligro",
+                          onClick: () => { setIdGestionar(c.id); setErrorGestion(""); setConfirmandoEliminar(false); },
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
               {colaboradoresFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-neutral-400">
-                    {busqueda || empresaFiltro || sitioFiltro || areaFiltro
-                      ? "Sin resultados para esos filtros"
-                      : soloActivos
-                      ? "No hay colaboradores activos"
-                      : "Aún no hay colaboradores registrados"}
+                  <td colSpan={6} className="px-4 py-10">
+                    <EstadoVacio
+                      mensaje={
+                        busqueda || empresaFiltro || sitioFiltro || areaFiltro
+                          ? "Sin resultados para esos filtros"
+                          : soloActivos
+                          ? "No hay colaboradores activos"
+                          : "Aún no hay colaboradores registrados"
+                      }
+                    />
                   </td>
                 </tr>
               )}
@@ -458,15 +488,16 @@ export default function PanelColaboradoresTH({
 
       <Modal
         abierto={modalAbierto && !confirmandoResetPin}
-        className="bg-white text-black rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
+        onCerrar={() => setModalAbierto(false)}
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
       >
-            <h2 className="text-lg font-bold text-neutral-900">
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
               {editandoId ? "Editar colaborador" : "Nuevo colaborador"}
             </h2>
 
             {!editandoId && (
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                   PIN de acceso
                 </label>
                 <div className="mt-1.5 flex gap-1.5">
@@ -474,28 +505,28 @@ export default function PanelColaboradoresTH({
                     value={generandoPin ? "" : pin}
                     readOnly
                     placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
+                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 dark:text-white outline-none"
                   />
                   <button
                     type="button"
                     onClick={copiarPin}
                     disabled={!pin || generandoPin}
                     title="Copiar PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                   >
-                    {pinCopiado ? "✓" : <IconoCopiar className="w-4 h-4" />}
+                    {pinCopiado ? <IconoCheck className="w-4 h-4" /> : <IconoCopiar className="w-4 h-4" />}
                   </button>
                   <button
                     type="button"
                     onClick={generarPin}
                     disabled={generandoPin}
                     title="Generar otro PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                   >
-                    ↻
+                    <IconoRefrescar className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-xs text-neutral-400 mt-1">Copialo y comunícaselo al colaborador para su primer ingreso</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Copialo y comunícaselo al colaborador para su primer ingreso</p>
               </div>
             )}
 
@@ -512,13 +543,13 @@ export default function PanelColaboradoresTH({
             {editandoId && reseteandoPin && (
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                     Nuevo PIN de acceso
                   </label>
                   <button
                     type="button"
                     onClick={() => { setReseteandoPin(false); setPin(""); }}
-                    className="text-xs text-neutral-400 hover:text-neutral-600 transition"
+                    className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 transition"
                   >
                     Cancelar
                   </button>
@@ -528,25 +559,25 @@ export default function PanelColaboradoresTH({
                     value={generandoPin ? "" : pin}
                     readOnly
                     placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 outline-none"
+                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 dark:text-white outline-none"
                   />
                   <button
                     type="button"
                     onClick={copiarPin}
                     disabled={!pin || generandoPin}
                     title="Copiar PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                   >
-                    {pinCopiado ? "✓" : <IconoCopiar className="w-4 h-4" />}
+                    {pinCopiado ? <IconoCheck className="w-4 h-4" /> : <IconoCopiar className="w-4 h-4" />}
                   </button>
                   <button
                     type="button"
                     onClick={generarPin}
                     disabled={generandoPin}
                     title="Generar otro PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-100 transition disabled:opacity-40"
+                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
                   >
-                    ↻
+                    <IconoRefrescar className="w-4 h-4" />
                   </button>
                 </div>
                 <p className="text-xs text-amber-600 mt-1">
@@ -556,45 +587,45 @@ export default function PanelColaboradoresTH({
             )}
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 Código de nómina
               </label>
               <input
                 value={codigoNomina}
                 onChange={(e) => setCodigoNomina(e.target.value.toUpperCase())}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: EMP-00123"
                 autoFocus
               />
-              <p className="text-xs text-neutral-400 mt-1">El mismo código con el que está registrado en nómina</p>
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">El mismo código con el que está registrado en nómina</p>
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 Apellidos
               </label>
               <input
                 value={apellidos}
                 onChange={(e) => setApellidos(e.target.value.toUpperCase())}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: SÁNCHEZ PÉREZ"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 Nombres
               </label>
               <input
                 value={nombres}
                 onChange={(e) => setNombres(e.target.value.toUpperCase())}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: PEDRO"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Área</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
               <div className="mt-1.5">
                 <ComboboxBuscable
                   opciones={areasDisponibles}
@@ -604,7 +635,7 @@ export default function PanelColaboradoresTH({
                 />
               </div>
               {editandoId && (
-                <p className="text-xs text-neutral-400 mt-1.5">
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1.5">
                   Para asignarle rutas exclusivas, usá la pantalla{" "}
                   <a href="/th/rutas/asignaciones" className="text-orange-600 hover:text-orange-700 font-medium">
                     Asignar rutas
@@ -615,8 +646,8 @@ export default function PanelColaboradoresTH({
 
             {editandoId && (
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Estado</label>
-                <div className="mt-1.5 flex bg-neutral-100 rounded-xl p-1 gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Estado</label>
+                <div className="mt-1.5 flex bg-neutral-100 dark:bg-neutral-800 rounded-xl p-1 gap-1">
                   {[
                     { value: "ACTIVO", label: "Activo" },
                     { value: "INACTIVO", label: "Inactivo" },
@@ -627,8 +658,8 @@ export default function PanelColaboradoresTH({
                       onClick={() => setEstadoEdicion(op.value)}
                       className={`flex-1 text-xs font-semibold py-2 rounded-lg transition ${
                         estadoEdicion === op.value
-                          ? "bg-white text-neutral-900 shadow-sm"
-                          : "text-neutral-500 hover:text-neutral-700"
+                          ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm"
+                          : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
                       }`}
                     >
                       {op.label}
@@ -639,7 +670,7 @@ export default function PanelColaboradoresTH({
             )}
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 Tipo de colaborador
               </label>
               <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -647,29 +678,29 @@ export default function PanelColaboradoresTH({
                   type="button"
                   onClick={() => setEsSupervisor(false)}
                   className={`text-left px-3.5 py-3 rounded-xl border-2 transition ${
-                    !esSupervisor ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-neutral-300"
+                    !esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
                   }`}
                 >
-                  <p className={`text-sm font-semibold ${!esSupervisor ? "text-orange-700" : "text-neutral-800"}`}>
+                  <p className={`text-sm font-semibold ${!esSupervisor ? "text-orange-700 dark:text-orange-400" : "text-neutral-800 dark:text-neutral-200"}`}>
                     Colaborador
                   </p>
-                  <p className="text-xs text-neutral-500 mt-0.5">Registra y da seguimiento a sus propios pasajes.</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Registra y da seguimiento a sus propios pasajes.</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => setEsSupervisor(true)}
                   className={`text-left px-3.5 py-3 rounded-xl border-2 transition ${
-                    esSupervisor ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-neutral-300"
+                    esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
                   }`}
                 >
-                  <p className={`text-sm font-semibold ${esSupervisor ? "text-orange-700" : "text-neutral-800"}`}>
+                  <p className={`text-sm font-semibold ${esSupervisor ? "text-orange-700 dark:text-orange-400" : "text-neutral-800 dark:text-neutral-200"}`}>
                     Supervisor
                   </p>
-                  <p className="text-xs text-neutral-500 mt-0.5">Además, puede registrar pasajes por su equipo.</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Además, puede registrar pasajes por su equipo.</p>
                 </button>
               </div>
               {editandoId && (
-                <p className="text-xs text-neutral-400 mt-1.5">
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1.5">
                   Para asignarle su equipo, usá la pantalla{" "}
                   <a href="/th/colaboradores/asignaciones" className="text-orange-600 hover:text-orange-700 font-medium">
                     Asignar equipo
@@ -683,7 +714,7 @@ export default function PanelColaboradoresTH({
             <div className="flex gap-2 justify-end pt-1">
               <button
                 onClick={() => setModalAbierto(false)}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl transition"
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
               >
                 Cancelar
               </button>
@@ -699,17 +730,17 @@ export default function PanelColaboradoresTH({
       </Modal>
 
       {/* Modal: advertencia antes de resetear el PIN */}
-      <Modal abierto={confirmandoResetPin} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-2xl">!</div>
-        <p className="font-semibold text-neutral-900">¿Resetear el PIN de acceso?</p>
-        <p className="text-sm text-neutral-500">
+      <Modal abierto={confirmandoResetPin} onCerrar={() => setConfirmandoResetPin(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+        <p className="font-semibold text-neutral-900 dark:text-white">¿Resetear el PIN de acceso?</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           El PIN actual dejará de funcionar en cuanto guardes los cambios. Vas a tener que comunicarle el nuevo PIN al colaborador.
         </p>
         <div className="flex gap-2 justify-center pt-1">
           <button
             type="button"
             onClick={() => setConfirmandoResetPin(false)}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-300 hover:bg-neutral-100 rounded-xl transition"
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
           >
             Cancelar
           </button>
@@ -723,10 +754,10 @@ export default function PanelColaboradoresTH({
         </div>
       </Modal>
 
-      <Modal abierto={!!idGestionar && !confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idGestionar && !confirmandoEliminar} onCerrar={() => setIdGestionar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
-              <h2 className="font-semibold text-neutral-900">{colaboradorGestionar?.nombreCompleto}</h2>
-              <p className="text-xs text-neutral-500 mt-0.5">Elige qué hacer con este colaborador</p>
+              <h2 className="font-semibold text-neutral-900 dark:text-white">{colaboradorGestionar?.nombreCompleto}</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Elige qué hacer con este colaborador</p>
             </div>
 
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
@@ -736,19 +767,19 @@ export default function PanelColaboradoresTH({
                 <button
                   onClick={() => cambiarEstado("INACTIVO")}
                   disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 hover:bg-neutral-50 transition disabled:opacity-50"
+                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
                 >
-                  <p className="text-sm font-medium text-neutral-800">Desactivar</p>
-                  <p className="text-xs text-neutral-500">No podrá iniciar sesión, pero conserva su historial. Se puede reactivar luego.</p>
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Desactivar</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">No podrá iniciar sesión, pero conserva su historial. Se puede reactivar luego.</p>
                 </button>
               ) : (
                 <button
                   onClick={() => cambiarEstado("ACTIVO")}
                   disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 hover:bg-neutral-50 transition disabled:opacity-50"
+                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
                 >
-                  <p className="text-sm font-medium text-neutral-800">Reactivar</p>
-                  <p className="text-xs text-neutral-500">Vuelve a poder iniciar sesión normalmente.</p>
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reactivar</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Vuelve a poder iniciar sesión normalmente.</p>
                 </button>
               )}
 
@@ -758,7 +789,7 @@ export default function PanelColaboradoresTH({
                 className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   {colaboradorGestionar?.tieneSolicitudes
                     ? "No disponible: tiene solicitudes registradas en su historial."
                     : "Borra su cuenta y perfil por completo. No se puede deshacer."}
@@ -769,22 +800,22 @@ export default function PanelColaboradoresTH({
             <button
               onClick={() => setIdGestionar(null)}
               disabled={procesando}
-              className="w-full text-center text-sm font-medium text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-xl py-2.5 transition"
+              className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
             >
               Cancelar
             </button>
       </Modal>
 
-      <Modal abierto={confirmandoEliminar} variante="centro" className="bg-white text-black rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto text-2xl">!</div>
-            <p className="font-semibold text-neutral-900">¿Eliminar a {colaboradorGestionar?.nombreCompleto}?</p>
-            <p className="text-sm text-neutral-500">Esta acción no se puede deshacer.</p>
+      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar a {colaboradorGestionar?.nombreCompleto}?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
             {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmandoEliminar(false)}
                 disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-100 transition"
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 Cancelar
               </button>

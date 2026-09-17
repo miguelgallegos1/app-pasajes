@@ -8,8 +8,11 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { formatearMoneda } from "../lib/formato";
 import Spinner from "./Spinner";
 import { IconoChevron } from "./Icons";
+import EstadoVacio from "./EstadoVacio";
+import Avatar from "./Avatar";
 
 export type FilaResumen = { id: string; nombre: string; cantidad: number; total: number };
 
@@ -75,7 +78,11 @@ export default function TablaAgrupadaColaborador<TDetalle>({
   };
 
   if (filas.length === 0) {
-    return <p className="px-4 py-10 text-center text-neutral-400 text-sm">{vacio}</p>;
+    return (
+      <div className="px-4 py-10">
+        <EstadoVacio mensaje={vacio} />
+      </div>
+    );
   }
 
   return (
@@ -90,23 +97,24 @@ export default function TablaAgrupadaColaborador<TDetalle>({
               className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-neutral-100/60 transition"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <IconoChevron className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${abierto ? "rotate-90" : ""}`} />
+                <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${abierto ? "rotate-90" : ""}`} />
+                <Avatar nombre={colaborador.nombre} className="w-7 h-7 text-[11px]" />
                 <span className="font-medium truncate">{colaborador.nombre}</span>
               </div>
               <div className="flex items-center gap-4 shrink-0 text-sm">
-                <span className="text-neutral-500">{colaborador.cantidad} {colaborador.cantidad === 1 ? "ruta" : "rutas"}</span>
-                <span className="font-semibold text-neutral-800">${colaborador.total.toFixed(2)}</span>
+                <span className="text-neutral-500 dark:text-neutral-400">{colaborador.cantidad} {colaborador.cantidad === 1 ? "ruta" : "rutas"}</span>
+                <span className="font-semibold text-neutral-800 dark:text-neutral-200">{formatearMoneda(colaborador.total)}</span>
               </div>
             </button>
 
             {abierto && (
               <div className="bg-neutral-50/80 pl-8 pr-2 pb-2">
                 {cargandoSubfilas ? (
-                  <div className="flex items-center gap-2 py-3 text-sm text-neutral-400">
+                  <div className="flex items-center gap-2 py-3 text-sm text-neutral-400 dark:text-neutral-500">
                     <Spinner className="w-4 h-4" /> Cargando rutas...
                   </div>
                 ) : subfilas.length === 0 ? (
-                  <p className="py-3 text-sm text-neutral-400">Sin rutas en este rango</p>
+                  <p className="py-3 text-sm text-neutral-400 dark:text-neutral-500">Sin rutas en este rango</p>
                 ) : (
                   <div className="divide-y divide-neutral-200/70">
                     {subfilas.map((ruta) => {
@@ -119,23 +127,23 @@ export default function TablaAgrupadaColaborador<TDetalle>({
                             className="w-full flex items-center justify-between gap-3 py-2.5 text-left hover:bg-neutral-100/60 transition rounded-lg px-2"
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <IconoChevron className={`w-3.5 h-3.5 text-neutral-400 shrink-0 transition-transform ${rutaOpen ? "rotate-90" : ""}`} />
+                              <IconoChevron className={`w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${rutaOpen ? "rotate-90" : ""}`} />
                               <span className="text-sm truncate">{ruta.nombre}</span>
                             </div>
                             <div className="flex items-center gap-3 shrink-0 text-xs">
-                              <span className="text-neutral-400">{ruta.cantidad}</span>
-                              <span className="font-medium text-neutral-700">${ruta.total.toFixed(2)}</span>
+                              <span className="text-neutral-400 dark:text-neutral-500">{ruta.cantidad}</span>
+                              <span className="font-medium text-neutral-700 dark:text-neutral-300">{formatearMoneda(ruta.total)}</span>
                             </div>
                           </button>
 
                           {rutaOpen && (
                             <div className="pl-5 pb-2">
                               {cargandoDetalle ? (
-                                <div className="flex items-center gap-2 py-2 text-xs text-neutral-400">
+                                <div className="flex items-center gap-2 py-2 text-xs text-neutral-400 dark:text-neutral-500">
                                   <Spinner className="w-3.5 h-3.5" /> Cargando solicitudes...
                                 </div>
                               ) : detalle.length === 0 ? (
-                                <p className="py-2 text-xs text-neutral-400">Sin solicitudes</p>
+                                <p className="py-2 text-xs text-neutral-400 dark:text-neutral-500">Sin solicitudes</p>
                               ) : (
                                 <div className="space-y-1.5 py-1">{detalle.map((item) => renderDetalle(item))}</div>
                               )}

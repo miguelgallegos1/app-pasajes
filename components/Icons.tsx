@@ -178,3 +178,80 @@ export function IconoDescargar({ className = "w-4 h-4" }: { className?: string }
     </svg>
   );
 }
+
+export function IconoCampana({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 3.4 1 5.3 1.6 6.2a1 1 0 0 1-.8 1.6H5.2a1 1 0 0 1-.8-1.6C5 14.3 6 12.4 6 9Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.5 19a2.5 2.5 0 0 0 5 0" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconoLupa({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M20 20l-4.8-4.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Una sola flecha hacia arriba: se rota 180° para representar "descendente"
+// (mismo truco que IconoChevron usa para abrir/cerrar un grupo).
+export function IconoOrdenar({ className = "w-3 h-3" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2.5}>
+      <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconoAlerta({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path d="M12 3.5 22 20H2L12 3.5Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 10v4" strokeLinecap="round" />
+      <circle cx="12" cy="17.2" r="0.1" fill="currentColor" stroke="currentColor" strokeWidth={1.6} />
+    </svg>
+  );
+}
+
+export function IconoMas({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+      <circle cx="12" cy="5" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="12" cy="19" r="1.8" />
+    </svg>
+  );
+}
+
+export function IconoPregunta({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9a2.5 2.5 0 0 1 4.6-1.4c.6.9.4 1.9-.4 2.6l-.6.5c-.6.5-1.1 1-1.1 1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="17" r="0.1" fill="currentColor" stroke="currentColor" strokeWidth={1.6} />
+    </svg>
+  );
+}
+
+export function IconoRefrescar({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path d="M4 12a8 8 0 0 1 14.5-4.5M20 12a8 8 0 0 1-14.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M18.5 3v4.5H14M5.5 21v-4.5H10" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconoCajaVacia({ className = "w-10 h-10" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={1.6}>
+      <path d="M3 8.5 12 4l9 4.5-9 4.5-9-4.5Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 8.5V17l9 4.5 9-4.5V8.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 13v8.5" strokeLinecap="round" />
+    </svg>
+  );
+}

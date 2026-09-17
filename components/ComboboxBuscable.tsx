@@ -66,10 +66,10 @@ export default function ComboboxBuscable({
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); } }}
         className={`w-full flex items-center justify-between gap-2 rounded-xl px-3.5 py-3 text-left text-sm cursor-pointer
           border transition ${cargando ? "opacity-50 pointer-events-none" : ""}
-          ${abierto ? "border-orange-400 ring-2 ring-orange-500/15" : "border-neutral-200 hover:border-neutral-300"}
+          ${abierto ? "border-orange-400 ring-2 ring-orange-500/15" : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"}
         `}
       >
-        <span className={`truncate ${opcionSeleccionada ? "text-neutral-900 font-medium" : "text-neutral-400"}`}>
+        <span className={`truncate ${opcionSeleccionada ? "text-neutral-900 dark:text-white font-medium" : "text-neutral-400 dark:text-neutral-500"}`}>
           {cargando ? "Cargando..." : opcionSeleccionada ? opcionSeleccionada.label : placeholder}
         </span>
         <span className="flex items-center gap-1 shrink-0">
@@ -78,34 +78,35 @@ export default function ComboboxBuscable({
               type="button"
               onClick={(e) => { e.stopPropagation(); onChange(""); }}
               title="Quitar selección"
-              className="text-neutral-400 hover:text-red-500 transition p-0.5 leading-none"
+              aria-label="Quitar selección"
+              className="text-neutral-400 dark:text-neutral-500 hover:text-red-500 transition p-0.5 leading-none"
             >
               ×
             </button>
           )}
-          <svg viewBox="0 0 24 24" className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg viewBox="0 0 24 24" className="w-4 h-4 text-neutral-400 dark:text-neutral-500" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
       </div>
 
       {abierto && (
-        <div className="absolute z-50 mt-2 w-full bg-white ring-1 ring-black/5 rounded-2xl shadow-2xl overflow-hidden origin-top animate-[dropdown-in_0.15s_ease-out]">
+        <div className="absolute z-50 mt-2 w-full bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top animate-[dropdown-in_0.15s_ease-out]">
           {/* Buscador */}
-          <div className="p-2 border-b border-neutral-100">
+          <div className="p-2 border-b border-neutral-100 dark:border-neutral-800">
             <input
               ref={inputRef}
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar..."
-              className="w-full px-3 py-2 text-sm rounded-lg bg-neutral-50 border border-transparent focus:border-orange-300 outline-none"
+              className="w-full px-3 py-2 text-sm rounded-lg bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white border border-transparent focus:border-orange-300 outline-none"
             />
           </div>
 
           {/* Lista de opciones */}
           <div className="max-h-56 overflow-y-auto py-1">
             {opcionesFiltradas.length === 0 && (
-              <p className="px-4 py-3 text-sm text-neutral-400">Sin resultados</p>
+              <p className="px-4 py-3 text-sm text-neutral-400 dark:text-neutral-500">Sin resultados</p>
             )}
             {opcionesFiltradas.map((o) => (
               <button
@@ -113,7 +114,7 @@ export default function ComboboxBuscable({
                 type="button"
                 onClick={() => elegir(o)}
                 className={`w-full text-left px-4 py-2.5 text-sm transition
-                  ${o.id === value ? "bg-orange-50 text-orange-700 font-medium" : "text-neutral-700 hover:bg-neutral-50"}
+                  ${o.id === value ? "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 font-medium" : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800"}
                 `}
               >
                 {o.label}

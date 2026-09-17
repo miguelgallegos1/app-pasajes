@@ -102,7 +102,7 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
   };
 
   if (datos.length === 0 || totalGeneral === 0) {
-    return <p className="text-sm text-neutral-400 py-8 text-center">Sin datos en este rango</p>;
+    return <p className="text-sm text-neutral-400 dark:text-neutral-500 py-8 text-center">Sin datos en este rango</p>;
   }
 
   return (
@@ -229,7 +229,7 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
       {/* Leyenda — siempre visible con 4 series */}
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2 justify-center">
         {SERIES.map((s) => (
-          <div key={s.clave} className="flex items-center gap-1.5 text-xs text-neutral-600">
+          <div key={s.clave} className="flex items-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-300">
             <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
             {s.label}
           </div>

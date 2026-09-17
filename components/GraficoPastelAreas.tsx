@@ -8,6 +8,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatearMoneda } from "../lib/formato";
 
 const COLORES_AREA = ["#e87ba4", "#008300", "#4a3aa7", "#e34948"];
 const COLOR_OTRAS = "#898781";
@@ -89,7 +90,7 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
   };
 
   if (datos.length === 0 || totalGeneral === 0) {
-    return <p className="text-sm text-neutral-400 py-8 text-center">Sin datos en este rango</p>;
+    return <p className="text-sm text-neutral-400 dark:text-neutral-500 py-8 text-center">Sin datos en este rango</p>;
   }
 
   return (
@@ -111,7 +112,7 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
               fill={colorDe(c.area, c.idx)}
               tabIndex={0}
               role="button"
-              aria-label={`${c.area}: $${c.total.toFixed(2)}, ${(c.fraccion * 100).toFixed(0)}%`}
+              aria-label={`${c.area}: ${formatearMoneda(c.total)}, ${(c.fraccion * 100).toFixed(0)}%`}
               onMouseMove={(e) => mover(e, c.idx)}
               onMouseEnter={(e) => mover(e, c.idx)}
               onMouseLeave={() => setHoverIdx(null)}
@@ -143,10 +144,10 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
           <div key={c.area} className="flex items-center justify-between gap-2 text-sm">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: colorDe(c.area, c.idx) }} />
-              <span className="truncate text-neutral-700">{c.area}</span>
+              <span className="truncate text-neutral-700 dark:text-neutral-300">{c.area}</span>
             </div>
-            <div className="flex items-center gap-2 shrink-0 text-neutral-500">
-              <span className="font-semibold text-neutral-800">${c.total.toFixed(2)}</span>
+            <div className="flex items-center gap-2 shrink-0 text-neutral-500 dark:text-neutral-400">
+              <span className="font-semibold text-neutral-800 dark:text-neutral-200">{formatearMoneda(c.total)}</span>
               <span className="text-xs">{(c.fraccion * 100).toFixed(0)}%</span>
             </div>
           </div>
@@ -163,7 +164,7 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
         >
           <p className="font-semibold text-[11px] text-neutral-600 dark:text-neutral-300">{cunas[hoverIdx].area}</p>
           <p>
-            <span className="font-semibold">${cunas[hoverIdx].total.toFixed(2)}</span>{" "}
+            <span className="font-semibold">{formatearMoneda(cunas[hoverIdx].total)}</span>{" "}
             <span className="text-neutral-500 dark:text-neutral-400">({(cunas[hoverIdx].fraccion * 100).toFixed(0)}%)</span>
           </p>
         </div>

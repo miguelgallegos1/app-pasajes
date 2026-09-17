@@ -98,15 +98,15 @@ function BloqueCarga({
   };
 
   return (
-    <div className="bg-neutral-50 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4">
+    <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4 transition hover:shadow-md hover:-translate-y-0.5">
       <div>
-        <h2 className="text-base font-bold text-neutral-900">{titulo}</h2>
-        <p className="text-xs text-neutral-500 mt-0.5">{descripcion}</p>
+        <h2 className="text-base font-bold text-neutral-900 dark:text-white">{titulo}</h2>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{descripcion}</p>
       </div>
 
       <a
         href={urlPlantilla}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
       >
         <IconoDescargar className="w-4 h-4" /> Descargar plantilla
       </a>
@@ -117,7 +117,7 @@ function BloqueCarga({
           type="file"
           accept=".xlsx"
           onChange={elegirArchivo}
-          className="flex-1 text-sm text-neutral-600 file:mr-3 file:py-2 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-neutral-200 file:text-neutral-700 hover:file:bg-neutral-300"
+          className="flex-1 text-sm text-neutral-600 dark:text-neutral-300 file:mr-3 file:py-2 file:px-3.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-neutral-200 dark:file:bg-neutral-700 file:text-neutral-700 dark:file:text-neutral-200 hover:file:bg-neutral-300 dark:hover:file:bg-neutral-600"
         />
         <button
           onClick={subir}
@@ -134,7 +134,7 @@ function BloqueCarga({
       {resultado && (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium text-neutral-700">
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
               {resultado.creadas} de {resultado.total} fila(s) creada(s) correctamente
               {resultado.creadas < resultado.total && (
                 <span className="text-red-600"> · {resultado.total - resultado.creadas} con errores</span>
@@ -143,7 +143,7 @@ function BloqueCarga({
             <button
               type="button"
               onClick={() => descargarResultadosCSV(resultado, `resultado-carga-${titulo.toLowerCase()}.csv`, columnaPin)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-lg transition"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-lg transition"
             >
               <IconoDescargar className="w-3.5 h-3.5" /> Descargar resultado
             </button>
@@ -153,10 +153,10 @@ function BloqueCarga({
               Descargá el resultado o copiá los PIN generados antes de salir de esta pantalla — no se pueden volver a ver después.
             </p>
           )}
-          <div className="bg-white rounded-xl ring-1 ring-black/5 overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
             <div className="max-h-80 overflow-y-auto">
               <table className="w-full text-xs">
-                <thead className="bg-neutral-100 text-neutral-500 text-left sticky top-0">
+                <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left sticky top-0 z-10">
                   <tr>
                     <th className="px-3 py-2 font-medium w-14">Fila</th>
                     <th className="px-3 py-2 font-medium w-20">Estado</th>
@@ -168,8 +168,8 @@ function BloqueCarga({
                 </thead>
                 <tbody>
                   {resultado.resultados.map((r) => (
-                    <tr key={r.fila} className="border-t border-neutral-100">
-                      <td className="px-3 py-2 text-neutral-400">{r.fila}</td>
+                    <tr key={r.fila} className="border-t border-neutral-100 dark:border-neutral-800">
+                      <td className="px-3 py-2 text-neutral-400 dark:text-neutral-500">{r.fila}</td>
                       <td className="px-3 py-2">
                         <span
                           className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
@@ -179,12 +179,12 @@ function BloqueCarga({
                           {r.estado}
                         </span>
                       </td>
-                      {columnaPin && <td className="px-3 py-2 text-neutral-700">{r.nombreCompleto ?? "—"}</td>}
-                      {columnaPin && <td className="px-3 py-2 text-neutral-500">{r.codigoNomina ?? "—"}</td>}
+                      {columnaPin && <td className="px-3 py-2 text-neutral-700 dark:text-neutral-300">{r.nombreCompleto ?? "—"}</td>}
+                      {columnaPin && <td className="px-3 py-2 text-neutral-500 dark:text-neutral-400">{r.codigoNomina ?? "—"}</td>}
                       {columnaPin && (
-                        <td className="px-3 py-2 font-mono font-bold tracking-widest text-neutral-700">{r.pin ?? "—"}</td>
+                        <td className="px-3 py-2 font-mono font-bold tracking-widest text-neutral-700 dark:text-neutral-300">{r.pin ?? "—"}</td>
                       )}
-                      <td className="px-3 py-2 text-neutral-600">{r.mensaje}</td>
+                      <td className="px-3 py-2 text-neutral-600 dark:text-neutral-300">{r.mensaje}</td>
                     </tr>
                   ))}
                 </tbody>

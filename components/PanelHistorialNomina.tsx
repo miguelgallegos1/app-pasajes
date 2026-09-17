@@ -6,10 +6,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { formatearMoneda } from "../lib/formato";
 import RangoFechasSelector from "./RangoFechasSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
+import TablaEsqueleto from "./TablaEsqueleto";
+import EstadoVacio from "./EstadoVacio";
+import SelectorVista from "./SelectorVista";
+import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
 import TablaAgrupadaColaborador, { type FilaResumen } from "./TablaAgrupadaColaborador";
 import { IconoDescargar } from "./Icons";
 
@@ -18,6 +24,14 @@ type Sitio = { id: string; nombre: string; empresaId: string };
 type Area = { id: string; nombre: string; sitioId: string };
 type Colaborador = { id: string; nombreCompleto: string; areaId: string };
 type Fila = { id: string; codigo: string; fecha: string; fechaPago: string | null; montoTotal: number; nombreColaborador: string; rutaLabel: string };
+
+type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal";
+const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
+  fecha: (f) => f.fecha,
+  nombreColaborador: (f) => f.nombreColaborador,
+  rutaLabel: (f) => f.rutaLabel,
+  montoTotal: (f) => f.montoTotal,
+};
 
 export default function PanelHistorialNomina({
   empresas,
@@ -48,6 +62,12 @@ export default function PanelHistorialNomina({
   const [filasColaborador, setFilasColaborador] = useState<FilaResumen[] | null>(null);
   const [paginaColab, setPaginaColab] = useState(1);
   const [totalPaginasColab, setTotalPaginasColab] = useState(1);
+
+  const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(
+    items ?? [],
+    (f, campo) => VALOR_ORDEN[campo](f),
+    "historial-nomina"
+  );
 
   const sitiosOpciones = useMemo(
     () => (empresaId ? sitios.filter((s) => s.empresaId === empresaId) : sitios).map((s) => ({ id: s.id, label: s.nombre })),
@@ -157,9 +177,9 @@ export default function PanelHistorialNomina({
         <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes ya pagadas</span>
       </div>
 
-      <div className="bg-neutral-50 text-neutral-800 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 space-y-4">
+      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
         <div className="max-w-xs">
-          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Rango de fechas</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
           <div className="mt-1.5">
             <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
           </div>
@@ -167,7 +187,7 @@ export default function PanelHistorialNomina({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Empresa</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Empresa</label>
             <div className="mt-1.5">
               <ComboboxBuscable
                 opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
@@ -178,19 +198,19 @@ export default function PanelHistorialNomina({
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Sitio</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sitio</label>
             <div className="mt-1.5">
               <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Área</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
             <div className="mt-1.5">
               <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todas" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Colaborador</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
             <div className="mt-1.5">
               <ComboboxBuscable opciones={colaboradoresOpciones} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
             </div>
@@ -206,33 +226,17 @@ export default function PanelHistorialNomina({
             {cargando ? "Buscando..." : "Buscar"}
           </button>
 
-          <div className="flex bg-neutral-100 border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl p-1 gap-1">
-            {[
-              { value: "lista" as const, label: "Lista" },
-              { value: "colaborador" as const, label: "Por colaborador" },
-            ].map((op) => (
-              <button
-                key={op.value}
-                type="button"
-                onClick={() => cambiarVista(op.value)}
-                className={`text-xs font-semibold px-3 py-2 rounded-lg transition ${
-                  vista === op.value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-                }`}
-              >
-                {op.label}
-              </button>
-            ))}
-          </div>
+          <SelectorVista valor={vista} onCambiar={cambiarVista} />
 
           {puedeExportar ? (
             <a
               href={urlExportar()}
-              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
+              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
             >
               <IconoDescargar className="w-4 h-4" /> Exportar a Excel
             </a>
           ) : (
-            <span className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 border border-neutral-200 px-3.5 py-2.5 rounded-xl cursor-not-allowed">
+            <span className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed">
               <IconoDescargar className="w-4 h-4" /> Exportar a Excel
             </span>
           )}
@@ -241,19 +245,21 @@ export default function PanelHistorialNomina({
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
-      {vista === "colaborador" && filasColaborador && (
-        <div className="bg-white text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+      {cargando && <TablaEsqueleto columnas={vista === "lista" ? 5 : 3} />}
+
+      {!cargando && vista === "colaborador" && filasColaborador && (
+        <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <TablaAgrupadaColaborador
             filas={filasColaborador}
             cargarSubfilas={cargarSubfilas}
             cargarDetalle={cargarDetalle}
             renderDetalle={(s: Fila) => (
-              <div className="flex items-center justify-between gap-2 bg-neutral-50 rounded-lg px-3 py-2 text-sm">
+              <div className="flex items-center justify-between gap-2 bg-neutral-50 dark:bg-neutral-800/60 rounded-lg px-3 py-2 text-sm">
                 <div className="min-w-0">
-                  <p className="font-mono font-bold tracking-widest text-neutral-500 text-xs">{s.codigo}</p>
+                  <p className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{s.codigo}</p>
                   <p className="text-neutral-600">{formatearFecha(s.fecha)}{s.fechaPago ? ` · Pagada ${formatearFecha(s.fechaPago)}` : ""}</p>
                 </div>
-                <span className="font-semibold shrink-0">${s.montoTotal.toFixed(2)}</span>
+                <span className="font-semibold shrink-0">{formatearMoneda(s.montoTotal)}</span>
               </div>
             )}
             vacio="No hay pagos registrados en ese rango"
@@ -262,49 +268,49 @@ export default function PanelHistorialNomina({
         </div>
       )}
 
-      {vista === "lista" && items && (
-        <div className="bg-white text-neutral-800 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5">
+      {!cargando && vista === "lista" && items && (
+        <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
-              <thead className="bg-neutral-100 text-neutral-500 text-left">
+              <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>
-                  <th className="px-4 py-3 font-medium">Fecha del pasaje</th>
-                  <th className="px-4 py-3 font-medium">Colaborador</th>
-                  <th className="px-4 py-3 font-medium">Ruta</th>
-                  <th className="px-4 py-3 font-medium">Valor</th>
+                  <EncabezadoOrdenable campo="fecha" ordenActivo={orden} onOrdenar={ordenar}>Fecha del pasaje</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
                 </tr>
               </thead>
               <tbody>
-                {items.map((s) => (
-                  <tr key={s.id} className="border-t border-neutral-100 hover:bg-neutral-50 transition">
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500">{s.codigo}</td>
+                {itemsOrdenados.map((s) => (
+                  <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
+                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
                     <td className="px-4 py-3">
                       <p>{formatearFecha(s.fecha)}</p>
                       {s.fechaPago && (
-                        <p className="text-[11px] text-neutral-400">
+                        <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                           Pagada: {new Date(s.fechaPago).toLocaleDateString()}
                         </p>
                       )}
                     </td>
                     <td className="px-4 py-3">{s.nombreColaborador}</td>
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
-                    <td className="px-4 py-3">${s.montoTotal.toFixed(2)}</td>
+                    <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
                   </tr>
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-neutral-400">
-                      No hay pagos registrados en ese rango
+                    <td colSpan={5} className="px-4 py-10">
+                      <EstadoVacio mensaje="No hay pagos registrados en ese rango" />
                     </td>
                   </tr>
                 )}
               </tbody>
               {items.length > 0 && (
                 <tfoot>
-                  <tr className="border-t border-neutral-200 bg-neutral-50 font-semibold">
+                  <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 font-semibold">
                     <td className="px-4 py-3" colSpan={4}>Total del rango</td>
-                    <td className="px-4 py-3">${totalMonto.toFixed(2)}</td>
+                    <td className="px-4 py-3">{formatearMoneda(totalMonto)}</td>
                   </tr>
                 </tfoot>
               )}
