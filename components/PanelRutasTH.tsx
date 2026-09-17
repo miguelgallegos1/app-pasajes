@@ -28,7 +28,7 @@ type Ruta = {
   areaId: string;
   areaLabel: string;
   tieneSolicitudes: boolean;
-  colaboradorExclusivoNombre: string | null;
+  colaboradoresExclusivosNombres: string[];
 };
 type Opcion = { id: string; label: string };
 type Sitio = { id: string; nombre: string; empresaId: string };
@@ -408,9 +408,9 @@ export default function PanelRutasTH({
                   <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">{r.numero}</td>
                   <td className="px-4 py-3 text-neutral-600">
                     {r.nombre}
-                    {r.colaboradorExclusivoNombre && (
+                    {r.colaboradoresExclusivosNombres.length > 0 && (
                       <span className="block text-[10px] font-semibold text-orange-600 mt-0.5">
-                        Exclusiva de {r.colaboradorExclusivoNombre}
+                        Exclusiva de {r.colaboradoresExclusivosNombres.join(", ")}
                       </span>
                     )}
                   </td>

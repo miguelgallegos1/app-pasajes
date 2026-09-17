@@ -35,14 +35,21 @@ export default function CommandPalette({
   const [buscandoColaboradores, setBuscandoColaboradores] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  // onCerrar suele llegar como función inline desde AppShell: si el efecto
+  // de abajo dependiera de ella directamente, cualquier re-render del padre
+  // reinstalaría el listener (mismo patrón de fragilidad que tenía Modal.tsx).
+  const onCerrarRef = useRef(onCerrar);
+  useEffect(() => {
+    onCerrarRef.current = onCerrar;
+  }, [onCerrar]);
 
   useEffect(() => {
     const alPresionar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCerrar();
+      if (e.key === "Escape") onCerrarRef.current();
     };
     window.addEventListener("keydown", alPresionar);
     return () => window.removeEventListener("keydown", alPresionar);
-  }, [onCerrar]);
+  }, []);
 
   useEffect(() => {
     const id = setTimeout(() => inputRef.current?.focus(), 10);

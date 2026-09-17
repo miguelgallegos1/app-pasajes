@@ -18,7 +18,7 @@ export default async function RutasPage() {
         where: { areaId: { in: areaIds } },
         include: {
           area: { include: { sitio: { include: { empresa: true } } } },
-          colaboradorExclusivo: { select: { nombreCompleto: true } },
+          colaboradoresExclusivos: { select: { nombreCompleto: true } },
           _count: { select: { solicitudes: true } },
         },
         orderBy: { numero: "asc" },
@@ -36,7 +36,7 @@ export default async function RutasPage() {
     areaId: r.areaId,
     areaLabel: `${r.area.sitio.empresa.nombre} · ${r.area.sitio.nombre} · ${r.area.nombre}`,
     tieneSolicitudes: r._count.solicitudes > 0,
-    colaboradorExclusivoNombre: r.colaboradorExclusivo?.nombreCompleto ?? null,
+    colaboradoresExclusivosNombres: r.colaboradoresExclusivos.map((c) => c.nombreCompleto),
   }));
 
   const areasSerializadas = areasPermitidas.map((a) => ({

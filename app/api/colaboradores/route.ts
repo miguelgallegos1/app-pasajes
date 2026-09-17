@@ -103,9 +103,9 @@ export async function POST(req: Request) {
       });
 
       if (rutaIdsValidos.length > 0) {
-        await tx.ruta.updateMany({
-          where: { id: { in: rutaIdsValidos } },
-          data: { colaboradorExclusivoId: creado.colaborador!.id },
+        await tx.colaborador.update({
+          where: { id: creado.colaborador!.id },
+          data: { rutasExclusivas: { connect: rutaIdsValidos.map((rutaId) => ({ id: rutaId })) } },
         });
       }
 

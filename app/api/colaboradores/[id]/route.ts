@@ -112,31 +112,19 @@ export async function PATCH(
       });
     }
 
-    const actualizado = await db.colaborador.update({ where: { id }, data });
-
     // Solo tocamos las rutas exclusivas si el formulario mandó la lista
     // (las llamadas parciales, como cambiar solo el estado, no la incluyen).
+    // "set" reemplaza la lista de rutas exclusivas DE ESTE colaborador sin
+    // afectar a otros colaboradores que también tengan esas mismas rutas
+    // marcadas como exclusivas (pueden compartirla, ej. mismo sector).
     if (Array.isArray(rutaIds)) {
       const rutaIdsValidos = (
         await db.ruta.findMany({ where: { id: { in: rutaIds }, areaId: areaFinalId }, select: { id: true } })
       ).map((r) => r.id);
-
-      // Libera las que ya eran suyas y se desmarcaron; asigna las nuevas.
-      await db.$transaction([
-        db.ruta.updateMany({
-          where: { colaboradorExclusivoId: id, id: { notIn: rutaIdsValidos } },
-          data: { colaboradorExclusivoId: null },
-        }),
-        ...(rutaIdsValidos.length > 0
-          ? [
-              db.ruta.updateMany({
-                where: { id: { in: rutaIdsValidos } },
-                data: { colaboradorExclusivoId: id },
-              }),
-            ]
-          : []),
-      ]);
+      data.rutasExclusivas = { set: rutaIdsValidos.map((rutaId) => ({ id: rutaId })) };
     }
+
+    const actualizado = await db.colaborador.update({ where: { id }, data });
 
     return NextResponse.json(actualizado);
   } catch (e) {

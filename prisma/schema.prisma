@@ -87,17 +87,16 @@ model Ruta {
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  // Si es null, la ruta es de toda el área (como siempre). Si apunta a un
-  // colaborador, esa ruta puntual solo la ve él/ella, no el resto del área.
-  colaboradorExclusivo   Colaborador? @relation("RutaExclusiva", fields: [colaboradorExclusivoId], references: [id])
-  colaboradorExclusivoId String?
+  // Si está vacío, la ruta es de toda el área (como siempre). Si tiene
+  // colaboradores, esa ruta puntual solo la ven ellos, no el resto del área
+  // — puede haber más de uno (ej. viven en el mismo sector y comparten ruta).
+  colaboradoresExclusivos Colaborador[] @relation("RutaExclusiva")
 
   solicitudes SolicitudPasaje[]
   colaboradoresConEstaRutaHabitual Colaborador[] @relation("RutaHabitual")
 
   @@unique([areaId, nombre]) // evita 2 rutas con el mismo nombre en la misma área
   @@index([sitioId, areaId, activo])
-  @@index([colaboradorExclusivoId])
   // El índice de arriba tiene sitioId primero, así que no sirve para
   // filtros que buscan solo por área o solo por empresa (sin sitio) — y
   // eso es justo lo que hacen las pantallas de TH y el alcance por

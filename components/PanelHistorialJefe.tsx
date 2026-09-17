@@ -185,7 +185,11 @@ export default function PanelHistorialJefe({
   };
 
   const urlExportar = () => `/api/jefe/historial/exportar?${parametrosBase().toString()}`;
-  const puedeExportar = !!desde && !!hasta;
+  // Exportar usa los mismos filtros que "Buscar", así que solo habilitamos
+  // el botón cuando esa búsqueda ya trajo resultados — evita generar un
+  // Excel vacío cuando el rango/filtro elegido no tiene datos.
+  const hayDatos = vista === "lista" ? (items?.length ?? 0) > 0 : (filasColaborador?.length ?? 0) > 0;
+  const puedeExportar = !!desde && !!hasta && hayDatos;
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
@@ -273,7 +277,10 @@ export default function PanelHistorialJefe({
               <IconoDescargar className="w-4 h-4" /> Exportar a Excel
             </a>
           ) : (
-            <span className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed">
+            <span
+              title={!desde || !hasta ? "Selecciona ambas fechas" : "Busca primero: no hay resultados para exportar"}
+              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
+            >
               <IconoDescargar className="w-4 h-4" /> Exportar a Excel
             </span>
           )}

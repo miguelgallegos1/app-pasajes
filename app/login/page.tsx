@@ -13,10 +13,13 @@ import { IconoHuella } from "../../components/Icons";
 import { INICIO_POR_ROL as DESTINO_POR_ROL } from "../../lib/roles";
 import BotonTema from "../../components/BotonTema";
 
-const TIEMPO_LIMITE_MS = 2000;
+const TIEMPO_LIMITE_MS = 8000;
+const REINTENTOS_MAXIMOS = 2;
 
-// fetch con límite de 2s: si el pedido se cuelga (red inestable, sesión
-// previa dejando algo trabado, etc.) abortamos en vez de esperar para siempre.
+// fetch con límite de tiempo: si el pedido se cuelga (red inestable, cold
+// start del servidor, etc.) abortamos en vez de esperar para siempre. 8s
+// alcanza para señal débil o un servidor recién despertando; enviarPin ya
+// reintenta antes de culpar a la conexión (ver REINTENTOS_MAXIMOS).
 async function fetchConLimite(input: RequestInfo, init?: RequestInit) {
   const controlador = new AbortController();
   const limite = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_MS);
@@ -27,12 +30,23 @@ async function fetchConLimite(input: RequestInfo, init?: RequestInit) {
   }
 }
 
+// navigator.onLine dice si el dispositivo tiene alguna conexión, no si
+// llega al servidor — por eso solo lo usamos para el caso claro ("avión",
+// wifi apagado). Con señal débil sigue en true y ahí preferimos reintentar
+// en silencio antes de mostrarle al usuario un mensaje de "sin conexión"
+// que no es exacto.
+const sinConexionDetectada = () => typeof navigator !== "undefined" && navigator.onLine === false;
+
 export default function LoginPage() {
   const [digitos, setDigitos] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [mensajeCarga, setMensajeCarga] = useState("Verificando tu PIN...");
   const [biometriaDisponible, setBiometriaDisponible] = useState(false);
+  // Firefox no soporta el enmascarado por CSS que usamos para evitar el
+  // parpadeo de Android (ver más abajo); ahí volvemos a type="password" en
+  // vez de arriesgarnos a mostrar el PIN en texto plano sin ocultar.
+  const [soportaMascaraCss, setSoportaMascaraCss] = useState(true);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const router = useRouter();
   // Guarda el temporizador de respaldo de irADestino(); si la navegación
@@ -43,6 +57,14 @@ export default function LoginPage() {
     return () => {
       if (respaldoNavegacionRef.current) clearTimeout(respaldoNavegacionRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const soportado =
+      typeof CSS !== "undefined" &&
+      typeof CSS.supports === "function" &&
+      (CSS.supports("-webkit-text-security", "disc") || CSS.supports("text-security", "disc"));
+    setSoportaMascaraCss(soportado);
   }, []);
 
   useEffect(() => {
@@ -81,11 +103,11 @@ export default function LoginPage() {
     router.push(destino);
   };
 
-  const enviarPin = async (pinCompleto: string, esReintento = false) => {
-    // Un solo mensaje durante todo el proceso, incluido el reintento
-    // silencioso: mostrar "Reintentando..." le hacía pensar al usuario
-    // que algo había fallado, cuando en realidad es solo el servidor
-    // demorándose un poco (ver TIEMPO_LIMITE_MS más arriba).
+  const enviarPin = async (pinCompleto: string, intento = 0) => {
+    // Un solo mensaje durante todo el proceso, incluidos los reintentos
+    // silenciosos: mostrar "Reintentando..." le hacía pensar al usuario
+    // que algo había fallado, cuando en realidad es solo el servidor o la
+    // señal demorándose un poco (ver TIEMPO_LIMITE_MS más arriba).
     setMensajeCarga("Verificando tu PIN...");
     setLoading(true);
     setError("");
@@ -98,13 +120,18 @@ export default function LoginPage() {
         body: JSON.stringify({ pin: pinCompleto }),
       });
     } catch {
-      // Se agotaron los 2 segundos o falló la red: reintentamos una sola
-      // vez automáticamente antes de pedirle al usuario que lo intente él.
-      if (!esReintento) {
-        enviarPin(pinCompleto, true);
+      // Se agotó el límite de tiempo o falló la red: reintentamos en
+      // silencio antes de culpar a la conexión — con señal débil o un
+      // servidor recién despertando, el primer intento fallando es normal.
+      if (intento < REINTENTOS_MAXIMOS) {
+        enviarPin(pinCompleto, intento + 1);
         return;
       }
-      setError("No se pudo conectar. Intenta de nuevo.");
+      setError(
+        sinConexionDetectada()
+          ? "No hay conexión a internet. Revisa tu señal e intenta de nuevo."
+          : "La conexión está lenta. Intenta de nuevo."
+      );
       setDigitos(["", "", "", "", "", ""]);
       setLoading(false);
       return;
@@ -151,7 +178,11 @@ export default function LoginPage() {
       irADestino(rol);
     } catch (e: any) {
       if (e?.name === "AbortError") {
-        setError("No se pudo conectar. Intenta de nuevo.");
+        setError(
+          sinConexionDetectada()
+            ? "No hay conexión a internet. Revisa tu señal e intenta de nuevo."
+            : "La conexión está lenta. Intenta de nuevo."
+        );
       } else if (e?.name !== "NotAllowedError") {
         setError(e?.message || "No se pudo verificar tu identidad");
       }
@@ -229,14 +260,20 @@ export default function LoginPage() {
               ref={(el) => {
                 inputsRef.current[index] = el;
               }}
-              type="password"
+              type={soportaMascaraCss ? "text" : "password"}
               inputMode="numeric"
+              autoComplete="off"
               maxLength={1}
               value={digito}
               disabled={loading}
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={(e) => handlePaste(index, e)}
+              // En vez de type="password": en Android el navegador muestra el
+              // dígito recién tecleado en claro y lo oculta recién ~1s después
+              // (animación nativa, no configurable). Enmascarando con CSS el
+              // dígito se ve oculto al instante, sin ese parpadeo.
+              style={soportaMascaraCss ? ({ WebkitTextSecurity: "disc", textSecurity: "disc" } as React.CSSProperties) : undefined}
               className="w-9 h-11 sm:w-14 sm:h-16 text-center text-lg sm:text-2xl font-bold rounded-xl
                         bg-white border-2 border-neutral-300 text-neutral-900
                         dark:bg-neutral-900 dark:border-neutral-700 dark:text-white
