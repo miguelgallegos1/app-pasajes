@@ -32,6 +32,13 @@ export async function POST(req: Request) {
     attestationType: "none",
     excludeCredentials: existentes.map((c) => ({ id: c.credentialId })),
     authenticatorSelection: {
+      // Sin esto, el navegador deja registrar (y después ofrecer al
+      // loguearse) llaves de otro dispositivo o de seguridad externas,
+      // así que en vez de ir directo al sensor local (huella/Face ID/
+      // Windows Hello) primero aparece un selector genérico de "¿qué
+      // llave de acceso querés usar?". "platform" obliga a que sea
+      // siempre el sensor de ESTE dispositivo.
+      authenticatorAttachment: "platform",
       residentKey: "required",
       userVerification: "required",
     },
