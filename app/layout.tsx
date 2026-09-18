@@ -53,6 +53,15 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Pasajes",
   },
+  // appleWebApp.capable ya genera "mobile-web-app-capable" (el nombre
+  // nuevo, sin el prefijo), pero versiones de iOS/Safari más viejas solo
+  // reconocen el nombre con el prefijo "apple-" — sin este, "Agregar a
+  // pantalla de inicio" en esos iPhone agrega un simple acceso directo
+  // que abre Safari con la barra de direcciones, no la app instalada a
+  // pantalla completa.
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {

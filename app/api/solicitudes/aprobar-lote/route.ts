@@ -3,10 +3,11 @@
 // realmente estén PENDIENTE y dentro del alcance del TH que las pide
 // (por seguridad, ignora silenciosamente cualquier id fuera de su alcance).
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
+import { notificarCambioEstadoLote } from "../../../../lib/webPush";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -45,6 +46,16 @@ export async function POST(req: Request) {
   const resultado = await db.solicitudPasaje.updateMany({
     where: { id: { in: idsValidos }, estado: "PENDIENTE" },
     data: { estado: "APROBADA", fechaAprobacion: new Date(), aprobadoPorId: session.id },
+  });
+
+  // La relectura para saber a quién avisar tampoco hace esperar a quien
+  // aprueba: se hace dentro de after(), junto con el envío en sí.
+  after(async () => {
+    const aprobadas = await db.solicitudPasaje.findMany({
+      where: { id: { in: idsValidos }, estado: "APROBADA" },
+      select: { colaboradorId: true, estado: true },
+    });
+    await notificarCambioEstadoLote(aprobadas);
   });
 
   return NextResponse.json({ aprobadas: resultado.count });

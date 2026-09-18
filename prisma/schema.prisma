@@ -124,6 +124,7 @@ model Usuario {
   asignaciones AsignacionTH[]
   credencialesBiometricas CredencialBiometrica[]
   registrosAcceso RegistroAcceso[]
+  suscripcionesPush PushSubscription[]
 
   // Si tiene valor, cualquier sesión (token JWT) emitida ANTES de este
   // momento se considera inválida — es lo que usa "Cerrar sesión" del
@@ -178,6 +179,25 @@ model RegistroAcceso {
 
   @@index([usuarioId, creadoEn])
   @@index([creadoEn])
+}
+
+// Suscripción a notificaciones push (Web Push) de un dispositivo/navegador
+// puntual del usuario — puede tener varias (celular, compu, etc.). Se crea
+// cuando acepta el permiso de notificaciones; se borra si el propio push
+// service la reporta como vencida (endpoint ya no válido) o si el usuario
+// la desactiva.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  usuarioId String
+
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+
+  creadoEn  DateTime @default(now())
+
+  @@index([usuarioId])
 }
 
 model AsignacionTH {

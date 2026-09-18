@@ -21,6 +21,7 @@ import MenuAcciones from "./MenuAcciones";
 import Avatar from "./Avatar";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import FilaRutasSeleccionables, { type RutaSimple } from "./FilaRutasSeleccionables";
+import NotificacionesPush from "./NotificacionesPush";
 import { IconoPregunta, IconoLupa, IconoAlerta, IconoChevron } from "./Icons";
 
 type Solicitud = {
@@ -487,6 +488,8 @@ export default function PanelColaborador({
             </button>
           </div>
         </div>
+
+        <NotificacionesPush />
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="relative max-w-sm flex-1">

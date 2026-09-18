@@ -1,9 +1,10 @@
 // app/api/solicitudes/[id]/pagar/route.ts
 // PATCH: Nómina (o Super Admin) marca una solicitud REVISADA como PAGADA.
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { notificarCambioEstado } from "../../../../../lib/webPush";
 
 export async function PATCH(
   _req: Request,
@@ -31,6 +32,18 @@ export async function PATCH(
     );
   }
 
-  const actualizada = await db.solicitudPasaje.findUnique({ where: { id } });
+  const actualizada = await db.solicitudPasaje.findUnique({
+    where: { id },
+    include: { ruta: { select: { nombre: true } } },
+  });
+  if (actualizada) {
+    after(() =>
+      notificarCambioEstado(actualizada.colaboradorId, {
+        codigo: actualizada.codigo,
+        estado: actualizada.estado,
+        rutaLabel: actualizada.ruta.nombre,
+      })
+    );
+  }
   return NextResponse.json(actualizada);
 }

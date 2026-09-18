@@ -3,10 +3,11 @@
 // (al pagar, si encuentra una novedad) regresan una solicitud REVISADA de
 // vuelta a APROBADA para que se corrija y se vuelva a revisar.
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
+import { notificarCambioEstado } from "../../../../../lib/webPush";
 
 export async function PATCH(
   req: Request,
@@ -61,6 +62,18 @@ export async function PATCH(
     return NextResponse.json({ error: "Solo se pueden devolver solicitudes revisadas" }, { status: 400 });
   }
 
-  const actualizada = await db.solicitudPasaje.findUnique({ where: { id } });
+  const actualizada = await db.solicitudPasaje.findUnique({
+    where: { id },
+    include: { ruta: { select: { nombre: true } } },
+  });
+  if (actualizada) {
+    after(() =>
+      notificarCambioEstado(actualizada.colaboradorId, {
+        codigo: actualizada.codigo,
+        estado: actualizada.estado,
+        rutaLabel: actualizada.ruta.nombre,
+      })
+    );
+  }
   return NextResponse.json(actualizada);
 }

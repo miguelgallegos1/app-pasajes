@@ -4,10 +4,11 @@
 // Coordinador que las pide (ignora silenciosamente cualquier id fuera de
 // su alcance, igual que aprobar-lote).
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
+import { notificarCambioEstadoLote } from "../../../../lib/webPush";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -44,6 +45,14 @@ export async function POST(req: Request) {
   const resultado = await db.solicitudPasaje.updateMany({
     where: { id: { in: idsValidos }, estado: "APROBADA" },
     data: { estado: "REVISADO", fechaRevision: new Date(), revisadoPorId: session.id },
+  });
+
+  after(async () => {
+    const revisadas = await db.solicitudPasaje.findMany({
+      where: { id: { in: idsValidos }, estado: "REVISADO" },
+      select: { colaboradorId: true, estado: true },
+    });
+    await notificarCambioEstadoLote(revisadas);
   });
 
   return NextResponse.json({ revisadas: resultado.count });

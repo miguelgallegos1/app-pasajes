@@ -1,9 +1,10 @@
 // app/api/solicitudes/pagar-lote/route.ts
 // POST: marca VARIAS solicitudes revisadas como pagadas de una vez.
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { notificarCambioEstadoLote } from "../../../../lib/webPush";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -33,6 +34,14 @@ export async function POST(req: Request) {
   const resultado = await db.solicitudPasaje.updateMany({
     where: { id: { in: idsValidos }, estado: "REVISADO" },
     data: { estado: "PAGADA", fechaPago: new Date(), pagadoPorId: session.id },
+  });
+
+  after(async () => {
+    const pagadas = await db.solicitudPasaje.findMany({
+      where: { id: { in: idsValidos }, estado: "PAGADA" },
+      select: { colaboradorId: true, estado: true },
+    });
+    await notificarCambioEstadoLote(pagadas);
   });
 
   return NextResponse.json({ pagadas: resultado.count });

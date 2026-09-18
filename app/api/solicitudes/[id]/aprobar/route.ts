@@ -1,10 +1,11 @@
 // app/api/solicitudes/[id]/aprobar/route.ts
 // PATCH: Talento Humano (o Super Admin) aprueba una solicitud pendiente.
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
+import { notificarCambioEstado } from "../../../../../lib/webPush";
 
 export async function PATCH(
   _req: Request,
@@ -55,6 +56,22 @@ export async function PATCH(
     );
   }
 
-  const actualizada = await db.solicitudPasaje.findUnique({ where: { id } });
+  const actualizada = await db.solicitudPasaje.findUnique({
+    where: { id },
+    include: { ruta: { select: { nombre: true } } },
+  });
+  if (actualizada) {
+    // after() corre esto DESPUÉS de mandar la respuesta — quien aprueba no
+    // espera nada del envío de la notificación, pero a diferencia de un
+    // "fire and forget" común, la plataforma garantiza que termine (no se
+    // corta la función apenas sale la respuesta).
+    after(() =>
+      notificarCambioEstado(actualizada.colaboradorId, {
+        codigo: actualizada.codigo,
+        estado: actualizada.estado,
+        rutaLabel: actualizada.ruta.nombre,
+      })
+    );
+  }
   return NextResponse.json(actualizada);
 }
