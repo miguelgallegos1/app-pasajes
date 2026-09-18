@@ -17,7 +17,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
-import { IconoLupa, IconoPregunta, IconoChevron } from "./Icons";
+import { IconoLupa, IconoPregunta, IconoChevron, IconoCheck, IconoX, IconoPersonas, IconoUsuarioDisponible } from "./Icons";
 
 type Colaborador = {
   id: string;
@@ -118,6 +118,11 @@ export default function PanelAsignacionEquipo({
   // a quién mover sin tener que buscar entre todo el área — sea uno solo
   // (cambio de área puntual) o el equipo completo de una vez.
   const [verSoloEquipo, setVerSoloEquipo] = useState(false);
+  // "Disponibles" (junto a Marcar todos/Ninguno/Su equipo): filtra a solo
+  // quienes NO tienen ningún supervisor todavía — para agregar gente nueva
+  // sin tener que buscarla entre los que ya le reportan a otro (esos igual
+  // se siguen viendo, en gris, con el resto de la lista sin este filtro).
+  const [soloDisponibles, setSoloDisponibles] = useState(false);
   const [supervisorDestinoId, setSupervisorDestinoId] = useState("");
   const [confirmandoMover, setConfirmandoMover] = useState(false);
   const [moviendo, setMoviendo] = useState(false);
@@ -129,6 +134,7 @@ export default function PanelAsignacionEquipo({
     setBusquedaMiembro("");
     setError("");
     setVerSoloEquipo(false);
+    setSoloDisponibles(false);
     setSupervisorDestinoId("");
     setErrorMover("");
   };
@@ -146,12 +152,14 @@ export default function PanelAsignacionEquipo({
     let base = candidatosDelArea;
     if (verSoloEquipo && supervisorSeleccionado) {
       base = base.filter((c) => c.supervisorId === supervisorSeleccionado.id);
+    } else if (soloDisponibles) {
+      base = base.filter((c) => !c.supervisorId);
     }
     if (!texto) return base;
     return base.filter(
       (c) => c.nombreCompleto.toLowerCase().includes(texto) || (c.codigoNomina ?? "").toLowerCase().includes(texto)
     );
-  }, [candidatosDelArea, busquedaMiembro, verSoloEquipo, supervisorSeleccionado]);
+  }, [candidatosDelArea, busquedaMiembro, verSoloEquipo, soloDisponibles, supervisorSeleccionado]);
 
   const alternarMiembro = (id: string) => {
     setMiembroIdsSeleccionados((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
@@ -418,8 +426,8 @@ export default function PanelAsignacionEquipo({
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{supervisorSeleccionado.areaNombre}</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <div className="relative flex-1">
+              <div className="space-y-2">
+                <div className="relative">
                   <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
                   <input
                     value={busquedaMiembro}
@@ -428,36 +436,55 @@ export default function PanelAsignacionEquipo({
                     className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                   />
                 </div>
-                <div className="flex gap-1.5 shrink-0 flex-wrap">
+                <div className="flex gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={marcarTodos}
-                    className="text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                    title="Marcar todos los que se ven en la lista"
+                    className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                   >
-                    Marcar todos
+                    <IconoCheck className="w-3.5 h-3.5" /> Todos
                   </button>
                   <button
                     type="button"
                     onClick={desmarcarTodos}
-                    className="text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                    title="Desmarcar todos los que se ven en la lista"
+                    className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                   >
-                    Ninguno
+                    <IconoX className="w-3.5 h-3.5" /> Ninguno
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       setVerSoloEquipo((v) => !v);
+                      setSoloDisponibles(false);
                       setMiembroIdsSeleccionados(equipoActual(supervisorSeleccionado));
                       setSupervisorDestinoId("");
                       setErrorMover("");
                     }}
-                    className={`text-xs font-medium px-3 py-2 rounded-lg border transition ${
+                    title="Ver solo a quienes ya le reportan, para moverlos a otro supervisor"
+                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border transition ${
                       verSoloEquipo
                         ? "bg-orange-500 border-orange-500 text-white hover:bg-orange-600"
                         : "text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                     }`}
                   >
-                    {verSoloEquipo ? "Viendo solo su equipo" : "Ver solo su equipo"}
+                    <IconoPersonas className="w-3.5 h-3.5" /> {verSoloEquipo ? "Viendo su equipo" : "Su equipo"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSoloDisponibles((v) => !v);
+                      setVerSoloEquipo(false);
+                    }}
+                    title="Ver solo a quienes no tienen ningún supervisor todavía"
+                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border transition ${
+                      soloDisponibles
+                        ? "bg-orange-500 border-orange-500 text-white hover:bg-orange-600"
+                        : "text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    }`}
+                  >
+                    <IconoUsuarioDisponible className="w-3.5 h-3.5" /> Disponibles
                   </button>
                 </div>
               </div>
@@ -496,8 +523,10 @@ export default function PanelAsignacionEquipo({
                     // Fuera de "Ver solo su equipo" esta lista es para
                     // agregar/quitar gente sin supervisor a este equipo — a
                     // quien ya le reporta a otro no se lo toca desde acá
-                    // (eso es lo que generaba la confusión de "mover" mezclado
-                    // con "agregar"). Mover tiene su propio flujo explícito.
+                    // (eso tiene su propio flujo explícito), pero se sigue
+                    // mostrando igual, en gris, para que quede claro que
+                    // existe y dónde está — "Disponibles" filtra a quienes
+                    // no tienen ninguno todavía, si se quiere evitarlos.
                     const deshabilitado = !verSoloEquipo && tieneOtroSupervisor;
                     return (
                       <label
@@ -524,7 +553,7 @@ export default function PanelAsignacionEquipo({
                           )}
                           {tieneOtroSupervisor && !verSoloEquipo && (
                             <span className="block text-[11px] text-neutral-400 dark:text-neutral-500">
-                              Reporta a {nombrePorId.get(c.supervisorId!) ?? "otro supervisor"} — usá &quot;Ver solo su equipo&quot; desde ahí para moverlo
+                              Reporta a {nombrePorId.get(c.supervisorId!) ?? "otro supervisor"} — usá &quot;Su equipo&quot; desde ahí para moverlo
                             </span>
                           )}
                         </span>
@@ -540,7 +569,9 @@ export default function PanelAsignacionEquipo({
                             ? "Este supervisor no tiene colaboradores en su equipo"
                             : candidatosDelArea.length === 0
                               ? "No hay más colaboradores en esta área"
-                              : "Sin resultados para esa búsqueda"
+                              : soloDisponibles
+                                ? "Todos los colaboradores de esta área ya tienen otro supervisor"
+                                : "Sin resultados para esa búsqueda"
                         }
                       />
                     </div>

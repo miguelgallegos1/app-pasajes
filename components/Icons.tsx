@@ -295,3 +295,13 @@ export function IconoX({ className = "w-4 h-4" }: { className?: string }) {
     </svg>
   );
 }
+
+export function IconoUsuarioDisponible({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <circle cx="10" cy="8" r="4" />
+      <path d="M3 20c0-3.9 3.1-7 7-7s7 3.1 7 7" strokeLinecap="round" />
+      <path d="M15.5 15.5 17 17l3-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

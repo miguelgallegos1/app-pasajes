@@ -19,7 +19,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
-import { IconoLupa, IconoChevron, IconoDescargar } from "./Icons";
+import { IconoLupa, IconoChevron, IconoDescargar, IconoCheck, IconoX, IconoRuta } from "./Icons";
 
 type Colaborador = {
   id: string;
@@ -358,8 +358,11 @@ export default function PanelAsignacionRutas({
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{colaboradorSeleccionado.areaNombre}</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <div className="relative flex-1">
+              <div className="flex flex-col gap-2">
+                {/* En pantallas chicas el buscador va arriba de los
+                    botones; en pantallas grandes va abajo — mismo
+                    contenido, orden invertido según el ancho. */}
+                <div className="relative order-1 sm:order-2">
                   <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
                   <input
                     value={busquedaRuta}
@@ -368,32 +371,35 @@ export default function PanelAsignacionRutas({
                     className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                   />
                 </div>
-                <div className="flex gap-1.5 shrink-0">
+                <div className="flex gap-1.5 flex-wrap order-2 sm:order-1">
                   <button
                     type="button"
                     onClick={marcarTodas}
-                    className="text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                    title="Marcar todas las que se ven en la lista"
+                    className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                   >
-                    Marcar todas
+                    <IconoCheck className="w-3.5 h-3.5" /> Todas
                   </button>
                   <button
                     type="button"
                     onClick={desmarcarTodas}
-                    className="text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                    title="Desmarcar todas las que se ven en la lista"
+                    className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
                   >
-                    Ninguna
+                    <IconoX className="w-3.5 h-3.5" /> Ninguna
                   </button>
                   {colaboradorSeleccionado.rutaIdsExclusivas.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setVerSoloAsignadas((v) => !v)}
-                      className={`text-xs font-medium px-3 py-2 rounded-lg border transition ${
+                      title="Ver solo las rutas que ya tiene asignadas"
+                      className={`flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border transition ${
                         verSoloAsignadas
                           ? "bg-orange-500 border-orange-500 text-white hover:bg-orange-600"
                           : "text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                       }`}
                     >
-                      {verSoloAsignadas ? "Viendo solo asignadas" : "Ver solo asignadas"}
+                      <IconoRuta className="w-3.5 h-3.5" /> {verSoloAsignadas ? "Viendo asignadas" : "Asignadas"}
                     </button>
                   )}
                 </div>
