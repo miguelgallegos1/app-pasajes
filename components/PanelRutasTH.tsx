@@ -71,6 +71,18 @@ export default function PanelRutasTH({
   const [paginaActual, setPaginaActual] = useState(1);
   const resetPagina = () => setPaginaActual(1);
 
+  // Al eliminar, la fila se oculta al instante (no depende de que
+  // router.refresh() termine su viaje de ida y vuelta al servidor, que con
+  // Neon puede demorar un poco) — así que buscar o filtrar justo después
+  // de borrar ya no la muestra, aunque la lista de servidor recién esté
+  // poniéndose al día. Mismo patrón que "Mis Pasajes" al eliminar una
+  // solicitud.
+  const [idsOcultos, setIdsOcultos] = useState<Set<string>>(new Set());
+  const rutasVisiblesDeServidor = useMemo(
+    () => (idsOcultos.size === 0 ? rutas : rutas.filter((r) => !idsOcultos.has(r.id))),
+    [rutas, idsOcultos]
+  );
+
   const {
     empresaFiltro,
     sitioFiltro,
@@ -84,7 +96,7 @@ export default function PanelRutasTH({
 
   const rutasFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
-    return rutas.filter((r) => {
+    return rutasVisiblesDeServidor.filter((r) => {
       if (soloActivas && !r.activo) return false;
       if (empresaFiltro && r.empresaId !== empresaFiltro) return false;
       if (sitioFiltro && r.sitioId !== sitioFiltro) return false;
@@ -92,7 +104,7 @@ export default function PanelRutasTH({
       if (!texto) return true;
       return r.nombre.toLowerCase().includes(texto) || r.areaLabel.toLowerCase().includes(texto);
     });
-  }, [rutas, busqueda, soloActivas, empresaFiltro, sitioFiltro, areaFiltro]);
+  }, [rutasVisiblesDeServidor, busqueda, soloActivas, empresaFiltro, sitioFiltro, areaFiltro]);
 
   const { orden, ordenar, itemsOrdenados: rutasOrdenadas } = useOrdenTabla<Ruta, CampoOrden>(
     rutasFiltradas,
@@ -187,6 +199,8 @@ export default function PanelRutasTH({
       }
       setConfirmandoLote(false);
       setSeleccionadas(new Set());
+      const idsEliminados: string[] = Array.isArray(data.idsEliminados) ? data.idsEliminados : [];
+      setIdsOcultos((prev) => new Set([...prev, ...idsEliminados]));
       toast.exito(
         data.omitidas > 0
           ? `${data.eliminadas} ruta(s) eliminada(s); ${data.omitidas} se omitieron por tener solicitudes registradas`
@@ -329,6 +343,7 @@ export default function PanelRutasTH({
         toast.error(data.error ?? "No se pudo eliminar la ruta");
         return;
       }
+      setIdsOcultos((prev) => new Set(prev).add(idGestionar));
       setIdGestionar(null);
       setConfirmandoEliminar(false);
       toast.exito("Ruta eliminada");

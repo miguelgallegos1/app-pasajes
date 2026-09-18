@@ -36,5 +36,13 @@ export async function POST(req: Request) {
 
   const resultado = await db.ruta.deleteMany({ where: { id: { in: idsElegibles } } });
 
-  return NextResponse.json({ eliminadas: resultado.count, omitidas: ids.length - resultado.count });
+  return NextResponse.json({
+    eliminadas: resultado.count,
+    omitidas: ids.length - resultado.count,
+    // Ids que sí se borraron de verdad — para que el cliente pueda
+    // ocultarlas de la lista al instante, sin esperar a que
+    // router.refresh() vuelva del servidor (con Neon a veces tarda un
+    // poco) ni arriesgarse a ocultar una que en realidad se omitió.
+    idsEliminados: idsElegibles,
+  });
 }

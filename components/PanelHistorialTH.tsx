@@ -21,7 +21,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
-import { IconoImprimir } from "./Icons";
+import { IconoImprimir, IconoRefrescar } from "./Icons";
 
 type Fila = {
   id: string;
@@ -278,9 +278,10 @@ export default function PanelHistorialTH({
                       {s.estado === "APROBADA" && (
                         <button
                           onClick={() => abrirRevertir(s.id)}
-                          className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
+                          title="Revertir a pendiente"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-2.5 py-1.5 rounded-lg transition"
                         >
-                          Revertir a pendiente
+                          <IconoRefrescar className="w-3.5 h-3.5" /> Revertir
                         </button>
                       )}
                     </td>
