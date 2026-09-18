@@ -38,6 +38,16 @@ function pathDona(startAngle: number, endAngle: number): string {
   return `M${p1.x},${p1.y} A${rOut},${rOut} 0 ${largeArc} 1 ${p2.x},${p2.y} L${p3.x},${p3.y} A${rIn},${rIn} 0 ${largeArc} 0 ${p4.x},${p4.y} Z`;
 }
 
+// Un solo arco no puede dibujar una dona de 360° cerrada (el punto de
+// inicio y de fin coinciden, el comando A queda degenerado) — por eso una
+// única porción al 100% se resuelve aparte, como un anillo completo
+// (stroke de un círculo), en vez de reusar pathDona con el hueco entre
+// porciones (PAD_ANGULO), que ahí se ve como una grieta sin nada del otro
+// lado que lo justifique.
+function esAnilloCompleto(fraccion: number): boolean {
+  return fraccion > 0.999;
+}
+
 export default function GraficoPastelAreas({ datos }: { datos: { area: string; total: number }[] }) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -105,36 +115,65 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
             transition: "transform 0.45s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease",
           }}
         >
-          {cunas.map((c) => (
-            <path
-              key={c.area}
-              d={pathDona(c.start, c.end)}
-              fill={colorDe(c.area, c.idx)}
-              tabIndex={0}
-              role="button"
-              aria-label={`${c.area}: ${formatearMoneda(c.total)}, ${(c.fraccion * 100).toFixed(0)}%`}
-              onMouseMove={(e) => mover(e, c.idx)}
-              onMouseEnter={(e) => mover(e, c.idx)}
-              onMouseLeave={() => setHoverIdx(null)}
-              onFocus={() => setHoverIdx(c.idx)}
-              onBlur={() => setHoverIdx(null)}
-              onClick={(e) => alternarTooltipTactil(e, c.idx)}
-              style={{
-                transform: hoverIdx === c.idx ? "scale(1.045)" : "scale(1)",
-                transformOrigin: `${CX}px ${CY}px`,
-                transformBox: "view-box",
-                transition: "transform 0.15s ease",
-                outline: "none",
-                cursor: "pointer",
-              }}
-            />
-          ))}
+          {cunas.map((c) =>
+            esAnilloCompleto(c.fraccion) ? (
+              <circle
+                key={c.area}
+                cx={CX}
+                cy={CY}
+                r={(R_EXTERNO + R_INTERNO) / 2}
+                fill="none"
+                stroke={colorDe(c.area, c.idx)}
+                strokeWidth={R_EXTERNO - R_INTERNO}
+                tabIndex={0}
+                role="button"
+                aria-label={`${c.area}: ${formatearMoneda(c.total)}, 100%`}
+                onMouseMove={(e) => mover(e, c.idx)}
+                onMouseEnter={(e) => mover(e, c.idx)}
+                onMouseLeave={() => setHoverIdx(null)}
+                onFocus={() => setHoverIdx(c.idx)}
+                onBlur={() => setHoverIdx(null)}
+                onClick={(e) => alternarTooltipTactil(e, c.idx)}
+                style={{
+                  transform: hoverIdx === c.idx ? "scale(1.045)" : "scale(1)",
+                  transformOrigin: `${CX}px ${CY}px`,
+                  transformBox: "view-box",
+                  transition: "transform 0.15s ease",
+                  outline: "none",
+                  cursor: "pointer",
+                }}
+              />
+            ) : (
+              <path
+                key={c.area}
+                d={pathDona(c.start, c.end)}
+                fill={colorDe(c.area, c.idx)}
+                tabIndex={0}
+                role="button"
+                aria-label={`${c.area}: ${formatearMoneda(c.total)}, ${(c.fraccion * 100).toFixed(0)}%`}
+                onMouseMove={(e) => mover(e, c.idx)}
+                onMouseEnter={(e) => mover(e, c.idx)}
+                onMouseLeave={() => setHoverIdx(null)}
+                onFocus={() => setHoverIdx(c.idx)}
+                onBlur={() => setHoverIdx(null)}
+                onClick={(e) => alternarTooltipTactil(e, c.idx)}
+                style={{
+                  transform: hoverIdx === c.idx ? "scale(1.045)" : "scale(1)",
+                  transformOrigin: `${CX}px ${CY}px`,
+                  transformBox: "view-box",
+                  transition: "transform 0.15s ease",
+                  outline: "none",
+                  cursor: "pointer",
+                }}
+              />
+            )
+          )}
         </g>
         <text x={CX} y={CY - 4} textAnchor="middle" fontSize="11" fill="#898781">
           Total
         </text>
         <text x={CX} y={CY + 12} textAnchor="middle" fontSize="14" fontWeight="700" fill="#0b0b0b">
-          ${totalGeneral >= 1000 ? `${(totalGeneral / 1000).toFixed(1)}K` : totalGeneral.toFixed(0)}
+          {totalGeneral >= 1000 ? `$${(totalGeneral / 1000).toFixed(1)}K` : formatearMoneda(totalGeneral)}
         </text>
       </svg>
 
