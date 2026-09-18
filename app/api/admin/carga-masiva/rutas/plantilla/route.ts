@@ -18,7 +18,8 @@ export async function GET() {
       Empresa: "EMPRESA EJEMPLO",
       Sitio: "SITIO EJEMPLO",
       Área: "ÁREA EJEMPLO",
-      Ruta: "EL YAZNÁN - CAYAMBE - TABACUNDO",
+      Desde: "CAYAMBE",
+      Hasta: "TABACUNDO",
       Valor: 0.9,
     },
   ];

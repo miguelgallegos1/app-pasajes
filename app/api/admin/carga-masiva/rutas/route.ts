@@ -38,17 +38,21 @@ export async function POST(req: Request) {
     const empresaNombre = texto(fila["Empresa"]);
     const sitioNombre = texto(fila["Sitio"]);
     const areaNombre = texto(fila["Área"] ?? fila["Area"]);
-    const nombre = texto(fila["Ruta"] ?? fila["Nombre"]).toUpperCase();
+    const desde = texto(fila["Desde"]);
+    const hasta = texto(fila["Hasta"]);
     const valorTexto = texto(fila["Valor"]);
 
-    if (!empresaNombre && !sitioNombre && !areaNombre && !nombre && !valorTexto) {
+    if (!empresaNombre && !sitioNombre && !areaNombre && !desde && !hasta && !valorTexto) {
       continue; // fila vacía
     }
 
-    if (!nombre) {
-      resultados.push({ fila: numeroFila, estado: "ERROR", mensaje: "El nombre de la ruta es obligatorio" });
+    if (!desde || !hasta) {
+      resultados.push({ fila: numeroFila, estado: "ERROR", mensaje: "Desde y Hasta son obligatorios" });
       continue;
     }
+    // Mismo formato que el formulario de "Nueva ruta": "DESDE-HASTA", sin
+    // espacios alrededor del guion.
+    const nombre = `${desde}-${hasta}`.toUpperCase();
 
     const valor = Number(valorTexto.replace(",", "."));
     if (!valorTexto || isNaN(valor) || valor <= 0) {
