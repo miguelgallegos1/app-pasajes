@@ -21,6 +21,7 @@ import Modal from "./Modal";
 import Footer from "./Footer";
 import CommandPalette, { type ItemPaleta } from "./CommandPalette";
 import Breadcrumbs from "./Breadcrumbs";
+import TarjetaActualizarDomicilio from "./TarjetaActualizarDomicilio";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -49,6 +50,7 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
       items: [
         { label: "Aprobaciones", href: "/th/aprobaciones", icono: IconoCheck },
         { label: "Historial", href: "/th/historial", icono: IconoReloj },
+        { label: "Crear solicitud", href: "/th/solicitudes", icono: IconoBuseta },
         { label: "Colaboradores", href: "/th/colaboradores", icono: IconoPersonas },
         { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", icono: IconoPersonas },
         { label: "Rutas", href: "/th/rutas", icono: IconoRuta },
@@ -87,6 +89,7 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
       items: [
         { label: "Aprobaciones", href: "/th/aprobaciones", icono: IconoCheck },
         { label: "Historial", href: "/th/historial", icono: IconoReloj },
+        { label: "Crear solicitud", href: "/th/solicitudes", icono: IconoBuseta },
         { label: "Colaboradores", href: "/th/colaboradores", icono: IconoPersonas },
         { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", icono: IconoPersonas },
         { label: "Rutas", href: "/th/rutas", icono: IconoRuta },
@@ -450,6 +453,8 @@ export default function AppShell({
       {biometriaMontada && (
         <ModalBiometria abierto={biometriaAbierta} onCerrar={() => setBiometriaAbierta(false)} />
       )}
+
+      {rol === "COLABORADOR" && <TarjetaActualizarDomicilio />}
 
       <Modal abierto={confirmandoSalir} onCerrar={() => setConfirmandoSalir(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">

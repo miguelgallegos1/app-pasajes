@@ -65,7 +65,18 @@ export async function obtenerPerfilSesion(
 // Firma el token de la sesión y lo deja puesto en la cookie de la respuesta.
 // Centralizado para que el login por PIN y el login biométrico usen
 // exactamente la misma configuración de cookie.
+//
+// Sesión única por usuario: cada login de éxito revoca cualquier sesión
+// anterior de ese mismo usuario (otro dispositivo, otra pestaña, etc.) —
+// mismo mecanismo que "Cerrar sesión" en el panel de Accesos, pero
+// automático. sesionesRevocadasEn se trunca al inicio del segundo actual
+// (igual que el "iat" del JWT, que jose también trunca a segundos) para
+// que el token que se firma a continuación no quede revocado por su
+// propia marca de tiempo.
 export async function establecerCookieSesion(res: NextResponse, usuario: SesionUsuario) {
+  const ahoraTruncado = new Date(Math.floor(Date.now() / 1000) * 1000);
+  await db.usuario.update({ where: { id: usuario.id }, data: { sesionesRevocadasEn: ahoraTruncado } });
+
   const token = await crearToken(usuario);
   res.cookies.set("session", token, {
     httpOnly: true,

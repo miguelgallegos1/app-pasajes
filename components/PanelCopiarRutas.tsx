@@ -277,9 +277,9 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
             onClick={confirmarCopiar}
             title={
               seleccionadas.size === 0
-                ? "Elegí al menos una ruta para copiar"
+                ? "Elegir al menos una ruta para copiar"
                 : !fechaDestino
-                ? "Elegí un día de destino"
+                ? "Elegir un día de destino"
                 : fechaDestino === fechaOrigen
                 ? "El día de destino no puede ser igual al de origen"
                 : undefined

@@ -19,6 +19,7 @@ import Avatar from "./Avatar";
 import MenuAcciones from "./MenuAcciones";
 import { useToast } from "./Toast";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 
 type Colaborador = {
   id: string;
@@ -78,37 +79,18 @@ export default function PanelColaboradoresTH({
   );
   const [soloActivos, setSoloActivos] = useState(true); // arranca mostrando solo Activos
   const [paginaActual, setPaginaActual] = useState(1);
+  const resetPagina = () => setPaginaActual(1);
 
-  const [empresaFiltro, setEmpresaFiltro] = useState("");
-  const [sitioFiltro, setSitioFiltro] = useState("");
-  const [areaFiltro, setAreaFiltro] = useState("");
-
-  const sitiosFiltro = useMemo(
-    () =>
-      sitios
-        .filter((s) => !empresaFiltro || s.empresaId === empresaFiltro)
-        .map((s) => ({ id: s.id, label: s.nombre })),
-    [sitios, empresaFiltro]
-  );
-  const areasFiltro = useMemo(() => {
-    const idsSitiosFiltro = new Set(sitiosFiltro.map((s) => s.id));
-    return areas
-      .filter((a) => (sitioFiltro ? a.sitioId === sitioFiltro : !empresaFiltro || idsSitiosFiltro.has(a.sitioId)))
-      .map((a) => ({ id: a.id, label: a.nombre }));
-  }, [areas, sitioFiltro, empresaFiltro, sitiosFiltro]);
-
-  const cambiarEmpresaFiltro = (v: string) => {
-    setEmpresaFiltro(v);
-    setSitioFiltro("");
-    setAreaFiltro("");
-    setPaginaActual(1);
-  };
-  const cambiarSitioFiltro = (v: string) => {
-    setSitioFiltro(v);
-    setAreaFiltro("");
-    setPaginaActual(1);
-  };
-  const cambiarAreaFiltro = (v: string) => { setAreaFiltro(v); setPaginaActual(1); };
+  const {
+    empresaFiltro,
+    sitioFiltro,
+    areaFiltro,
+    sitiosFiltro,
+    areasFiltro,
+    cambiarEmpresaFiltro,
+    cambiarSitioFiltro,
+    cambiarAreaFiltro,
+  } = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
 
   const colaboradoresFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();

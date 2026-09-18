@@ -5,11 +5,19 @@
 // repetir el formulario solicitud por solicitud. Misma validación que la
 // creación individual (app/api/solicitudes/route.ts), aplicada por cada
 // combinación colaborador+ruta.
+//
+// Un usuario de TH (o Super Admin) puede además crear para CUALQUIER
+// colaborador dentro de su alcance de Empresa/Sitio/Área (ver
+// lib/alcanceTH.ts) — no hace falta ser su supervisor directo. TH no
+// necesariamente tiene un Colaborador propio vinculado (la mayoría no lo
+// tiene), así que a diferencia de un colaborador/supervisor normal, no es
+// obligatorio para poder crear a nombre de otros.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
+import { obtenerCondicionColaboradorTH } from "../../../../lib/alcanceTH";
 import { generarCodigoSolicitud } from "../../../../lib/codigoSolicitud";
 import { fechaValida } from "../../../../lib/fechas";
 
@@ -50,8 +58,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `No se pueden crear más de ${MAX_ITEMS} solicitudes de una vez` }, { status: 400 });
   }
 
+  const esTH = session.rol === "ADMIN_TH" || session.rol === "SUPER_ADMIN";
+
+  // Un colaborador/supervisor normal SIEMPRE necesita su propio Colaborador
+  // para poder pedir algo (así sea para sí mismo). TH no: la mayoría no
+  // tiene uno vinculado, y aun así puede crear a nombre de otros dentro de
+  // su alcance — solo no podría marcarse "a sí mismo" sin uno.
   const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
-  if (!miColaborador || miColaborador.estado !== "ACTIVO") {
+  if (!esTH && (!miColaborador || miColaborador.estado !== "ACTIVO")) {
     return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
   }
 
@@ -60,17 +74,33 @@ export async function POST(req: Request) {
     (await db.colaborador.findMany({ where: { id: { in: idsColaboradores } } })).map((c) => [c.id, c])
   );
 
+  // Quiénes de los pedidos caen dentro del alcance de Empresa/Sitio/Área de
+  // este TH — una sola consulta extra en vez de una por colaborador.
+  let idsEnAlcanceTH = new Set<string>();
+  if (esTH) {
+    const { sinRestriccion, condicion } = await obtenerCondicionColaboradorTH(session.id, session.rol);
+    if (sinRestriccion || condicion) {
+      const enAlcance = await db.colaborador.findMany({
+        where: { id: { in: idsColaboradores }, ...(sinRestriccion ? {} : (condicion as object)) },
+        select: { id: true },
+      });
+      idsEnAlcanceTH = new Set(enAlcance.map((c) => c.id));
+    }
+  }
+
   let creadas = 0;
   let ultimoError = "No se pudo crear ninguna solicitud";
 
   for (const colaboradorId of idsColaboradores) {
     const colaborador = colaboradorPorId.get(colaboradorId);
-    const esUnoMismo = colaboradorId === miColaborador.id;
-    // Mismo chequeo que la creación individual: solo uno mismo, o alguien
-    // del propio equipo si quien pide es supervisor.
-    const esSuEquipo = miColaborador.esSupervisor && colaborador?.supervisorId === miColaborador.id;
+    const esUnoMismo = !!miColaborador && colaboradorId === miColaborador.id;
+    // Mismo chequeo que la creación individual: uno mismo, alguien del
+    // propio equipo si quien pide es supervisor, o cualquiera dentro del
+    // alcance de Empresa/Sitio/Área si quien pide es TH.
+    const esSuEquipo = !!miColaborador?.esSupervisor && colaborador?.supervisorId === miColaborador.id;
+    const esAlcanceTH = idsEnAlcanceTH.has(colaboradorId);
 
-    if (!colaborador || colaborador.estado !== "ACTIVO" || !(esUnoMismo || esSuEquipo)) {
+    if (!colaborador || colaborador.estado !== "ACTIVO" || !(esUnoMismo || esSuEquipo || esAlcanceTH)) {
       ultimoError = "No puedes crear solicitudes para uno de los colaboradores elegidos";
       continue;
     }
@@ -81,7 +111,7 @@ export async function POST(req: Request) {
     // regla que al crear una sola solicitud) — se resuelve una sola vez por
     // colaborador, no por cada ruta.
     const rutasValidas = await db.ruta.findMany({
-      where: { id: { in: itemsDeEsteColaborador.map((it) => it.rutaId) }, ...(await condicionRutasVisibles(colaborador)) },
+      where: { id: { in: itemsDeEsteColaborador.map((it) => it.rutaId) }, ...condicionRutasVisibles(colaborador) },
     });
     const rutaPorId = new Map(rutasValidas.map((r) => [r.id, r]));
 

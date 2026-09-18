@@ -278,3 +278,20 @@ export function IconoCajaVacia({ className = "w-10 h-10" }: { className?: string
     </svg>
   );
 }
+
+export function IconoUbicacion({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path d="M12 21s7-6.3 7-12a7 7 0 1 0-14 0c0 5.7 7 12 7 12Z" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="9" r="2.5" />
+    </svg>
+  );
+}
+
+export function IconoX({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

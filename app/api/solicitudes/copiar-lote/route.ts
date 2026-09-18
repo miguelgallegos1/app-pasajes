@@ -89,7 +89,7 @@ export async function POST(req: Request) {
     const colaborador = colaboradorPorId.get(colaboradorId);
     if (!colaborador) continue;
     const rutas = await db.ruta.findMany({
-      where: { id: { in: Array.from(rutaIds) }, ...(await condicionRutasVisibles(colaborador)) },
+      where: { id: { in: Array.from(rutaIds) }, ...condicionRutasVisibles(colaborador) },
     });
     rutasVisiblesPorColaborador.set(colaboradorId, new Map(rutas.map((r) => [r.id, r])));
   }

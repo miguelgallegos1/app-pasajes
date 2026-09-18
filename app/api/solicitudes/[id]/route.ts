@@ -58,7 +58,7 @@ export async function PATCH(
   }
 
   const ruta = await db.ruta.findFirst({
-    where: { id: rutaId, ...(await condicionRutasVisibles(solicitud.colaborador)) },
+    where: { id: rutaId, ...condicionRutasVisibles(solicitud.colaborador) },
   });
   if (!ruta) {
     return NextResponse.json({ error: "Esa ruta no es válida para este colaborador" }, { status: 400 });

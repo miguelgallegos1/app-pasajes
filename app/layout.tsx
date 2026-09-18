@@ -17,6 +17,21 @@ const SCRIPT_TEMA_INICIAL = `
 })();
 `;
 
+// Registra el service worker (public/sw.js) — sin él, Chrome/Edge no
+// ofrecen instalar la app aunque el manifest esté bien armado. Solo en
+// producción: en desarrollo un SW puede quedar cacheado entre reinicios
+// del server y mostrar código viejo, sin ningún beneficio a cambio.
+const SCRIPT_SERVICE_WORKER =
+  process.env.NODE_ENV === "production"
+    ? `
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  });
+}
+`
+    : "";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -56,6 +71,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
+        {SCRIPT_SERVICE_WORKER && <script dangerouslySetInnerHTML={{ __html: SCRIPT_SERVICE_WORKER }} />}
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>

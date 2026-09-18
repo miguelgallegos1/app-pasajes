@@ -11,6 +11,7 @@
 import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { useRouter } from "next/navigation";
+import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
@@ -18,7 +19,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
-import { IconoLupa, IconoChevron } from "./Icons";
+import { IconoLupa, IconoChevron, IconoDescargar } from "./Icons";
 
 type Colaborador = {
   id: string;
@@ -61,43 +62,25 @@ export default function PanelAsignacionRutas({
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
+  const resetPagina = () => setPaginaActual(1);
 
-  const [empresaFiltro, setEmpresaFiltro] = useState("");
-  const [sitioFiltro, setSitioFiltro] = useState("");
-  const [areaFiltro, setAreaFiltro] = useState("");
+  const {
+    empresaFiltro,
+    sitioFiltro,
+    areaFiltro,
+    sitiosFiltro,
+    areasFiltro,
+    cambiarEmpresaFiltro,
+    cambiarSitioFiltro,
+    cambiarAreaFiltro,
+    cantidadFiltrosActivos,
+  } = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
   // Colapsados por defecto: Empresa/Sitio/Área ocupan bastante espacio y
   // no siempre hacen falta — se abren solo cuando el usuario los pide.
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
-  const cantidadFiltrosActivos = [empresaFiltro, sitioFiltro, areaFiltro].filter(Boolean).length;
 
-  const sitiosFiltro = useMemo(
-    () =>
-      sitios
-        .filter((s) => !empresaFiltro || s.empresaId === empresaFiltro)
-        .map((s) => ({ id: s.id, label: s.nombre })),
-    [sitios, empresaFiltro]
-  );
-  const areasFiltro = useMemo(() => {
-    const idsSitiosFiltro = new Set(sitiosFiltro.map((s) => s.id));
-    return areas
-      .filter((a) => (sitioFiltro ? a.sitioId === sitioFiltro : !empresaFiltro || idsSitiosFiltro.has(a.sitioId)))
-      .map((a) => ({ id: a.id, label: a.nombre }));
-  }, [areas, sitioFiltro, empresaFiltro, sitiosFiltro]);
-
-  const cambiarEmpresaFiltro = (v: string) => {
-    setEmpresaFiltro(v);
-    setSitioFiltro("");
-    setAreaFiltro("");
-    setPaginaActual(1);
-  };
-  const cambiarSitioFiltro = (v: string) => {
-    setSitioFiltro(v);
-    setAreaFiltro("");
-    setPaginaActual(1);
-  };
-  const cambiarAreaFiltro = (v: string) => { setAreaFiltro(v); setPaginaActual(1); };
-  const cambiarBusqueda = (v: string) => { setBusqueda(v); setPaginaActual(1); };
-  const cambiarSoloActivos = (v: boolean) => { setSoloActivos(v); setPaginaActual(1); };
+  const cambiarBusqueda = (v: string) => { setBusqueda(v); resetPagina(); };
+  const cambiarSoloActivos = (v: boolean) => { setSoloActivos(v); resetPagina(); };
 
   const colaboradoresFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -205,21 +188,42 @@ export default function PanelAsignacionRutas({
     }
   };
 
+  // Mismos filtros de Empresa/Sitio/Área (y "Solo activos") que la lista
+  // de la izquierda: sin ningún filtro puesto, exporta todo el alcance de
+  // TH; con un filtro puesto, exporta solo eso — el Excel es exactamente
+  // lo que se está viendo en pantalla.
+  const urlExportar = () => {
+    const params = new URLSearchParams();
+    if (empresaFiltro) params.set("empresaId", empresaFiltro);
+    if (sitioFiltro) params.set("sitioId", sitioFiltro);
+    if (areaFiltro) params.set("areaId", areaFiltro);
+    if (!soloActivos) params.set("soloActivos", "0");
+    return `/api/th/rutas/asignaciones/exportar?${params.toString()}`;
+  };
+
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-2">
           <h1 className="text-lg sm:text-xl font-bold">Asignar rutas</h1>
           <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-            · Elegí un colaborador y marcá qué rutas le quedan exclusivas a él
+            · Elegir un colaborador y marcar qué rutas le quedan exclusivas a él
           </span>
         </div>
-        <button
-          onClick={() => router.push("/th/rutas?nueva=1")}
-          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 shrink-0"
-        >
-          + Nueva ruta
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <a
+            href={urlExportar()}
+            className="inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-lg transition"
+          >
+            <IconoDescargar className="w-4 h-4" /> Exportar a Excel
+          </a>
+          <button
+            onClick={() => router.push("/th/rutas?nueva=1")}
+            className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
+          >
+            + Nueva ruta
+          </button>
+        </div>
       </div>
 
       {sinAsignaciones && (
@@ -231,11 +235,16 @@ export default function PanelAsignacionRutas({
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Columna izquierda: filtros + lista de colaboradores */}
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+          {/* overflow-hidden solo cuando está colapsado: para recortar el
+              botón a las esquinas redondeadas. Abierto, el desplegable de
+              cada ComboboxBuscable (position: absolute) necesita salirse
+              del recuadro para poder verse — con overflow-hidden puesto
+              quedaba invisible, cortado por este mismo contenedor. */}
+          <div className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl ${filtrosAbiertos ? "" : "overflow-hidden"}`}>
             <button
               type="button"
               onClick={() => setFiltrosAbiertos((v) => !v)}
-              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition"
+              className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition ${filtrosAbiertos ? "rounded-t-xl" : "rounded-xl"}`}
             >
               <span className="flex items-center gap-2">
                 Filtrar por Empresa / Sitio / Área
@@ -340,7 +349,7 @@ export default function PanelAsignacionRutas({
         <div className="flex-1 min-w-0 w-full bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 p-5">
           {!colaboradorSeleccionado ? (
             <div className="py-16 text-center text-sm text-neutral-400 dark:text-neutral-500">
-              Elegí un colaborador de la lista para asignarle sus rutas
+              Elegir un colaborador de la lista para asignarle sus rutas
             </div>
           ) : (
             <div className="space-y-4">

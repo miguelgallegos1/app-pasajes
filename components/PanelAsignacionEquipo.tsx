@@ -8,6 +8,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
@@ -57,43 +58,25 @@ export default function PanelAsignacionEquipo({
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
+  const resetPagina = () => setPaginaActual(1);
 
-  const [empresaFiltro, setEmpresaFiltro] = useState("");
-  const [sitioFiltro, setSitioFiltro] = useState("");
-  const [areaFiltro, setAreaFiltro] = useState("");
+  const {
+    empresaFiltro,
+    sitioFiltro,
+    areaFiltro,
+    sitiosFiltro,
+    areasFiltro,
+    cambiarEmpresaFiltro,
+    cambiarSitioFiltro,
+    cambiarAreaFiltro,
+    cantidadFiltrosActivos,
+  } = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
   // Colapsados por defecto: Empresa/Sitio/Área ocupan bastante espacio y
   // no siempre hacen falta — se abren solo cuando el usuario los pide.
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
-  const cantidadFiltrosActivos = [empresaFiltro, sitioFiltro, areaFiltro].filter(Boolean).length;
 
-  const sitiosFiltro = useMemo(
-    () =>
-      sitios
-        .filter((s) => !empresaFiltro || s.empresaId === empresaFiltro)
-        .map((s) => ({ id: s.id, label: s.nombre })),
-    [sitios, empresaFiltro]
-  );
-  const areasFiltro = useMemo(() => {
-    const idsSitiosFiltro = new Set(sitiosFiltro.map((s) => s.id));
-    return areas
-      .filter((a) => (sitioFiltro ? a.sitioId === sitioFiltro : !empresaFiltro || idsSitiosFiltro.has(a.sitioId)))
-      .map((a) => ({ id: a.id, label: a.nombre }));
-  }, [areas, sitioFiltro, empresaFiltro, sitiosFiltro]);
-
-  const cambiarEmpresaFiltro = (v: string) => {
-    setEmpresaFiltro(v);
-    setSitioFiltro("");
-    setAreaFiltro("");
-    setPaginaActual(1);
-  };
-  const cambiarSitioFiltro = (v: string) => {
-    setSitioFiltro(v);
-    setAreaFiltro("");
-    setPaginaActual(1);
-  };
-  const cambiarAreaFiltro = (v: string) => { setAreaFiltro(v); setPaginaActual(1); };
-  const cambiarBusqueda = (v: string) => { setBusqueda(v); setPaginaActual(1); };
-  const cambiarSoloActivos = (v: boolean) => { setSoloActivos(v); setPaginaActual(1); };
+  const cambiarBusqueda = (v: string) => { setBusqueda(v); resetPagina(); };
+  const cambiarSoloActivos = (v: boolean) => { setSoloActivos(v); resetPagina(); };
 
   const supervisores = useMemo(() => colaboradores.filter((c) => c.esSupervisor), [colaboradores]);
 
@@ -290,7 +273,7 @@ export default function PanelAsignacionEquipo({
         <div className="flex flex-wrap items-baseline gap-2">
           <h1 className="text-lg sm:text-xl font-bold">Asignar equipo</h1>
           <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-            · Elegí un supervisor y marcá quiénes de su área le reportan
+            · Elegir un supervisor y marca quiénes de su área le reportan
           </span>
         </div>
         <button
@@ -316,11 +299,16 @@ export default function PanelAsignacionEquipo({
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Columna izquierda: filtros + lista de supervisores */}
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+          {/* overflow-hidden solo cuando está colapsado: para recortar el
+              botón a las esquinas redondeadas. Abierto, el desplegable de
+              cada ComboboxBuscable (position: absolute) necesita salirse
+              del recuadro para poder verse — con overflow-hidden puesto
+              quedaba invisible, cortado por este mismo contenedor. */}
+          <div className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl ${filtrosAbiertos ? "" : "overflow-hidden"}`}>
             <button
               type="button"
               onClick={() => setFiltrosAbiertos((v) => !v)}
-              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition"
+              className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition ${filtrosAbiertos ? "rounded-t-xl" : "rounded-xl"}`}
             >
               <span className="flex items-center gap-2">
                 Filtrar por Empresa / Sitio / Área
@@ -421,7 +409,7 @@ export default function PanelAsignacionEquipo({
         <div className="flex-1 min-w-0 w-full bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 p-5">
           {!supervisorSeleccionado ? (
             <div className="py-16 text-center text-sm text-neutral-400 dark:text-neutral-500">
-              Elegí un supervisor de la lista para armar su equipo
+              Elegir un supervisor de la lista para armar su equipo
             </div>
           ) : (
             <div className="space-y-4">
@@ -477,7 +465,7 @@ export default function PanelAsignacionEquipo({
               {verSoloEquipo && (
                 <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-xl p-3.5 space-y-2.5">
                   <p className="text-xs text-orange-800 dark:text-orange-300">
-                    Marcá a quién mover (por defecto está todo el equipo) y elegí el supervisor destino.
+                    Marcar a quién mover (por defecto está todo el equipo) y elegir el supervisor destino.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <div className="flex-1">
