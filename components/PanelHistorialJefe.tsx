@@ -332,13 +332,13 @@ export default function PanelHistorialJefe({
                 </tr>
               </thead>
               <tbody>
-                {itemsOrdenados.map((s) => (
+                {itemsOrdenados.map((s, i) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <Avatar nombre={s.nombreColaborador} className="w-7 h-7 text-[11px]" />
+                        <Avatar nombre={s.nombreColaborador} indice={i} className="w-7 h-7 text-[11px]" />
                         <span>{s.nombreColaborador}</span>
                       </div>
                     </td>

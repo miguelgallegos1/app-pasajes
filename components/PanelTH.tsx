@@ -285,7 +285,7 @@ export default function PanelTH({
                 />
               </div>
             )}
-            {tarjetasColaborador.map((c) => {
+            {tarjetasColaborador.map((c, i) => {
               const abierta = tarjetasAbiertas.has(c.id);
               const total = c.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0);
               return (
@@ -297,7 +297,7 @@ export default function PanelTH({
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${abierta ? "rotate-90" : ""}`} />
-                      <Avatar nombre={c.nombre} className="w-9 h-9 text-xs" />
+                      <Avatar nombre={c.nombre} indice={i} className="w-9 h-9 text-xs" />
                       <div className="min-w-0">
                         <p className="font-semibold text-neutral-900 dark:text-white truncate">{c.nombre}</p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -371,7 +371,7 @@ export default function PanelTH({
                 </tr>
               </thead>
               <tbody>
-                {pendientesPagina.map((s) => (
+                {pendientesPagina.map((s, i) => (
                   <tr key={s.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3">
                       <input
@@ -390,7 +390,7 @@ export default function PanelTH({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <Avatar nombre={s.nombreColaborador} className="w-7 h-7 text-[11px]" />
+                        <Avatar nombre={s.nombreColaborador} indice={i} className="w-7 h-7 text-[11px]" />
                         <span>{s.nombreColaborador}</span>
                       </div>
                     </td>

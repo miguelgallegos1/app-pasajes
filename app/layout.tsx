@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "../components/Toast";
 import ThemeProvider from "../components/ThemeProvider";
@@ -30,6 +30,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Gestión de Pasajes",
   description: "Sistema de registro y gestión de pasajes corporativos",
+  // Al abrirla desde "Agregar a pantalla de inicio" en iOS, la lanza a
+  // pantalla completa (sin la barra de Safari) — Android/Chrome toman
+  // esto mismo del manifest.ts, pero Safari solo respeta estas meta tags.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Pasajes",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

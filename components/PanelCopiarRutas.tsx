@@ -9,6 +9,8 @@ import { formatearMoneda } from "../lib/formato";
 import { useRouter } from "next/navigation";
 import CalendarioSelector from "./CalendarioSelector";
 import Spinner from "./Spinner";
+import AvatarRuta from "./AvatarRuta";
+import { IconoChevron } from "./Icons";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useToast } from "./Toast";
 
@@ -40,8 +42,15 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
   const [cargandoOrigen, setCargandoOrigen] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   // Cada ruta marcada puede llevar su propia observación (no una sola
-  // compartida para todo el lote), igual que en "Nueva solicitud".
+  // compartida para todo el lote), igual que en "Nueva solicitud". Arranca
+  // colapsada (un link "+ Agregar observación") y solo una abierta a la
+  // vez — abrir otra colapsa la anterior — mismo criterio que allá, para
+  // no llenar la pantalla de inputs si se marcan varias rutas seguidas.
   const [observacionesPorId, setObservacionesPorId] = useState<Record<string, string>>({});
+  const [observacionAbiertaId, setObservacionAbiertaId] = useState<string | null>(null);
+  const alternarObservacion = (id: string) => {
+    setObservacionAbiertaId((prev) => (prev === id ? null : id));
+  };
   const [copiando, setCopiando] = useState(false);
   const [error, setError] = useState("");
   const peticionDiaRef = useRef(0);
@@ -59,6 +68,7 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
     setFechaOrigen(valor);
     setSeleccionadas(new Set());
     setObservacionesPorId({});
+    setObservacionAbiertaId(null);
     if (!valor) {
       setSolicitudesOrigen([]);
       return;
@@ -142,6 +152,7 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
       setSolicitudesOrigen([]);
       setSeleccionadas(new Set());
       setObservacionesPorId({});
+      setObservacionAbiertaId(null);
       router.refresh();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -192,19 +203,24 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
               ) : (
                 solicitudesOrigen.map((s) => {
                   const marcada = seleccionadas.has(s.id);
+                  const valorObservacion = observacionesPorId[s.id] ?? "";
+                  const observacionAbierta = observacionAbiertaId === s.id;
                   return (
                     <div key={s.id} className={marcada ? "bg-orange-50/60 dark:bg-orange-500/5" : ""}>
-                      <label className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
-                        <input
-                          type="checkbox"
-                          checked={marcada}
-                          onChange={() => alternarSeleccion(s.id)}
-                          className="w-4 h-4 accent-orange-500 rounded shrink-0"
-                        />
-                        <span className="flex-1 min-w-0 truncate">
-                          {esSupervisor && <span className="font-medium">{s.nombreColaborador} · </span>}
-                          {s.rutaLabel}
-                        </span>
+                      <div className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm">
+                        <label className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={marcada}
+                            onChange={() => alternarSeleccion(s.id)}
+                            className="w-4 h-4 accent-orange-500 rounded shrink-0"
+                          />
+                          <AvatarRuta nombre={s.rutaLabel} valor={s.valor} className="w-7 h-7 shrink-0" />
+                          <span className="flex-1 min-w-0 truncate">
+                            {esSupervisor && <span className="font-medium">{s.nombreColaborador} · </span>}
+                            {s.rutaLabel}
+                          </span>
+                        </label>
                         <span className="text-neutral-500 dark:text-neutral-400 shrink-0">{formatearMoneda(s.valor)}</span>
                         <span
                           className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
@@ -213,11 +229,23 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
                         >
                           {s.estado}
                         </span>
-                      </label>
-                      {marcada && (
-                        <div className="px-3.5 pb-2.5">
+                        {marcada && (
+                          <button
+                            type="button"
+                            onClick={() => alternarObservacion(s.id)}
+                            title="Observación para esta ruta"
+                            className="flex items-center gap-1 p-1 -mr-1 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition shrink-0"
+                          >
+                            {valorObservacion && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />}
+                            <IconoChevron className={`w-3.5 h-3.5 transition-transform ${observacionAbierta ? "rotate-90" : ""}`} />
+                          </button>
+                        )}
+                      </div>
+                      {marcada && observacionAbierta && (
+                        <div className="pl-[78px] pr-3.5 pb-2.5">
                           <input
-                            value={observacionesPorId[s.id] ?? ""}
+                            autoFocus
+                            value={valorObservacion}
                             onChange={(e) => cambiarObservacion(s.id, e.target.value.toUpperCase())}
                             placeholder="Observación para esta ruta (opcional)"
                             className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 px-2.5 py-1.5 text-xs focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"

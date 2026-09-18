@@ -1,7 +1,10 @@
 // components/Avatar.tsx
-// Avatar con iniciales y color determinístico (mismo nombre -> mismo color
-// siempre), para identificar de un vistazo a un colaborador en listas y
-// tablas sin tener que leer el nombre completo.
+// Avatar con iniciales y color. Dentro de una lista/tabla el color se
+// asigna por POSICIÓN de la fila (indice), no por el nombre — con hash por
+// nombre, dos filas visibles podían caer en el mismo color por pura
+// coincidencia; por índice, ninguna fila consecutiva se repite. Sin indice
+// (un avatar suelto, ej. encabezado de un modal, la barra superior) cae al
+// hash por nombre de siempre.
 
 const COLORES = [
   "bg-orange-500",
@@ -14,10 +17,20 @@ const COLORES = [
   "bg-fuchsia-500",
 ];
 
-function colorDeNombre(nombre: string): string {
+export function colorPorIndice(indice: number): string {
+  return COLORES[Math.abs(indice) % COLORES.length];
+}
+
+export function colorDeNombre(nombre: string): string {
   let hash = 0;
   for (let i = 0; i < nombre.length; i++) hash = nombre.charCodeAt(i) + ((hash << 5) - hash);
   return COLORES[Math.abs(hash) % COLORES.length];
+}
+
+// Mismo color para dos rutas del mismo valor — agrupa visualmente por
+// precio en vez de por nombre (ver AvatarRuta).
+export function colorDeValor(valor: number): string {
+  return colorDeNombre(String(valor));
 }
 
 export function inicialesDeNombre(nombre: string): string {
@@ -31,18 +44,23 @@ export function inicialesDeNombre(nombre: string): string {
 export default function Avatar({
   nombre,
   fotoUrl,
+  indice,
   className = "w-8 h-8 text-xs",
 }: {
   nombre: string;
   fotoUrl?: string | null;
+  // Índice de la fila dentro de la lista que se está renderizando — si se
+  // pasa, el color se elige por posición en vez de por hash del nombre.
+  indice?: number;
   className?: string;
 }) {
   if (fotoUrl) {
     return <img src={fotoUrl} alt={nombre} className={`rounded-full object-cover shrink-0 ${className}`} />;
   }
+  const color = indice !== undefined ? colorPorIndice(indice) : colorDeNombre(nombre);
   return (
     <div
-      className={`rounded-full ${colorDeNombre(nombre)} text-white font-bold flex items-center justify-center shrink-0 ${className}`}
+      className={`rounded-full ${color} text-white font-bold flex items-center justify-center shrink-0 ${className}`}
     >
       {inicialesDeNombre(nombre)}
     </div>

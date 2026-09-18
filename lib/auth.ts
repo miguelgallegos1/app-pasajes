@@ -8,6 +8,7 @@ import { DURACION_SESION_SEGUNDOS } from "./config";
 import { JWT_SECRET } from "./jwtSecret";
 import { db } from "./db";
 import { obtenerColaboradorPorUsuarioId } from "./colaboradorSesion";
+import { sesionRevocada } from "./sesionRevocada";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -16,22 +17,28 @@ export type SesionUsuario = {
   rol: "SUPER_ADMIN" | "ADMIN_TH" | "COORDINADOR" | "COLABORADOR" | "NOMINA" | "JEFE";
 };
 
-// Crea un token firmado que se guarda en una cookie del navegador
+// Crea un token firmado que se guarda en una cookie del navegador.
+// setIssuedAt() es necesario para poder revocar sesiones más tarde
+// (sesionRevocada compara este "iat" contra sesionesRevocadasEn).
 export async function crearToken(payload: SesionUsuario) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
     .setExpirationTime(`${DURACION_SESION_SEGUNDOS}s`)
     .sign(secret);
 }
 
-// Lee la sesión actual desde la cookie (null si no hay sesión o expiró)
+// Lee la sesión actual desde la cookie (null si no hay sesión, expiró, o
+// un Super Admin la revocó explícitamente desde el panel de accesos).
 export async function getSession(): Promise<SesionUsuario | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret);
-    return payload as unknown as SesionUsuario;
+    const sesion = payload as unknown as SesionUsuario & { iat?: number };
+    if (await sesionRevocada(sesion.id, sesion.iat)) return null;
+    return { id: sesion.id, rol: sesion.rol };
   } catch {
     return null;
   }

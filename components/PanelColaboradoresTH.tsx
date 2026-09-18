@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
@@ -220,6 +220,17 @@ export default function PanelColaboradoresTH({
     generarPin();
   };
 
+  // Llegar desde "+ Nuevo colaborador" en Asignar equipo trae ?nuevo=1 —
+  // abre el modal de creación de una, sin tener que buscar el botón acá.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("nuevo") !== "1") return;
+    (async () => {
+      abrirCrear();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const abrirEditar = (c: Colaborador) => {
     setEditandoId(c.id);
     setApellidos(c.apellidos);
@@ -422,7 +433,7 @@ export default function PanelColaboradoresTH({
               </tr>
             </thead>
             <tbody>
-              {colaboradoresPagina.map((c) => (
+              {colaboradoresPagina.map((c, i) => (
                 <tr key={c.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                   <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">{c.numero}</td>
                   <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400">
@@ -430,7 +441,7 @@ export default function PanelColaboradoresTH({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <Avatar nombre={c.nombreCompleto} className="w-7 h-7 text-[11px]" />
+                      <Avatar nombre={c.nombreCompleto} indice={i} className="w-7 h-7 text-[11px]" />
                       <span>
                         {c.nombreCompleto}
                         {c.esSupervisor && (

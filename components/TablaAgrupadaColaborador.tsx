@@ -87,7 +87,7 @@ export default function TablaAgrupadaColaborador<TDetalle>({
 
   return (
     <div className="divide-y divide-neutral-200/70">
-      {filas.map((colaborador) => {
+      {filas.map((colaborador, i) => {
         const abierto = colaboradorAbierto === colaborador.id;
         return (
           <div key={colaborador.id}>
@@ -98,7 +98,7 @@ export default function TablaAgrupadaColaborador<TDetalle>({
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${abierto ? "rotate-90" : ""}`} />
-                <Avatar nombre={colaborador.nombre} className="w-7 h-7 text-[11px]" />
+                <Avatar nombre={colaborador.nombre} indice={i} className="w-7 h-7 text-[11px]" />
                 <span className="font-medium truncate">{colaborador.nombre}</span>
               </div>
               <div className="flex items-center gap-4 shrink-0 text-sm">

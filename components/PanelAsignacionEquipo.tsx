@@ -11,11 +11,12 @@ import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
+import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
-import { IconoLupa } from "./Icons";
+import { IconoLupa, IconoPregunta } from "./Icons";
 
 type Colaborador = {
   id: string;
@@ -120,15 +121,29 @@ export default function PanelAsignacionEquipo({
   const [error, setError] = useState("");
 
   const supervisorSeleccionado = colaboradores.find((c) => c.id === supervisorSeleccionadoId) ?? null;
+  const nombrePorId = useMemo(() => new Map(colaboradores.map((c) => [c.id, c.nombreCompleto])), [colaboradores]);
 
   const equipoActual = (supervisor: Colaborador) =>
     colaboradores.filter((c) => c.supervisorId === supervisor.id).map((c) => c.id);
+
+  // "Ver solo su equipo" (junto a Marcar todos/Ninguno): filtra la lista a
+  // solo quienes YA le reportan al supervisor elegido, para encontrar rápido
+  // a quién mover sin tener que buscar entre todo el área — sea uno solo
+  // (cambio de área puntual) o el equipo completo de una vez.
+  const [verSoloEquipo, setVerSoloEquipo] = useState(false);
+  const [supervisorDestinoId, setSupervisorDestinoId] = useState("");
+  const [confirmandoMover, setConfirmandoMover] = useState(false);
+  const [moviendo, setMoviendo] = useState(false);
+  const [errorMover, setErrorMover] = useState("");
 
   const seleccionarSupervisor = (c: Colaborador) => {
     setSupervisorSeleccionadoId(c.id);
     setMiembroIdsSeleccionados(equipoActual(c));
     setBusquedaMiembro("");
     setError("");
+    setVerSoloEquipo(false);
+    setSupervisorDestinoId("");
+    setErrorMover("");
   };
 
   const candidatosDelArea = useMemo(
@@ -141,23 +156,31 @@ export default function PanelAsignacionEquipo({
 
   const candidatosVisibles = useMemo(() => {
     const texto = busquedaMiembro.trim().toLowerCase();
-    if (!texto) return candidatosDelArea;
-    return candidatosDelArea.filter(
+    let base = candidatosDelArea;
+    if (verSoloEquipo && supervisorSeleccionado) {
+      base = base.filter((c) => c.supervisorId === supervisorSeleccionado.id);
+    }
+    if (!texto) return base;
+    return base.filter(
       (c) => c.nombreCompleto.toLowerCase().includes(texto) || (c.codigoNomina ?? "").toLowerCase().includes(texto)
     );
-  }, [candidatosDelArea, busquedaMiembro]);
+  }, [candidatosDelArea, busquedaMiembro, verSoloEquipo, supervisorSeleccionado]);
 
   const alternarMiembro = (id: string) => {
     setMiembroIdsSeleccionados((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
   };
 
-  const marcarTodos = () =>
-    setMiembroIdsSeleccionados(
-      candidatosDelArea
-        .filter((c) => !c.supervisorId || c.supervisorId === supervisorSeleccionado?.id)
-        .map((c) => c.id)
-    );
-  const desmarcarTodos = () => setMiembroIdsSeleccionados([]);
+  // Actúa sobre lo BUSCADO/filtrado en pantalla (candidatosVisibles) y
+  // suma/resta sobre la selección existente en vez de reemplazarla — mismo
+  // criterio que "Marcar todas" en Asignar rutas.
+  const marcarTodos = () => {
+    const idsVisibles = candidatosVisibles.map((c) => c.id);
+    setMiembroIdsSeleccionados((prev) => Array.from(new Set([...prev, ...idsVisibles])));
+  };
+  const desmarcarTodos = () => {
+    const idsVisibles = new Set(candidatosVisibles.map((c) => c.id));
+    setMiembroIdsSeleccionados((prev) => prev.filter((id) => !idsVisibles.has(id)));
+  };
 
   const hayCambios = useMemo(() => {
     if (!supervisorSeleccionado) return false;
@@ -207,13 +230,71 @@ export default function PanelAsignacionEquipo({
     }
   };
 
+  // ---------- Mover a otro supervisor (solo con "Ver solo su equipo") ----------
+  const supervisoresDestino = useMemo(
+    () =>
+      supervisorSeleccionado
+        ? supervisores.filter((s) => s.areaId === supervisorSeleccionado.areaId && s.id !== supervisorSeleccionado.id)
+        : [],
+    [supervisores, supervisorSeleccionado]
+  );
+
+  // Con el filtro activo, todo lo visible ya es su equipo actual: lo
+  // marcado (por defecto, todos) es lo que se va a mover.
+  const paraMover = useMemo(
+    () => candidatosVisibles.filter((c) => miembroIdsSeleccionados.includes(c.id)),
+    [candidatosVisibles, miembroIdsSeleccionados]
+  );
+
+  const confirmarMover = async () => {
+    if (!supervisorDestinoId || paraMover.length === 0) return;
+    setMoviendo(true);
+    setErrorMover("");
+    try {
+      const resultados = await Promise.all(
+        paraMover.map((c) =>
+          fetch(`/api/colaboradores/${c.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ supervisorId: supervisorDestinoId }),
+          })
+        )
+      );
+      const fallo = resultados.find((r) => !r.ok);
+      if (fallo) {
+        const data = await fallo.json().catch(() => ({}));
+        setErrorMover(data.error ?? "No se pudieron mover todos");
+        toast.error(data.error ?? "No se pudieron mover todos los colaboradores");
+        return;
+      }
+      toast.exito(`${paraMover.length} colaborador${paraMover.length === 1 ? "" : "es"} movido${paraMover.length === 1 ? "" : "s"}`);
+      setConfirmandoMover(false);
+      setVerSoloEquipo(false);
+      setSupervisorDestinoId("");
+      router.refresh();
+    } catch {
+      setErrorMover("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setMoviendo(false);
+    }
+  };
+
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Asignar equipo</h1>
-        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-          · Elegí un supervisor y marcá quiénes de su área le reportan
-        </span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h1 className="text-lg sm:text-xl font-bold">Asignar equipo</h1>
+          <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
+            · Elegí un supervisor y marcá quiénes de su área le reportan
+          </span>
+        </div>
+        <button
+          onClick={() => router.push("/th/colaboradores?nuevo=1")}
+          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 shrink-0"
+        >
+          + Nuevo colaborador
+        </button>
       </div>
 
       {sinAsignaciones && (
@@ -268,7 +349,7 @@ export default function PanelAsignacionEquipo({
 
           <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <div className="max-h-[480px] overflow-y-auto divide-y divide-neutral-200/70">
-              {supervisoresPagina.map((c) => {
+              {supervisoresPagina.map((c, i) => {
                 const activo = c.id === supervisorSeleccionadoId;
                 const cantidad = equipoActual(c).length;
                 return (
@@ -281,7 +362,7 @@ export default function PanelAsignacionEquipo({
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
-                      <Avatar nombre={c.nombreCompleto} className="w-8 h-8 text-xs mt-0.5" />
+                      <Avatar nombre={c.nombreCompleto} indice={i} className="w-8 h-8 text-xs mt-0.5" />
                       <div className="min-w-0">
                         <p className={`text-sm font-medium truncate ${activo ? "text-orange-700" : "text-neutral-800 dark:text-neutral-200"}`}>
                           {c.nombreCompleto}
@@ -336,7 +417,7 @@ export default function PanelAsignacionEquipo({
                     className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                   />
                 </div>
-                <div className="flex gap-1.5 shrink-0">
+                <div className="flex gap-1.5 shrink-0 flex-wrap">
                   <button
                     type="button"
                     onClick={marcarTodos}
@@ -351,33 +432,77 @@ export default function PanelAsignacionEquipo({
                   >
                     Ninguno
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVerSoloEquipo((v) => !v);
+                      setMiembroIdsSeleccionados(equipoActual(supervisorSeleccionado));
+                      setSupervisorDestinoId("");
+                      setErrorMover("");
+                    }}
+                    className={`text-xs font-medium px-3 py-2 rounded-lg border transition ${
+                      verSoloEquipo
+                        ? "bg-orange-500 border-orange-500 text-white hover:bg-orange-600"
+                        : "text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    }`}
+                  >
+                    {verSoloEquipo ? "Viendo solo su equipo" : "Ver solo su equipo"}
+                  </button>
                 </div>
               </div>
+
+              {verSoloEquipo && (
+                <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-xl p-3.5 space-y-2.5">
+                  <p className="text-xs text-orange-800 dark:text-orange-300">
+                    Marcá a quién mover (por defecto está todo el equipo) y elegí el supervisor destino.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1">
+                      <ComboboxBuscable
+                        opciones={supervisoresDestino.map((s) => ({ id: s.id, label: s.nombreCompleto }))}
+                        value={supervisorDestinoId}
+                        onChange={setSupervisorDestinoId}
+                        placeholder="Mover a..."
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmandoMover(true)}
+                      disabled={!supervisorDestinoId || paraMover.length === 0}
+                      className="px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition shrink-0"
+                    >
+                      Mover ({paraMover.length})
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-white dark:bg-neutral-900 rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
                 <div className="max-h-[380px] overflow-y-auto divide-y divide-neutral-100">
                   {candidatosVisibles.map((c) => {
                     const marcado = miembroIdsSeleccionados.includes(c.id);
-                    // Ya tiene otro supervisor asignado: no se puede sumar
-                    // desde acá — hay que sacarlo de ese equipo primero,
-                    // para no pisar la asignación sin que nadie lo note.
                     const tieneOtroSupervisor = !!c.supervisorId && c.supervisorId !== supervisorSeleccionado.id;
+                    // Fuera de "Ver solo su equipo" esta lista es para
+                    // agregar/quitar gente sin supervisor a este equipo — a
+                    // quien ya le reporta a otro no se lo toca desde acá
+                    // (eso es lo que generaba la confusión de "mover" mezclado
+                    // con "agregar"). Mover tiene su propio flujo explícito.
+                    const deshabilitado = !verSoloEquipo && tieneOtroSupervisor;
                     return (
                       <label
                         key={c.id}
-                        title={tieneOtroSupervisor ? "Ya tiene un supervisor asignado — quitalo de ese equipo primero" : undefined}
                         className={`flex items-center gap-3 px-4 py-3 text-sm transition ${
-                          tieneOtroSupervisor
-                            ? "cursor-not-allowed opacity-60"
+                          deshabilitado
+                            ? "opacity-50 cursor-not-allowed"
                             : "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={marcado}
-                          disabled={tieneOtroSupervisor}
+                          disabled={deshabilitado}
                           onChange={() => alternarMiembro(c.id)}
-                          className="w-4 h-4 accent-orange-500 rounded shrink-0 disabled:cursor-not-allowed"
+                          className="w-4 h-4 accent-orange-500 rounded shrink-0"
                         />
                         <span className="flex-1 min-w-0">
                           <span className="text-neutral-800 dark:text-neutral-200">{c.nombreCompleto}</span>
@@ -386,9 +511,9 @@ export default function PanelAsignacionEquipo({
                               SUPERVISOR
                             </span>
                           )}
-                          {tieneOtroSupervisor && (
-                            <span className="block text-[11px] text-amber-600">
-                              Ya tiene un supervisor asignado
+                          {tieneOtroSupervisor && !verSoloEquipo && (
+                            <span className="block text-[11px] text-neutral-400 dark:text-neutral-500">
+                              Reporta a {nombrePorId.get(c.supervisorId!) ?? "otro supervisor"} — usá &quot;Ver solo su equipo&quot; desde ahí para moverlo
                             </span>
                           )}
                         </span>
@@ -400,9 +525,11 @@ export default function PanelAsignacionEquipo({
                     <div className="px-4 py-10">
                       <EstadoVacio
                         mensaje={
-                          candidatosDelArea.length === 0
-                            ? "No hay más colaboradores en esta área"
-                            : "Sin resultados para esa búsqueda"
+                          verSoloEquipo
+                            ? "Este supervisor no tiene colaboradores en su equipo"
+                            : candidatosDelArea.length === 0
+                              ? "No hay más colaboradores en esta área"
+                              : "Sin resultados para esa búsqueda"
                         }
                       />
                     </div>
@@ -410,27 +537,72 @@ export default function PanelAsignacionEquipo({
                 </div>
               </div>
 
-              <p className="text-xs text-neutral-400 dark:text-neutral-500">
-                {miembroIdsSeleccionados.length} de {candidatosDelArea.length} colaboradores de su área le reportan a{" "}
-                {supervisorSeleccionado.nombreCompleto.split(" ")[0]}.
-              </p>
+              {!verSoloEquipo && (
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">
+                  {miembroIdsSeleccionados.length} de {candidatosDelArea.length} colaboradores de su área le reportan a{" "}
+                  {supervisorSeleccionado.nombreCompleto.split(" ")[0]}.
+                </p>
+              )}
 
               {error && <p className="text-sm text-red-600">{error}</p>}
 
-              <div className="flex justify-end">
-                <button
-                  onClick={guardar}
-                  disabled={guardando || !hayCambios}
-                  className="px-5 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-                >
-                  {guardando && <Spinner className="w-4 h-4" />}
-                  {guardando ? "Guardando..." : "Guardar cambios"}
-                </button>
-              </div>
+              {!verSoloEquipo && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={guardar}
+                    disabled={guardando || !hayCambios}
+                    className="px-5 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+                  >
+                    {guardando && <Spinner className="w-4 h-4" />}
+                    {guardando ? "Guardando..." : "Guardar cambios"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      <Modal
+        abierto={confirmandoMover}
+        onCerrar={() => setConfirmandoMover(false)}
+        variante="centro"
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm text-center space-y-4 shadow-2xl"
+      >
+        <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto">
+          <IconoPregunta className="w-6 h-6" />
+        </div>
+        <p className="font-semibold text-neutral-900 dark:text-white">
+          ¿Mover {paraMover.length} {paraMover.length === 1 ? "colaborador" : "colaboradores"} a{" "}
+          {supervisoresDestino.find((s) => s.id === supervisorDestinoId)?.nombreCompleto ?? "el destino elegido"}?
+        </p>
+        <div className="text-sm text-neutral-500 dark:text-neutral-400 text-left space-y-1 max-h-48 overflow-y-auto">
+          {paraMover.map((c) => (
+            <p key={c.id}>
+              <span className="text-neutral-700 dark:text-neutral-300">{c.nombreCompleto}</span> — deja de reportarle a{" "}
+              {supervisorSeleccionado?.nombreCompleto}
+            </p>
+          ))}
+        </div>
+        {errorMover && <p className="text-sm text-red-600">{errorMover}</p>}
+        <div className="flex gap-2 justify-center pt-1">
+          <button
+            onClick={() => setConfirmandoMover(false)}
+            disabled={moviendo}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={confirmarMover}
+            disabled={moviendo}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+          >
+            {moviendo && <Spinner className="w-4 h-4" />}
+            {moviendo ? "Moviendo..." : "Sí, mover"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

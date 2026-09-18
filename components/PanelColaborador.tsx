@@ -53,12 +53,96 @@ const CLASE_CAMPO =
 
 const POR_PAGINA = 8;
 
+// Lista de rutas con checkbox + observación opcional por ruta marcada. La
+// observación es una pestaña plegable de verdad (chevron que gira, como el
+// acordeón de colaboradores): colapsada no queda nada del input a la
+// vista, solo el chevron (con un punto si ya tiene texto guardado) — un
+// clic ahí abre el panel debajo, y solo uno a la vez queda abierto.
+// Reusado tal cual para "solo yo" (sin equipo) y dentro de cada fila
+// expandida del acordeón (con equipo) — misma lógica, un solo lugar.
+function FilaRutasSeleccionables({
+  rutas,
+  elegidas,
+  onAlternarRuta,
+  observaciones,
+  onCambiarObservacion,
+  claveItem,
+  colaboradorId,
+  observacionAbiertaClave,
+  onAlternarObservacion,
+  indentado = false,
+}: {
+  rutas: RutaSimple[];
+  elegidas: string[];
+  onAlternarRuta: (rutaId: string) => void;
+  observaciones: Record<string, string>;
+  onCambiarObservacion: (rutaId: string, valor: string) => void;
+  claveItem: (colaboradorId: string, rutaId: string) => string;
+  colaboradorId: string;
+  observacionAbiertaClave: string | null;
+  onAlternarObservacion: (clave: string) => void;
+  indentado?: boolean;
+}) {
+  if (rutas.length === 0) {
+    return <p className="px-3.5 py-4 text-xs text-neutral-400 dark:text-neutral-500 text-center">Sin rutas asignadas</p>;
+  }
+  return (
+    <>
+      {rutas.map((r) => {
+        const marcada = elegidas.includes(r.id);
+        const clave = claveItem(colaboradorId, r.id);
+        const valorObservacion = observaciones[clave] ?? "";
+        const observacionAbierta = observacionAbiertaClave === clave;
+        return (
+          <div key={r.id} className={marcada ? "bg-orange-50/60 dark:bg-orange-500/5" : ""}>
+            <div className={`flex items-center gap-3 py-2.5 text-sm ${indentado ? "pl-9 pr-3.5" : "px-3.5"}`}>
+              <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={marcada}
+                  onChange={() => onAlternarRuta(r.id)}
+                  className="w-4 h-4 accent-orange-500 rounded shrink-0"
+                />
+                <span className="flex-1 min-w-0 truncate text-neutral-800 dark:text-neutral-200">{r.label}</span>
+              </label>
+              <span className="text-neutral-400 dark:text-neutral-500 text-xs shrink-0">{formatearMoneda(r.valor)}</span>
+              {marcada && (
+                <button
+                  type="button"
+                  onClick={() => onAlternarObservacion(clave)}
+                  title="Observación para esta ruta"
+                  className="flex items-center gap-1 p-1 -mr-1 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition shrink-0"
+                >
+                  {valorObservacion && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />}
+                  <IconoChevron className={`w-3.5 h-3.5 transition-transform ${observacionAbierta ? "rotate-90" : ""}`} />
+                </button>
+              )}
+            </div>
+            {marcada && observacionAbierta && (
+              <div className={`pb-2.5 ${indentado ? "pl-9 pr-3.5" : "px-3.5"}`}>
+                <input
+                  autoFocus
+                  value={valorObservacion}
+                  onChange={(e) => onCambiarObservacion(r.id, e.target.value.toUpperCase())}
+                  placeholder="Observación para esta ruta (opcional)"
+                  className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 px-2.5 py-1.5 text-xs focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 export default function PanelColaborador({
   colaboradorId,
   nombreCompleto,
   esSupervisor,
   equipo,
   rutasPropias,
+  rutasEquipo,
   solicitudes,
 }: {
   colaboradorId: string;
@@ -66,6 +150,11 @@ export default function PanelColaborador({
   esSupervisor: boolean;
   equipo: MiembroEquipo[];
   rutasPropias: RutaSimple[];
+  // Rutas de cada miembro del equipo (uno mismo incluido), ya cargadas
+  // desde el servidor junto con la página — abrir "Nueva solicitud" no
+  // dispara ningún pedido de red, es instantáneo aunque el equipo tenga
+  // cientos de personas.
+  rutasEquipo: Record<string, RutaSimple[]>;
   solicitudes: Solicitud[];
 }) {
   const router = useRouter();
@@ -135,24 +224,24 @@ export default function PanelColaborador({
   const [rutasDisponibles, setRutasDisponibles] = useState<RutaSimple[]>(rutasPropias);
   const [cargandoRutas, setCargandoRutas] = useState(false);
 
-  // ---------- Crear en lote: uno o más colaboradores, una o más rutas
-  // cada uno, todo para la misma fecha (ver /api/solicitudes/crear-lote). ----------
-  const [colaboradoresElegidos, setColaboradoresElegidos] = useState<string[]>([]);
+  // ---------- Crear en lote: uno o más colaboradores (si sos supervisor),
+  // una o más rutas cada uno, todo para la misma fecha (ver
+  // /api/solicitudes/crear-lote). Acordeón: un colaborador a la vez
+  // expandido, para que la lista no se estire con equipos grandes. ----------
   const [rutasElegidasPorColaborador, setRutasElegidasPorColaborador] = useState<Record<string, string[]>>({});
-  const [rutasDisponiblesPorColaborador, setRutasDisponiblesPorColaborador] = useState<Record<string, RutaSimple[]>>({});
-  const [colaboradoresCargandoRutas, setColaboradoresCargandoRutas] = useState<Set<string>>(new Set());
   // Cada ruta elegida tiene su propia observación (no una sola compartida
   // para todo el lote) — clave compuesta porque el mismo rutaId puede
   // repetirse entre distintos colaboradores del mismo área.
   const [observacionesPorItem, setObservacionesPorItem] = useState<Record<string, string>>({});
   const claveItem = (idColaborador: string, idRuta: string) => `${idColaborador}::${idRuta}`;
-
-  const nombrePorColaboradorId = useMemo(() => {
-    const mapa = new Map<string, string>();
-    mapa.set(colaboradorId, nombreCompleto);
-    equipo.forEach((c) => mapa.set(c.id, c.nombreCompleto));
-    return mapa;
-  }, [colaboradorId, nombreCompleto, equipo]);
+  const [colaboradorExpandidoId, setColaboradorExpandidoId] = useState<string | null>(null);
+  const [busquedaEquipoModal, setBusquedaEquipoModal] = useState("");
+  // Una sola observación abierta a la vez en todo el modal (mismo criterio
+  // que el acordeón de colaboradores) — abrir otra colapsa la anterior.
+  const [observacionAbiertaClave, setObservacionAbiertaClave] = useState<string | null>(null);
+  const alternarObservacion = (clave: string) => {
+    setObservacionAbiertaClave((prev) => (prev === clave ? null : clave));
+  };
 
   // Vista "Por colaborador": una tarjeta por cada miembro del equipo (uno
   // mismo primero) con sus solicitudes agrupadas — todo derivado en el
@@ -302,50 +391,19 @@ export default function PanelColaborador({
     await cargarRutasDe(nuevoId);
   };
 
-  const cargarRutasDeLote = async (idColaborador: string) => {
-    if (idColaborador === colaboradorId) {
-      setRutasDisponiblesPorColaborador((prev) => ({ ...prev, [idColaborador]: rutasPropias }));
-      return;
-    }
-    setColaboradoresCargandoRutas((prev) => new Set(prev).add(idColaborador));
-    try {
-      const res = await fetch(`/api/rutas?colaboradorId=${idColaborador}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRutasDisponiblesPorColaborador((prev) => ({ ...prev, [idColaborador]: data }));
-      }
-    } catch {
-      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-    } finally {
-      setColaboradoresCargandoRutas((prev) => {
-        const copia = new Set(prev);
-        copia.delete(idColaborador);
-        return copia;
-      });
-    }
+  // Acordeón: expandir uno colapsa el que estaba abierto — con equipos de
+  // cientos de personas, tener varios abiertos a la vez volvería la lista
+  // interminable.
+  const alternarExpandido = (id: string) => {
+    setColaboradorExpandidoId((prev) => (prev === id ? null : id));
+    setObservacionAbiertaClave(null);
   };
 
-  const alternarColaboradorLote = (id: string) => {
-    setColaboradoresElegidos((prev) => {
-      if (prev.includes(id)) {
-        setRutasElegidasPorColaborador((r) => {
-          const copia = { ...r };
-          delete copia[id];
-          return copia;
-        });
-        setObservacionesPorItem((prev) => {
-          const copia = { ...prev };
-          Object.keys(copia)
-            .filter((k) => k.startsWith(`${id}::`))
-            .forEach((k) => delete copia[k]);
-          return copia;
-        });
-        return prev.filter((x) => x !== id);
-      }
-      if (!rutasDisponiblesPorColaborador[id]) cargarRutasDeLote(id);
-      return [...prev, id];
-    });
-  };
+  const equipoVisibleModal = useMemo(() => {
+    const texto = busquedaEquipoModal.trim().toLowerCase();
+    if (!texto) return colaboradoresParaTarjetas;
+    return colaboradoresParaTarjetas.filter((c) => c.nombreCompleto.toLowerCase().includes(texto));
+  }, [colaboradoresParaTarjetas, busquedaEquipoModal]);
 
   const alternarRutaLote = (idColaborador: string, idRuta: string) => {
     setRutasElegidasPorColaborador((prev) => {
@@ -359,25 +417,27 @@ export default function PanelColaborador({
     setObservacionesPorItem((prev) => ({ ...prev, [claveItem(idColaborador, idRuta)]: valor }));
   };
 
+  // Solo se registran solicitudes para quien tenga al menos una ruta
+  // marcada — no hace falta una selección de colaboradores aparte.
   const itemsLote = useMemo(
     () =>
-      colaboradoresElegidos.flatMap((cId) =>
-        (rutasElegidasPorColaborador[cId] ?? []).map((rId) => ({
+      Object.entries(rutasElegidasPorColaborador).flatMap(([cId, rutaIds]) =>
+        rutaIds.map((rId) => ({
           colaboradorId: cId,
           rutaId: rId,
           observaciones: observacionesPorItem[claveItem(cId, rId)] ?? "",
         }))
       ),
-    [colaboradoresElegidos, rutasElegidasPorColaborador, observacionesPorItem]
+    [rutasElegidasPorColaborador, observacionesPorItem]
   );
 
   const totalLote = useMemo(
     () =>
       itemsLote.reduce((acc, it) => {
-        const ruta = (rutasDisponiblesPorColaborador[it.colaboradorId] ?? []).find((r) => r.id === it.rutaId);
+        const ruta = (rutasEquipo[it.colaboradorId] ?? []).find((r) => r.id === it.rutaId);
         return acc + (ruta?.valor ?? 0);
       }, 0),
-    [itemsLote, rutasDisponiblesPorColaborador]
+    [itemsLote, rutasEquipo]
   );
 
   const abrirModal = () => {
@@ -389,10 +449,11 @@ export default function PanelColaborador({
     setRutaId("");
     setObservaciones("");
     setError("");
-    setColaboradoresElegidos([colaboradorId]);
     setRutasElegidasPorColaborador({});
-    setRutasDisponiblesPorColaborador({ [colaboradorId]: rutasPropias });
     setObservacionesPorItem({});
+    setColaboradorExpandidoId(null);
+    setBusquedaEquipoModal("");
+    setObservacionAbiertaClave(null);
   };
 
   const abrirEdicion = async (s: Solicitud) => {
@@ -530,7 +591,7 @@ export default function PanelColaborador({
                 <EstadoVacio mensaje={busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"} />
               </div>
             )}
-            {tarjetasColaborador.map((c) => {
+            {tarjetasColaborador.map((c, i) => {
               const abierta = tarjetasAbiertas.has(c.id);
               const total = c.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0);
               return (
@@ -542,7 +603,7 @@ export default function PanelColaborador({
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${abierta ? "rotate-90" : ""}`} />
-                      <Avatar nombre={c.nombreCompleto} className="w-9 h-9 text-xs" />
+                      <Avatar nombre={c.nombreCompleto} indice={i} className="w-9 h-9 text-xs" />
                       <div className="min-w-0">
                         <p className="font-semibold text-neutral-900 dark:text-white truncate">
                           {c.nombreCompleto}
@@ -781,80 +842,94 @@ export default function PanelColaborador({
               </>
             ) : (
               <>
-                {esSupervisor && (
+                {colaboradoresParaTarjetas.length === 1 ? (
+                  // Sin equipo (colaborador sin gente a cargo): directo la
+                  // lista de sus rutas, sin acordeón de por medio.
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rutas</label>
+                    <div className="mt-1.5 rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden max-h-[320px] overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+                      <FilaRutasSeleccionables
+                        rutas={rutasEquipo[colaboradorId] ?? []}
+                        elegidas={rutasElegidasPorColaborador[colaboradorId] ?? []}
+                        onAlternarRuta={(rId) => alternarRutaLote(colaboradorId, rId)}
+                        observaciones={observacionesPorItem}
+                        onCambiarObservacion={(rId, v) => cambiarObservacionItem(colaboradorId, rId, v)}
+                        claveItem={claveItem}
+                        colaboradorId={colaboradorId}
+                        observacionAbiertaClave={observacionAbiertaClave}
+                        onAlternarObservacion={alternarObservacion}
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                      Colaboradores
+                      Colaboradores — tocá uno para ver y marcar sus rutas
                     </label>
-                    <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl p-2 max-h-32 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
-                      {opcionesColaborador.map((op) => (
-                        <label key={op.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm cursor-pointer hover:bg-white dark:hover:bg-neutral-800 transition">
-                          <input
-                            type="checkbox"
-                            checked={colaboradoresElegidos.includes(op.id)}
-                            onChange={() => alternarColaboradorLote(op.id)}
-                            className="w-4 h-4 accent-orange-500 rounded shrink-0"
-                          />
-                          <span className="truncate">{op.label}</span>
-                        </label>
-                      ))}
+                    <div className="mt-1.5 relative">
+                      <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+                      <input
+                        value={busquedaEquipoModal}
+                        onChange={(e) => setBusquedaEquipoModal(e.target.value)}
+                        placeholder="Buscar colaborador..."
+                        className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                      />
+                    </div>
+
+                    <div className="mt-2 rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden max-h-[380px] overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+                      {equipoVisibleModal.map((c, i) => {
+                        const expandido = colaboradorExpandidoId === c.id;
+                        const elegidasDeEste = rutasElegidasPorColaborador[c.id] ?? [];
+                        const totalDeEste = elegidasDeEste.reduce((acc, rId) => {
+                          const ruta = (rutasEquipo[c.id] ?? []).find((r) => r.id === rId);
+                          return acc + (ruta?.valor ?? 0);
+                        }, 0);
+                        return (
+                          <div key={c.id}>
+                            <button
+                              type="button"
+                              onClick={() => alternarExpandido(c.id)}
+                              className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <IconoChevron className={`w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${expandido ? "rotate-90" : ""}`} />
+                                <Avatar nombre={c.nombreCompleto} indice={i} className="w-7 h-7 text-[11px]" />
+                                <span className="text-sm text-neutral-800 dark:text-neutral-200 truncate">
+                                  {c.nombreCompleto}
+                                  {c.id === colaboradorId && <span className="text-neutral-400 dark:text-neutral-500 text-xs font-normal ml-1">(yo)</span>}
+                                </span>
+                              </div>
+                              {elegidasDeEste.length > 0 && (
+                                <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400 shrink-0">
+                                  {elegidasDeEste.length} ruta{elegidasDeEste.length === 1 ? "" : "s"} · {formatearMoneda(totalDeEste)}
+                                </span>
+                              )}
+                            </button>
+                            {expandido && (
+                              <div className="bg-neutral-50 dark:bg-neutral-800/40 border-t border-neutral-100 dark:border-neutral-800">
+                                <FilaRutasSeleccionables
+                                  rutas={rutasEquipo[c.id] ?? []}
+                                  elegidas={elegidasDeEste}
+                                  onAlternarRuta={(rId) => alternarRutaLote(c.id, rId)}
+                                  observaciones={observacionesPorItem}
+                                  onCambiarObservacion={(rId, v) => cambiarObservacionItem(c.id, rId, v)}
+                                  claveItem={claveItem}
+                                  colaboradorId={c.id}
+                                  observacionAbiertaClave={observacionAbiertaClave}
+                                  onAlternarObservacion={alternarObservacion}
+                                  indentado
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {equipoVisibleModal.length === 0 && (
+                        <p className="px-3.5 py-6 text-xs text-neutral-400 dark:text-neutral-500 text-center">Sin resultados para esa búsqueda</p>
+                      )}
                     </div>
                   </div>
                 )}
-
-                <div className="space-y-3">
-                  {colaboradoresElegidos.map((cId) => {
-                    const rutasDeEste = rutasDisponiblesPorColaborador[cId] ?? [];
-                    const elegidasDeEste = rutasElegidasPorColaborador[cId] ?? [];
-                    return (
-                      <div key={cId} className="rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
-                        <div className="px-3.5 py-2 bg-neutral-100 dark:bg-neutral-800 text-xs font-semibold text-neutral-600 dark:text-neutral-300 flex items-center justify-between">
-                          <span>{nombrePorColaboradorId.get(cId) ?? "Colaborador"}</span>
-                          {elegidasDeEste.length > 0 && (
-                            <span className="text-orange-600 dark:text-orange-400">{elegidasDeEste.length} ruta{elegidasDeEste.length === 1 ? "" : "s"}</span>
-                          )}
-                        </div>
-                        <div className="max-h-40 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
-                          {colaboradoresCargandoRutas.has(cId) ? (
-                            <div className="flex items-center justify-center py-6">
-                              <Spinner className="w-4 h-4 text-neutral-400" />
-                            </div>
-                          ) : rutasDeEste.length === 0 ? (
-                            <p className="px-3.5 py-4 text-xs text-neutral-400 dark:text-neutral-500 text-center">Sin rutas disponibles</p>
-                          ) : (
-                            rutasDeEste.map((r) => {
-                              const marcada = elegidasDeEste.includes(r.id);
-                              return (
-                                <div key={r.id} className={marcada ? "bg-orange-50/60 dark:bg-orange-500/5" : ""}>
-                                  <label className="flex items-center gap-3 px-3.5 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
-                                    <input
-                                      type="checkbox"
-                                      checked={marcada}
-                                      onChange={() => alternarRutaLote(cId, r.id)}
-                                      className="w-4 h-4 accent-orange-500 rounded shrink-0"
-                                    />
-                                    <span className="flex-1 text-neutral-800 dark:text-neutral-200">{r.label}</span>
-                                    <span className="text-neutral-400 dark:text-neutral-500 text-xs">{formatearMoneda(r.valor)}</span>
-                                  </label>
-                                  {marcada && (
-                                    <div className="px-3.5 pb-2.5">
-                                      <input
-                                        value={observacionesPorItem[claveItem(cId, r.id)] ?? ""}
-                                        onChange={(e) => cambiarObservacionItem(cId, r.id, e.target.value.toUpperCase())}
-                                        placeholder="Observación para esta ruta (opcional)"
-                                        className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 px-2.5 py-1.5 text-xs focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </>
             )}
 

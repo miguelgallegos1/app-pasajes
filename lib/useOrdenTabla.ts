@@ -37,17 +37,23 @@ function guardarOrden<C extends string>(clave: string | undefined, orden: OrdenA
 export function useOrdenTabla<T, C extends string>(
   items: T[],
   obtenerValor: (item: T, campo: C) => string | number,
-  clave?: string
+  clave?: string,
+  // Con qué dirección arranca el primer clic de cada columna (por defecto
+  // "asc", como siempre). Útil para columnas de monto, donde lo esperable
+  // es ver primero el valor más alto en vez de tener que dar un clic extra.
+  direccionInicial?: Partial<Record<C, "asc" | "desc">>
 ) {
   const [orden, setOrden] = useState<OrdenActivo<C>>(() => leerOrdenGuardado<C>(clave));
 
   const ordenar = (campo: C) => {
     setOrden((prev) => {
+      const inicial = direccionInicial?.[campo] ?? "asc";
+      const opuesta = inicial === "asc" ? "desc" : "asc";
       const siguiente: OrdenActivo<C> =
         prev?.campo !== campo
-          ? { campo, direccion: "asc" }
-          : prev.direccion === "asc"
-          ? { campo, direccion: "desc" }
+          ? { campo, direccion: inicial }
+          : prev.direccion === inicial
+          ? { campo, direccion: opuesta }
           : null; // tercer clic: vuelve al orden con el que llegó del servidor
       guardarOrden(clave, siguiente);
       return siguiente;

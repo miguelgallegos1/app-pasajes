@@ -18,10 +18,13 @@ export default async function RutasPage() {
         where: { areaId: { in: areaIds } },
         include: {
           area: { include: { sitio: { include: { empresa: true } } } },
-          colaboradoresExclusivos: { select: { nombreCompleto: true } },
+          colaboradoresExclusivos: { select: { nombreCompleto: true }, orderBy: { nombreCompleto: "asc" } },
           _count: { select: { solicitudes: true } },
         },
-        orderBy: { numero: "asc" },
+        // Por defecto, las últimas creadas primero (número más alto =
+        // creada más reciente). El usuario puede reordenar por columna
+        // desde la tabla (useOrdenTabla), esto es solo el orden inicial.
+        orderBy: { numero: "desc" },
       })
     : [];
 

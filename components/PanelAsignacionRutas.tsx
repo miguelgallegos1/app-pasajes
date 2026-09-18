@@ -1,8 +1,10 @@
 // components/PanelAsignacionRutas.tsx
 // Pantalla dedicada de "Asignar rutas": a la izquierda se filtra y elige un
 // colaborador (Empresa/Sitio/Área + buscador), a la derecha se marca con
-// checkboxes qué rutas de su área le quedan exclusivas. Reemplaza el
-// MultiSelectBuscable que vivía escondido en el modal de Colaboradores.
+// checkboxes qué rutas de su área puede usar. Son las ÚNICAS rutas que ve
+// ese colaborador (ver lib/rutas.ts) — sin ninguna marcada, no ve ninguna.
+// Reemplaza el MultiSelectBuscable que vivía escondido en el modal de
+// Colaboradores.
 
 "use client";
 
@@ -119,6 +121,11 @@ export default function PanelAsignacionRutas({
   const [busquedaRuta, setBusquedaRuta] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  // Filtro "Ver solo asignadas": junto a Marcar todas/Ninguna, para ver de
+  // un vistazo qué rutas tiene YA marcadas sin tener que buscarlas entre
+  // todas las del área. Solo aparece si tiene al menos una asignada — sin
+  // ninguna, no tendría nada que mostrar.
+  const [verSoloAsignadas, setVerSoloAsignadas] = useState(false);
 
   const colaboradorSeleccionado = colaboradores.find((c) => c.id === colaboradorSeleccionadoId) ?? null;
 
@@ -127,6 +134,7 @@ export default function PanelAsignacionRutas({
     setRutaIdsSeleccionadas(c.rutaIdsExclusivas);
     setBusquedaRuta("");
     setError("");
+    setVerSoloAsignadas(false);
   };
 
   const rutasDelColaborador = useMemo(
@@ -136,16 +144,29 @@ export default function PanelAsignacionRutas({
 
   const rutasVisibles = useMemo(() => {
     const texto = busquedaRuta.trim().toLowerCase();
-    if (!texto) return rutasDelColaborador;
-    return rutasDelColaborador.filter((r) => r.nombre.toLowerCase().includes(texto));
-  }, [rutasDelColaborador, busquedaRuta]);
+    let base = rutasDelColaborador;
+    if (verSoloAsignadas) base = base.filter((r) => rutaIdsSeleccionadas.includes(r.id));
+    if (!texto) return base;
+    return base.filter((r) => r.nombre.toLowerCase().includes(texto));
+  }, [rutasDelColaborador, busquedaRuta, verSoloAsignadas, rutaIdsSeleccionadas]);
 
   const alternarRuta = (id: string) => {
     setRutaIdsSeleccionadas((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
   };
 
-  const marcarTodas = () => setRutaIdsSeleccionadas(rutasDelColaborador.map((r) => r.id));
-  const desmarcarTodas = () => setRutaIdsSeleccionadas([]);
+  // "Marcar todas"/"Ninguna" actúan sobre lo que está BUSCADO en pantalla
+  // (rutasVisibles), no sobre todas las rutas del área — así no hace falta
+  // ir tildando una por una cuando ya filtraste por nombre. Se suman/restan
+  // sobre la selección existente en vez de reemplazarla, para no perder lo
+  // marcado en una búsqueda anterior.
+  const marcarTodas = () => {
+    const idsVisibles = rutasVisibles.map((r) => r.id);
+    setRutaIdsSeleccionadas((prev) => Array.from(new Set([...prev, ...idsVisibles])));
+  };
+  const desmarcarTodas = () => {
+    const idsVisibles = new Set(rutasVisibles.map((r) => r.id));
+    setRutaIdsSeleccionadas((prev) => prev.filter((id) => !idsVisibles.has(id)));
+  };
 
   const hayCambios = useMemo(() => {
     if (!colaboradorSeleccionado) return false;
@@ -182,11 +203,19 @@ export default function PanelAsignacionRutas({
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Asignar rutas</h1>
-        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-          · Elegí un colaborador y marcá qué rutas le quedan exclusivas a él
-        </span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h1 className="text-lg sm:text-xl font-bold">Asignar rutas</h1>
+          <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
+            · Elegí un colaborador y marcá qué rutas le quedan exclusivas a él
+          </span>
+        </div>
+        <button
+          onClick={() => router.push("/th/rutas?nueva=1")}
+          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 shrink-0"
+        >
+          + Nueva ruta
+        </button>
       </div>
 
       {sinAsignaciones && (
@@ -235,7 +264,7 @@ export default function PanelAsignacionRutas({
 
           <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <div className="max-h-[480px] overflow-y-auto divide-y divide-neutral-200/70">
-              {colaboradoresPagina.map((c) => {
+              {colaboradoresPagina.map((c, i) => {
                 const activo = c.id === colaboradorSeleccionadoId;
                 const cantidad = c.rutaIdsExclusivas.length;
                 return (
@@ -248,7 +277,7 @@ export default function PanelAsignacionRutas({
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
-                      <Avatar nombre={c.nombreCompleto} className="w-8 h-8 text-xs mt-0.5" />
+                      <Avatar nombre={c.nombreCompleto} indice={i} className="w-8 h-8 text-xs mt-0.5" />
                       <div className="min-w-0">
                         <p className={`text-sm font-medium truncate ${activo ? "text-orange-700" : "text-neutral-800 dark:text-neutral-200"}`}>
                           {c.nombreCompleto}
@@ -260,7 +289,7 @@ export default function PanelAsignacionRutas({
                           {cantidad > 0 ? (
                             <span className="text-orange-600">{cantidad} ruta{cantidad === 1 ? "" : "s"} exclusiva{cantidad === 1 ? "" : "s"}</span>
                           ) : (
-                            <span className="text-neutral-400 dark:text-neutral-500">Todas las rutas del área</span>
+                            <span className="text-amber-600">Sin rutas asignadas</span>
                           )}
                         </p>
                       </div>
@@ -322,6 +351,19 @@ export default function PanelAsignacionRutas({
                   >
                     Ninguna
                   </button>
+                  {colaboradorSeleccionado.rutaIdsExclusivas.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setVerSoloAsignadas((v) => !v)}
+                      className={`text-xs font-medium px-3 py-2 rounded-lg border transition ${
+                        verSoloAsignadas
+                          ? "bg-orange-500 border-orange-500 text-white hover:bg-orange-600"
+                          : "text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      }`}
+                    >
+                      {verSoloAsignadas ? "Viendo solo asignadas" : "Ver solo asignadas"}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -351,7 +393,9 @@ export default function PanelAsignacionRutas({
                         mensaje={
                           rutasDelColaborador.length === 0
                             ? "Esta área no tiene rutas activas"
-                            : "Sin resultados para esa búsqueda"
+                            : verSoloAsignadas
+                              ? "No tiene ninguna ruta asignada"
+                              : "Sin resultados para esa búsqueda"
                         }
                       />
                     </div>
@@ -359,9 +403,9 @@ export default function PanelAsignacionRutas({
                 </div>
               </div>
 
-              <p className="text-xs text-neutral-400 dark:text-neutral-500">
+              <p className={`text-xs ${rutaIdsSeleccionadas.length === 0 ? "text-amber-600 dark:text-amber-500 font-medium" : "text-neutral-400 dark:text-neutral-500"}`}>
                 {rutaIdsSeleccionadas.length === 0
-                  ? "Sin ninguna marcada, sigue viendo todas las rutas del área (como siempre)."
+                  ? "Sin ninguna marcada, no va a poder ver ni registrar ninguna ruta hasta que le asignes al menos una."
                   : `Solo va a ver ${rutaIdsSeleccionadas.length} de las ${rutasDelColaborador.length} rutas de su área.`}
               </p>
 

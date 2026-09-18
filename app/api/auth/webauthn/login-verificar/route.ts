@@ -9,6 +9,7 @@ import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { db } from "../../../../../lib/db";
 import { establecerCookieSesion, verificarAccesoColaborador } from "../../../../../lib/auth";
 import { obtenerRpConfig, COOKIE_DESAFIO } from "../../../../../lib/webauthn";
+import { registrarAcceso } from "../../../../../lib/registrarAcceso";
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
 
   const res = NextResponse.json({ rol: usuarioEncontrado.rol, nombre: usuarioEncontrado.nombre });
   await establecerCookieSesion(res, { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol });
+  await registrarAcceso(usuarioEncontrado.id, "BIOMETRIA", req);
   res.cookies.delete(COOKIE_DESAFIO);
   return res;
 }

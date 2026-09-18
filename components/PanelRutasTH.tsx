@@ -4,9 +4,9 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoAlerta, IconoLupa } from "./Icons";
+import { IconoAlerta, IconoLupa, IconoChevron } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -16,6 +16,8 @@ import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import MenuAcciones from "./MenuAcciones";
+import EncabezadoOrdenable from "./EncabezadoOrdenable";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
 
 type Ruta = {
   id: string;
@@ -33,6 +35,14 @@ type Ruta = {
 type Opcion = { id: string; label: string };
 type Sitio = { id: string; nombre: string; empresaId: string };
 type Area = { id: string; nombre: string; sitioId: string };
+
+type CampoOrden = "numero" | "nombre" | "valor" | "activo";
+const VALOR_ORDEN: Record<CampoOrden, (r: Ruta) => string | number> = {
+  numero: (r) => r.numero,
+  nombre: (r) => r.nombre,
+  valor: (r) => r.valor,
+  activo: (r) => (r.activo ? 1 : 0),
+};
 
 const POR_PAGINA = 10;
 
@@ -102,10 +112,17 @@ export default function PanelRutasTH({
     });
   }, [rutas, busqueda, soloActivas, empresaFiltro, sitioFiltro, areaFiltro]);
 
-  const totalPaginas = Math.max(1, Math.ceil(rutasFiltradas.length / POR_PAGINA));
+  const { orden, ordenar, itemsOrdenados: rutasOrdenadas } = useOrdenTabla<Ruta, CampoOrden>(
+    rutasFiltradas,
+    (r, campo) => VALOR_ORDEN[campo](r),
+    "th-rutas",
+    { valor: "desc" }
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(rutasOrdenadas.length / POR_PAGINA));
   const rutasPagina = useMemo(
-    () => rutasFiltradas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
-    [rutasFiltradas, paginaActual]
+    () => rutasOrdenadas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
+    [rutasOrdenadas, paginaActual]
   );
 
   const cambiarBusqueda = (v: string) => { setBusqueda(v); setPaginaActual(1); };
@@ -114,11 +131,15 @@ export default function PanelRutasTH({
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [areaId, setAreaId] = useState("");
-  // El nombre se guarda como un solo texto ("DESDE-HASTA", sin espacios
-  // alrededor del guion) pero se captura en dos campos separados para que
-  // sea consistente entre rutas — ver guardar() más abajo.
+  // El nombre se guarda como un solo texto ("DESDE-PARADA1-...-HASTA", sin
+  // espacios alrededor de los guiones) pero se captura en campos separados
+  // para que sea consistente entre rutas — ver guardar() más abajo. Las
+  // paradas son opcionales y arrancan ocultas: la mayoría de las rutas son
+  // solo Desde/Hasta, y así se evita que alguien termine escribiendo varias
+  // paradas juntas a mano dentro de "Hasta" (ej. "TABACUNDO-SAN PABLO").
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
+  const [paradas, setParadas] = useState<string[]>([]);
   const [valor, setValor] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -127,6 +148,18 @@ export default function PanelRutasTH({
   const [procesando, setProcesando] = useState(false);
   const [errorGestion, setErrorGestion] = useState("");
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+
+  // Qué filas tienen la lista de "Exclusiva de N colaboradores" abierta —
+  // colapsada por defecto, se expande por fila con un clic.
+  const [exclusivasAbiertas, setExclusivasAbiertas] = useState<Set<string>>(new Set());
+  const alternarExclusivas = (id: string) => {
+    setExclusivasAbiertas((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(id)) copia.delete(id);
+      else copia.add(id);
+      return copia;
+    });
+  };
 
   // ---------- Eliminar en bloque (solo Super Admin) ----------
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
@@ -191,33 +224,49 @@ export default function PanelRutasTH({
     setAreaId("");
     setDesde("");
     setHasta("");
+    setParadas([]);
     setValor("");
     setError("");
     setModalAbierto(true);
   };
 
+  // Llegar desde "+ Nueva ruta" en Asignar rutas trae ?nueva=1 — abre el
+  // modal de creación de una, sin tener que buscar el botón acá.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("nueva") !== "1") return;
+    (async () => {
+      abrirCrear();
+    })();
+  }, []);
+
   const abrirEditar = (r: Ruta) => {
     setEditandoId(r.id);
-    // El nombre guardado es "DESDE-HASTA"; partimos en el primer guion para
-    // volver a poblar los dos campos (lo que sigue puede tener más guiones,
-    // ej. "CAYAMBE-TABACUNDO-LOMA GORDA" -> Desde "CAYAMBE", Hasta el resto).
-    const separador = r.nombre.indexOf("-");
-    if (separador === -1) {
-      setDesde(r.nombre);
-      setHasta("");
-    } else {
-      setDesde(r.nombre.slice(0, separador));
-      setHasta(r.nombre.slice(separador + 1));
-    }
+    // El nombre guardado es "DESDE-PARADA1-...-HASTA": el primer segmento es
+    // Desde, el último es Hasta, y lo que quede en el medio son las paradas.
+    const segmentos = r.nombre.split("-");
+    setDesde(segmentos[0] ?? "");
+    setHasta(segmentos.length > 1 ? segmentos[segmentos.length - 1] : "");
+    setParadas(segmentos.length > 2 ? segmentos.slice(1, -1) : []);
     setValor(String(r.valor));
     setError("");
     setModalAbierto(true);
   };
 
+  const agregarParada = () => setParadas((prev) => [...prev, ""]);
+  const cambiarParada = (idx: number, valor: string) =>
+    setParadas((prev) => prev.map((p, i) => (i === idx ? valor : p)));
+  const quitarParada = (idx: number) => setParadas((prev) => prev.filter((_, i) => i !== idx));
+
   const guardar = async () => {
     const numero = Number(valor);
+    const paradasLimpias = paradas.map((p) => p.trim()).filter(Boolean);
     if (!desde.trim() || !hasta.trim() || !valor || isNaN(numero) || numero <= 0) {
       setError("Desde, Hasta y valor (mayor a 0) son obligatorios");
+      return;
+    }
+    if (paradas.some((p) => !p.trim())) {
+      setError("Completa el nombre de cada parada, o quítala si no hace falta");
       return;
     }
     if (!editandoId && !areaId) {
@@ -228,7 +277,7 @@ export default function PanelRutasTH({
     setGuardando(true);
     setError("");
 
-    const nombre = `${desde.trim()}-${hasta.trim()}`;
+    const nombre = [desde.trim(), ...paradasLimpias, hasta.trim()].join("-");
     const url = editandoId ? `/api/th/rutas/${editandoId}` : "/api/th/rutas";
     const method = editandoId ? "PATCH" : "POST";
     const body = editandoId ? { nombre, valor: numero } : { areaId, nombre, valor: numero };
@@ -401,10 +450,10 @@ export default function PanelRutasTH({
                     />
                   </th>
                 )}
-                <th className="px-4 py-3 font-medium w-12">N°</th>
-                <th className="px-4 py-3 font-medium">Ruta</th>
-                <th className="px-4 py-3 font-medium">Valor</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
+                <EncabezadoOrdenable campo="numero" ordenActivo={orden} onOrdenar={ordenar} className="w-12">N°</EncabezadoOrdenable>
+                <EncabezadoOrdenable campo="nombre" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
+                <EncabezadoOrdenable campo="valor" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
+                <EncabezadoOrdenable campo="activo" ordenActivo={orden} onOrdenar={ordenar}>Estado</EncabezadoOrdenable>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -425,9 +474,30 @@ export default function PanelRutasTH({
                   <td className="px-4 py-3 text-neutral-600">
                     {r.nombre}
                     {r.colaboradoresExclusivosNombres.length > 0 && (
-                      <span className="block text-[10px] font-semibold text-orange-600 mt-0.5">
-                        Exclusiva de {r.colaboradoresExclusivosNombres.join(", ")}
-                      </span>
+                      <div className="mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => alternarExclusivas(r.id)}
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 hover:text-orange-700 transition"
+                        >
+                          <IconoChevron
+                            className={`w-2.5 h-2.5 transition-transform ${exclusivasAbiertas.has(r.id) ? "rotate-90" : ""}`}
+                          />
+                          Exclusiva de {r.colaboradoresExclusivosNombres.length} colaborador{r.colaboradoresExclusivosNombres.length === 1 ? "" : "es"}
+                        </button>
+                        {exclusivasAbiertas.has(r.id) && (
+                          <div className="mt-1 rounded-lg ring-1 ring-black/5 dark:ring-white/10 overflow-hidden max-w-[220px]">
+                            {r.colaboradoresExclusivosNombres.map((nombre) => (
+                              <p
+                                key={nombre}
+                                className="px-2 py-1 text-[11px] font-normal text-neutral-600 dark:text-neutral-300 bg-neutral-50 dark:bg-neutral-800/60 border-t border-neutral-200/70 dark:border-neutral-700/70 first:border-t-0 truncate"
+                              >
+                                {nombre}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3">{formatearMoneda(r.valor)}</td>
@@ -519,12 +589,52 @@ export default function PanelRutasTH({
                   placeholder="Ej: TABACUNDO"
                 />
               </div>
-              {desde.trim() && hasta.trim() && (
-                <p className="col-span-2 text-xs text-neutral-400 dark:text-neutral-500">
-                  Se guarda como: <span className="font-semibold text-neutral-600 dark:text-neutral-300">{desde.trim()}-{hasta.trim()}</span>
-                </p>
-              )}
             </div>
+
+            {paradas.length > 0 && (
+              <div className="space-y-2">
+                {paradas.map((parada, idx) => (
+                  <div key={idx}>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                      Parada {idx + 1}
+                    </label>
+                    <div className="mt-1.5 flex gap-2">
+                      <input
+                        value={parada}
+                        onChange={(e) => cambiarParada(idx, e.target.value.toUpperCase())}
+                        className="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                        placeholder="Ej: TABACUNDO"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => quitarParada(idx)}
+                        title="Quitar parada"
+                        className="shrink-0 px-3 rounded-xl text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={agregarParada}
+              className="text-xs font-semibold text-orange-600 hover:text-orange-700 self-start"
+            >
+              + Agregar parada
+            </button>
+
+            {desde.trim() && hasta.trim() && (
+              <p className="text-xs text-neutral-400 dark:text-neutral-500">
+                Se guarda como:{" "}
+                <span className="font-semibold text-neutral-600 dark:text-neutral-300">
+                  {[desde.trim(), ...paradas.map((p) => p.trim()).filter(Boolean), hasta.trim()].join("-")}
+                </span>
+              </p>
+            )}
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Valor</label>

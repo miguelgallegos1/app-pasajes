@@ -414,7 +414,7 @@ export default function PanelNomina({
                 </tr>
               </thead>
               <tbody>
-                {revisadasPagina.map((a) => (
+                {revisadasPagina.map((a, i) => (
                   <tr key={a.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3">
                       <input
@@ -437,7 +437,7 @@ export default function PanelNomina({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <Avatar nombre={a.nombreColaborador} className="w-7 h-7 text-[11px]" />
+                        <Avatar nombre={a.nombreColaborador} indice={i} className="w-7 h-7 text-[11px]" />
                         <span>{a.nombreColaborador}</span>
                       </div>
                     </td>

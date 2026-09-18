@@ -13,6 +13,7 @@ import { jwtVerify, SignJWT } from "jose";
 import { DURACION_SESION_SEGUNDOS } from "./lib/config";
 import { JWT_SECRET } from "./lib/jwtSecret";
 import { INICIO_POR_ROL } from "./lib/roles";
+import { sesionRevocada } from "./lib/sesionRevocada";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -34,6 +35,7 @@ async function renovarSesion(
 ) {
   const token = await new SignJWT({ id: payload.id, rol: payload.rol })
     .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
     .setExpirationTime(`${DURACION_SESION_SEGUNDOS}s`)
     .sign(secret);
 
@@ -52,11 +54,17 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("session")?.value;
 
-  let payload: { id: string; rol: string } | null = null;
+  let payload: { id: string; rol: string; iat?: number } | null = null;
   if (token) {
     try {
       const verificado = await jwtVerify(token, secret);
-      payload = verificado.payload as unknown as { id: string; rol: string };
+      payload = verificado.payload as unknown as { id: string; rol: string; iat?: number };
+      // Chequeado ACÁ, antes de renovar: si no, cada visita le renueva la
+      // cookie con un "iat" fresco y la sesión revocada quedaría válida
+      // de nuevo en la siguiente navegación.
+      if (await sesionRevocada(payload.id, payload.iat)) {
+        payload = null;
+      }
     } catch {
       payload = null;
     }
@@ -70,7 +78,9 @@ export async function proxy(req: NextRequest) {
   if (!rutaProtegida) return NextResponse.next();
 
   if (!payload) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    const res = NextResponse.redirect(new URL("/login", req.url));
+    res.cookies.delete("session");
+    return res;
   }
 
   const rolesPermitidos = RUTAS_POR_ROL[rutaProtegida];

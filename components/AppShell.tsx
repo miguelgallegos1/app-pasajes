@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
-import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoEscudo } from "./Icons";
 import BotonTema from "./BotonTema";
 import NotificacionesMenu from "./NotificacionesMenu";
 import Modal from "./Modal";
@@ -118,6 +118,7 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Usuarios", href: "/admin/usuarios", icono: IconoUsuario },
         { label: "Control de Solicitudes", href: "/admin/solicitudes", icono: IconoControl },
         { label: "Carga masiva", href: "/admin/carga-masiva", icono: IconoDescargar },
+        { label: "Accesos", href: "/admin/accesos", icono: IconoEscudo },
       ],
     },
   ],

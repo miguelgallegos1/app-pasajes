@@ -10,6 +10,7 @@ import { db } from "../../../../lib/db";
 import { establecerCookieSesion, verificarAccesoColaborador } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
 import { intentoPermitido, obtenerIp } from "../../../../lib/rateLimit";
+import { registrarAcceso } from "../../../../lib/registrarAcceso";
 
 export async function POST(req: Request) {
   if (!(await intentoPermitido(obtenerIp(req)))) {
@@ -69,6 +70,7 @@ export async function POST(req: Request) {
     nombre: usuarioEncontrado.nombre,
   });
   await establecerCookieSesion(res, { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol });
+  await registrarAcceso(usuarioEncontrado.id, "PIN", req);
 
   return res;
 }
