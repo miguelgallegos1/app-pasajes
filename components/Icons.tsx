@@ -179,6 +179,16 @@ export function IconoDescargar({ className = "w-4 h-4" }: { className?: string }
   );
 }
 
+export function IconoImprimir({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path d="M6 9V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="3.5" y="9" width="17" height="8" rx="1.5" />
+      <path d="M7 14h10v7H7v-7Z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconoCampana({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
