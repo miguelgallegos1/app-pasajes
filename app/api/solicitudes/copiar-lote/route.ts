@@ -18,10 +18,23 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const { ids, fecha } = await req.json().catch(() => ({ ids: null, fecha: null }));
-  if (!Array.isArray(ids) || ids.length === 0 || !ids.every((v) => typeof v === "string")) {
+  const { items, fecha } = await req.json().catch(() => ({ items: null, fecha: null }));
+  // La observación es por ruta copiada, no una sola compartida para todo
+  // el lote (mismo criterio que crear-lote) — cada copia puede llevar su
+  // propio comentario, independiente del que tenía la solicitud original.
+  const itemsValidos: { id: string; observaciones: string | null }[] = Array.isArray(items)
+    ? items
+        .filter((it): it is { id: string; observaciones?: unknown } => it && typeof it.id === "string")
+        .map((it) => ({
+          id: it.id,
+          observaciones: typeof it.observaciones === "string" && it.observaciones.trim() ? it.observaciones.trim().toUpperCase() : null,
+        }))
+    : [];
+  if (itemsValidos.length === 0) {
     return NextResponse.json({ error: "No se seleccionó ninguna ruta" }, { status: 400 });
   }
+  const ids = itemsValidos.map((it) => it.id);
+  const observacionPorId = new Map(itemsValidos.map((it) => [it.id, it.observaciones]));
   if (!fecha) {
     return NextResponse.json({ error: "Debes indicar la fecha de destino" }, { status: 400 });
   }
@@ -97,6 +110,7 @@ export async function POST(req: Request) {
         rutaId: ruta.id,
         fecha: fechaDestino,
         montoTotal: ruta.valor,
+        observaciones: observacionPorId.get(fuente.id) ?? null,
         estado: "PENDIENTE",
         creadoPorUsuarioId: colaborador.id !== miColaborador.id ? session.id : null,
       },

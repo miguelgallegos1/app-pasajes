@@ -147,6 +147,12 @@ model CredencialBiometrica {
   creadoEn     DateTime  @default(now())
   ultimoUso    DateTime?
 
+  // Evita guardar el mismo equipo dos veces: algunos navegadores (Android/
+  // Chrome con el gestor de contraseñas de Google, sobre todo) no siempre
+  // respetan excludeCredentials y dejan crear una credencial nueva para un
+  // dispositivo que ya la tenía. credentialId sí es único por sí solo, pero
+  // eso no alcanza porque cada intento genera un id distinto.
+  @@unique([usuarioId, dispositivo])
   @@index([usuarioId])
 }
 

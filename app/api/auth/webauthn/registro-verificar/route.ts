@@ -51,6 +51,23 @@ export async function POST(req: Request) {
   }
 
   const { credential } = verificacion.registrationInfo;
+  const dispositivoNormalizado = typeof dispositivo === "string" ? dispositivo.trim().slice(0, 60) || null : null;
+
+  // excludeCredentials (en registro-opciones) debería alcanzar para que el
+  // propio navegador no ofrezca crear otra credencial en un equipo que ya
+  // tiene una, pero no todos los navegadores lo respetan siempre — este
+  // chequeo es la red de seguridad para no guardar el mismo equipo dos veces.
+  if (dispositivoNormalizado) {
+    const yaRegistrado = await db.credencialBiometrica.findFirst({
+      where: { usuarioId: session.id, dispositivo: dispositivoNormalizado },
+    });
+    if (yaRegistrado) {
+      return NextResponse.json(
+        { error: `Ya tenés "${dispositivoNormalizado}" activado. Quítalo primero si querés volver a registrarlo.` },
+        { status: 400 }
+      );
+    }
+  }
 
   try {
     await db.credencialBiometrica.create({
@@ -59,7 +76,7 @@ export async function POST(req: Request) {
         credentialId: credential.id,
         publicKey: Buffer.from(credential.publicKey).toString("base64url"),
         contador: credential.counter,
-        dispositivo: typeof dispositivo === "string" ? dispositivo.trim().slice(0, 60) || null : null,
+        dispositivo: dispositivoNormalizado,
       },
     });
   } catch (e: any) {

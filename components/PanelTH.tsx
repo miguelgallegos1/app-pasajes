@@ -7,11 +7,12 @@
 
 import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoCheck, IconoLupa } from "./Icons";
+import { IconoCheck, IconoLupa, IconoChevron } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
+import SelectorVista, { type VistaListado } from "./SelectorVista";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
@@ -23,6 +24,7 @@ type Pendiente = {
   fechaSolicitud: string;
   montoTotal: number;
   observaciones: string | null;
+  colaboradorId: string;
   nombreColaborador: string;
   rutaLabel: string;
 };
@@ -47,6 +49,16 @@ export default function PanelTH({
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
+  const [vista, setVista] = useState<VistaListado>("lista");
+  const [tarjetasAbiertas, setTarjetasAbiertas] = useState<Set<string>>(new Set());
+  const alternarTarjeta = (id: string) => {
+    setTarjetasAbiertas((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(id)) copia.delete(id);
+      else copia.add(id);
+      return copia;
+    });
+  };
 
   const pendientesFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -74,6 +86,19 @@ export default function PanelTH({
     () => pendientesFiltradas.reduce((acc, s) => acc + s.montoTotal, 0),
     [pendientesFiltradas]
   );
+
+  // Vista "Por colaborador": una tarjeta por cada colaborador con al menos
+  // una pendiente, derivada en el cliente (misma idea que Mis Pasajes).
+  const tarjetasColaborador = useMemo(() => {
+    const mapa = new Map<string, { id: string; nombre: string; solicitudes: Pendiente[] }>();
+    for (const p of pendientesFiltradas) {
+      if (!mapa.has(p.colaboradorId)) {
+        mapa.set(p.colaboradorId, { id: p.colaboradorId, nombre: p.nombreColaborador, solicitudes: [] });
+      }
+      mapa.get(p.colaboradorId)!.solicitudes.push(p);
+    }
+    return Array.from(mapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [pendientesFiltradas]);
 
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const todasEnPaginaSeleccionadas =
@@ -227,16 +252,102 @@ export default function PanelTH({
           </div>
         )}
 
-        <div className="relative max-w-sm">
-          <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-          <input
-            value={busqueda}
-            onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por código, colaborador, ruta u observación..."
-            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative max-w-sm flex-1">
+            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+            <input
+              value={busqueda}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              placeholder="Buscar por código, colaborador, ruta u observación..."
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+            />
+          </div>
+          <SelectorVista valor={vista} onCambiar={setVista} className="sm:ml-auto" />
         </div>
 
+        {vista === "colaborador" ? (
+          <div className="space-y-3">
+            {tarjetasColaborador.length === 0 && (
+              <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 px-4 py-10">
+                <EstadoVacio
+                  mensaje={
+                    busqueda
+                      ? "Sin resultados para esa búsqueda"
+                      : sinAsignaciones
+                      ? "Sin áreas asignadas"
+                      : "No hay solicitudes pendientes"
+                  }
+                  icono={
+                    !busqueda && !sinAsignaciones ? (
+                      <IconoCheck className="w-10 h-10 text-emerald-400 dark:text-emerald-500" />
+                    ) : undefined
+                  }
+                />
+              </div>
+            )}
+            {tarjetasColaborador.map((c) => {
+              const abierta = tarjetasAbiertas.has(c.id);
+              const total = c.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0);
+              return (
+                <div key={c.id} className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => alternarTarjeta(c.id)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${abierta ? "rotate-90" : ""}`} />
+                      <Avatar nombre={c.nombre} className="w-9 h-9 text-xs" />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-neutral-900 dark:text-white truncate">{c.nombre}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {c.solicitudes.length} {c.solicitudes.length === 1 ? "solicitud" : "solicitudes"}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">{formatearMoneda(total)}</span>
+                  </button>
+
+                  {abierta && (
+                    <div className="border-t border-neutral-200/70 dark:border-neutral-800/70 divide-y divide-neutral-200/70 dark:divide-neutral-800/70">
+                      {c.solicitudes.map((s) => (
+                        <div key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={seleccionadas.has(s.id)}
+                            onChange={() => alternarSeleccion(s.id)}
+                            className="w-4 h-4 accent-orange-500 rounded shrink-0"
+                          />
+                          <span className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{s.codigo}</span>
+                          <span className="font-medium">{formatearFecha(s.fecha)}</span>
+                          <span className="text-neutral-600 dark:text-neutral-300">{s.rutaLabel}</span>
+                          <span className="text-neutral-500 dark:text-neutral-400">{formatearMoneda(s.montoTotal)}</span>
+                          {s.observaciones && (
+                            <span className="text-neutral-500 dark:text-neutral-400 max-w-[220px] truncate" title={s.observaciones}>{s.observaciones}</span>
+                          )}
+                          <span className="ml-auto flex gap-1.5">
+                            <button
+                              onClick={() => setIdAAprobar(s.id)}
+                              className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-full transition"
+                            >
+                              Aprobar
+                            </button>
+                            <button
+                              onClick={() => abrirModalDevolucion(s.id)}
+                              className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
+                            >
+                              Devolver
+                            </button>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[720px]">
@@ -287,7 +398,7 @@ export default function PanelTH({
                     </td>
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
                     <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
-                    <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400 max-w-[160px] truncate" title={s.observaciones ?? ""}>
+                    <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400 max-w-[220px] whitespace-normal break-words">
                       {s.observaciones || "—"}
                     </td>
                     <td className="px-4 py-3">
@@ -346,6 +457,7 @@ export default function PanelTH({
 
           <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
         </div>
+        )}
       </div>
 
       <Modal abierto={!!idAAprobar} onCerrar={() => setIdAAprobar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">

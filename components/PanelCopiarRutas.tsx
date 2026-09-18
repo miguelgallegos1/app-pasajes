@@ -39,6 +39,9 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
   const [solicitudesOrigen, setSolicitudesOrigen] = useState<SolicitudDia[]>([]);
   const [cargandoOrigen, setCargandoOrigen] = useState(false);
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
+  // Cada ruta marcada puede llevar su propia observación (no una sola
+  // compartida para todo el lote), igual que en "Nueva solicitud".
+  const [observacionesPorId, setObservacionesPorId] = useState<Record<string, string>>({});
   const [copiando, setCopiando] = useState(false);
   const [error, setError] = useState("");
   const peticionDiaRef = useRef(0);
@@ -55,6 +58,7 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
   const cambiarFechaOrigen = async (valor: string) => {
     setFechaOrigen(valor);
     setSeleccionadas(new Set());
+    setObservacionesPorId({});
     if (!valor) {
       setSolicitudesOrigen([]);
       return;
@@ -110,15 +114,20 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
     setSeleccionadas(todasSeleccionadas ? new Set() : new Set(solicitudesOrigen.map((s) => s.id)));
   };
 
+  const cambiarObservacion = (id: string, valor: string) => {
+    setObservacionesPorId((prev) => ({ ...prev, [id]: valor }));
+  };
+
   const confirmarCopiar = async () => {
     if (seleccionadas.size === 0 || !fechaDestino) return;
     setCopiando(true);
     setError("");
     try {
+      const items = Array.from(seleccionadas).map((id) => ({ id, observaciones: observacionesPorId[id] ?? "" }));
       const res = await fetch("/api/solicitudes/copiar-lote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(seleccionadas), fecha: fechaDestino }),
+        body: JSON.stringify({ items, fecha: fechaDestino }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -132,6 +141,7 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
       setFechaDestino("");
       setSolicitudesOrigen([]);
       setSeleccionadas(new Set());
+      setObservacionesPorId({});
       router.refresh();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -180,31 +190,43 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
               ) : solicitudesOrigen.length === 0 ? (
                 <p className="px-3.5 py-4 text-sm text-neutral-400 dark:text-neutral-500 text-center">Sin solicitudes registradas ese día</p>
               ) : (
-                solicitudesOrigen.map((s) => (
-                  <label
-                    key={s.id}
-                    className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={seleccionadas.has(s.id)}
-                      onChange={() => alternarSeleccion(s.id)}
-                      className="w-4 h-4 accent-orange-500 rounded shrink-0"
-                    />
-                    <span className="flex-1 min-w-0 truncate">
-                      {esSupervisor && <span className="font-medium">{s.nombreColaborador} · </span>}
-                      {s.rutaLabel}
-                    </span>
-                    <span className="text-neutral-500 dark:text-neutral-400 shrink-0">{formatearMoneda(s.valor)}</span>
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                        ESTILOS_ESTADO[s.estado] ?? "bg-neutral-100 text-neutral-600"
-                      }`}
-                    >
-                      {s.estado}
-                    </span>
-                  </label>
-                ))
+                solicitudesOrigen.map((s) => {
+                  const marcada = seleccionadas.has(s.id);
+                  return (
+                    <div key={s.id} className={marcada ? "bg-orange-50/60 dark:bg-orange-500/5" : ""}>
+                      <label className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
+                        <input
+                          type="checkbox"
+                          checked={marcada}
+                          onChange={() => alternarSeleccion(s.id)}
+                          className="w-4 h-4 accent-orange-500 rounded shrink-0"
+                        />
+                        <span className="flex-1 min-w-0 truncate">
+                          {esSupervisor && <span className="font-medium">{s.nombreColaborador} · </span>}
+                          {s.rutaLabel}
+                        </span>
+                        <span className="text-neutral-500 dark:text-neutral-400 shrink-0">{formatearMoneda(s.valor)}</span>
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                            ESTILOS_ESTADO[s.estado] ?? "bg-neutral-100 text-neutral-600"
+                          }`}
+                        >
+                          {s.estado}
+                        </span>
+                      </label>
+                      {marcada && (
+                        <div className="px-3.5 pb-2.5">
+                          <input
+                            value={observacionesPorId[s.id] ?? ""}
+                            onChange={(e) => cambiarObservacion(s.id, e.target.value.toUpperCase())}
+                            placeholder="Observación para esta ruta (opcional)"
+                            className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 px-2.5 py-1.5 text-xs focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

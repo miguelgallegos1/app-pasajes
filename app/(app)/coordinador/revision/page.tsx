@@ -23,7 +23,7 @@ export default async function RevisionPage() {
         orderBy: { fechaAprobacion: "asc" },
         include: {
           colaborador: { select: { nombreCompleto: true } },
-          ruta: { select: { nombre: true } },
+          ruta: { include: { area: { include: { sitio: { include: { empresa: true } } } } } },
         },
       });
 
@@ -35,6 +35,12 @@ export default async function RevisionPage() {
     montoTotal: Number(s.montoTotal),
     colaboradorId: s.colaboradorId,
     nombreColaborador: s.colaborador.nombreCompleto,
+    empresaId: s.ruta.area.sitio.empresaId,
+    empresaNombre: s.ruta.area.sitio.empresa.nombre,
+    sitioId: s.ruta.area.sitioId,
+    sitioNombre: s.ruta.area.sitio.nombre,
+    areaId: s.ruta.areaId,
+    areaNombre: s.ruta.area.nombre,
     rutaId: s.rutaId,
     rutaLabel: s.ruta.nombre,
   }));

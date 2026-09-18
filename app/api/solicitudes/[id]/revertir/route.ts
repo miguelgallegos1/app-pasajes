@@ -40,8 +40,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Solo se pueden revertir solicitudes aprobadas" }, { status: 400 });
   }
 
-  const notaExistente = solicitud.observaciones ? `${solicitud.observaciones} | ` : "";
-  const nuevaObservacion = `${notaExistente}REVERTIDA A PENDIENTE: ${motivo.trim().toUpperCase()}`;
+  // El "motivo" solo se valida (arriba) y no se guarda: no se mezcla con
+  // "observaciones", que es la nota del colaborador y debe seguir viéndose
+  // completa en las tablas y al editar, sin acumular texto de
+  // administración en cada corrección.
 
   // Estado exigido dentro del WHERE del UPDATE: verificación atómica para
   // que no se revierta una solicitud que otra petición concurrente (ej.
@@ -52,7 +54,6 @@ export async function PATCH(
       estado: "PENDIENTE",
       fechaAprobacion: null,
       aprobadoPorId: null,
-      observaciones: nuevaObservacion,
     },
   });
 

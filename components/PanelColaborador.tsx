@@ -17,7 +17,10 @@ import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
-import { IconoPregunta, IconoLupa } from "./Icons";
+import MenuAcciones from "./MenuAcciones";
+import Avatar from "./Avatar";
+import SelectorVista, { type VistaListado } from "./SelectorVista";
+import { IconoPregunta, IconoLupa, IconoAlerta, IconoChevron } from "./Icons";
 
 type Solicitud = {
   id: string;
@@ -70,6 +73,19 @@ export default function PanelColaborador({
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
+  // "Por colaborador" está disponible para cualquiera: un colaborador sin
+  // equipo simplemente ve una sola tarjeta (la suya); un supervisor ve la
+  // suya más la de cada persona a su cargo.
+  const [vista, setVista] = useState<VistaListado>("lista");
+  const [tarjetasAbiertas, setTarjetasAbiertas] = useState<Set<string>>(new Set());
+  const alternarTarjeta = (id: string) => {
+    setTarjetasAbiertas((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(id)) copia.delete(id);
+      else copia.add(id);
+      return copia;
+    });
+  };
 
   // Al eliminar, la fila se oculta al instante (con opción de deshacer)
   // sin tocar el array que vino del servidor — así "Crear"/"Editar" siguen
@@ -97,6 +113,12 @@ export default function PanelColaborador({
     setPaginaActual(1);
   };
 
+  // ---------- Eliminar en bloque ----------
+  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
+  const [confirmandoLote, setConfirmandoLote] = useState(false);
+  const [eliminandoLote, setEliminandoLote] = useState(false);
+  const [errorLote, setErrorLote] = useState("");
+
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modoEdicionId, setModoEdicionId] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
@@ -104,12 +126,58 @@ export default function PanelColaborador({
   const [error, setError] = useState("");
 
 
+  // Usados solo en modo edición (una solicitud existente = un colaborador,
+  // una ruta). El modo creación usa los estados de "lote" más abajo.
   const [colaboradorSeleccionado, setColaboradorSeleccionado] = useState(colaboradorId);
   const [fecha, setFecha] = useState("");
   const [rutaId, setRutaId] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [rutasDisponibles, setRutasDisponibles] = useState<RutaSimple[]>(rutasPropias);
   const [cargandoRutas, setCargandoRutas] = useState(false);
+
+  // ---------- Crear en lote: uno o más colaboradores, una o más rutas
+  // cada uno, todo para la misma fecha (ver /api/solicitudes/crear-lote). ----------
+  const [colaboradoresElegidos, setColaboradoresElegidos] = useState<string[]>([]);
+  const [rutasElegidasPorColaborador, setRutasElegidasPorColaborador] = useState<Record<string, string[]>>({});
+  const [rutasDisponiblesPorColaborador, setRutasDisponiblesPorColaborador] = useState<Record<string, RutaSimple[]>>({});
+  const [colaboradoresCargandoRutas, setColaboradoresCargandoRutas] = useState<Set<string>>(new Set());
+  // Cada ruta elegida tiene su propia observación (no una sola compartida
+  // para todo el lote) — clave compuesta porque el mismo rutaId puede
+  // repetirse entre distintos colaboradores del mismo área.
+  const [observacionesPorItem, setObservacionesPorItem] = useState<Record<string, string>>({});
+  const claveItem = (idColaborador: string, idRuta: string) => `${idColaborador}::${idRuta}`;
+
+  const nombrePorColaboradorId = useMemo(() => {
+    const mapa = new Map<string, string>();
+    mapa.set(colaboradorId, nombreCompleto);
+    equipo.forEach((c) => mapa.set(c.id, c.nombreCompleto));
+    return mapa;
+  }, [colaboradorId, nombreCompleto, equipo]);
+
+  // Vista "Por colaborador": una tarjeta por cada miembro del equipo (uno
+  // mismo primero) con sus solicitudes agrupadas — todo derivado en el
+  // cliente, sin pedir nada al servidor, porque ya tenemos la lista
+  // completa filtrada en memoria (a diferencia del Historial, que agrupa
+  // por API porque maneja muchas más filas).
+  const colaboradoresParaTarjetas = useMemo(
+    () => [{ id: colaboradorId, nombreCompleto }, ...equipo],
+    [colaboradorId, nombreCompleto, equipo]
+  );
+  const solicitudesPorColaborador = useMemo(() => {
+    const mapa = new Map<string, Solicitud[]>();
+    for (const s of solicitudesFiltradas) {
+      if (!mapa.has(s.colaboradorId)) mapa.set(s.colaboradorId, []);
+      mapa.get(s.colaboradorId)!.push(s);
+    }
+    return mapa;
+  }, [solicitudesFiltradas]);
+  const tarjetasColaborador = useMemo(
+    () =>
+      colaboradoresParaTarjetas
+        .map((c) => ({ ...c, solicitudes: solicitudesPorColaborador.get(c.id) ?? [] }))
+        .filter((c) => c.solicitudes.length > 0),
+    [colaboradoresParaTarjetas, solicitudesPorColaborador]
+  );
 
   const totalPaginas = Math.max(1, Math.ceil(solicitudesFiltradas.length / POR_PAGINA));
   const solicitudesPagina = useMemo(
@@ -120,6 +188,64 @@ export default function PanelColaborador({
     () => solicitudesFiltradas.reduce((acc, s) => acc + s.montoTotal, 0),
     [solicitudesFiltradas]
   );
+
+  // Solo se pueden eliminar (individual o en bloque) las Pendientes o
+  // Rechazadas, igual que valida la API — mismo criterio que el menú "⋮".
+  const solicitudesEliminablesPagina = useMemo(
+    () => solicitudesPagina.filter((s) => s.estado === "PENDIENTE" || s.estado === "RECHAZADA"),
+    [solicitudesPagina]
+  );
+  const todasEnPaginaSeleccionadas =
+    solicitudesEliminablesPagina.length > 0 && solicitudesEliminablesPagina.every((s) => seleccionadas.has(s.id));
+
+  const alternarSeleccion = (id: string) => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(id)) copia.delete(id);
+      else copia.add(id);
+      return copia;
+    });
+  };
+
+  const alternarSeleccionarTodo = () => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      if (todasEnPaginaSeleccionadas) solicitudesEliminablesPagina.forEach((s) => copia.delete(s.id));
+      else solicitudesEliminablesPagina.forEach((s) => copia.add(s.id));
+      return copia;
+    });
+  };
+
+  const eliminarLote = async () => {
+    setEliminandoLote(true);
+    setErrorLote("");
+    try {
+      const res = await fetch("/api/solicitudes/eliminar-lote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(seleccionadas) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErrorLote(data.error ?? "No se pudo eliminar");
+        toast.error(data.error ?? "No se pudieron eliminar las solicitudes");
+        return;
+      }
+      setConfirmandoLote(false);
+      setSeleccionadas(new Set());
+      toast.exito(
+        data.omitidas > 0
+          ? `${data.eliminadas} solicitud(es) eliminada(s); ${data.omitidas} se omitieron`
+          : `${data.eliminadas} solicitud(es) eliminada(s)`
+      );
+      router.refresh();
+    } catch {
+      setErrorLote("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setEliminandoLote(false);
+    }
+  };
 
   const opcionesColaborador = useMemo(
     () => [
@@ -176,6 +302,84 @@ export default function PanelColaborador({
     await cargarRutasDe(nuevoId);
   };
 
+  const cargarRutasDeLote = async (idColaborador: string) => {
+    if (idColaborador === colaboradorId) {
+      setRutasDisponiblesPorColaborador((prev) => ({ ...prev, [idColaborador]: rutasPropias }));
+      return;
+    }
+    setColaboradoresCargandoRutas((prev) => new Set(prev).add(idColaborador));
+    try {
+      const res = await fetch(`/api/rutas?colaboradorId=${idColaborador}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRutasDisponiblesPorColaborador((prev) => ({ ...prev, [idColaborador]: data }));
+      }
+    } catch {
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setColaboradoresCargandoRutas((prev) => {
+        const copia = new Set(prev);
+        copia.delete(idColaborador);
+        return copia;
+      });
+    }
+  };
+
+  const alternarColaboradorLote = (id: string) => {
+    setColaboradoresElegidos((prev) => {
+      if (prev.includes(id)) {
+        setRutasElegidasPorColaborador((r) => {
+          const copia = { ...r };
+          delete copia[id];
+          return copia;
+        });
+        setObservacionesPorItem((prev) => {
+          const copia = { ...prev };
+          Object.keys(copia)
+            .filter((k) => k.startsWith(`${id}::`))
+            .forEach((k) => delete copia[k]);
+          return copia;
+        });
+        return prev.filter((x) => x !== id);
+      }
+      if (!rutasDisponiblesPorColaborador[id]) cargarRutasDeLote(id);
+      return [...prev, id];
+    });
+  };
+
+  const alternarRutaLote = (idColaborador: string, idRuta: string) => {
+    setRutasElegidasPorColaborador((prev) => {
+      const actuales = prev[idColaborador] ?? [];
+      const nuevas = actuales.includes(idRuta) ? actuales.filter((r) => r !== idRuta) : [...actuales, idRuta];
+      return { ...prev, [idColaborador]: nuevas };
+    });
+  };
+
+  const cambiarObservacionItem = (idColaborador: string, idRuta: string, valor: string) => {
+    setObservacionesPorItem((prev) => ({ ...prev, [claveItem(idColaborador, idRuta)]: valor }));
+  };
+
+  const itemsLote = useMemo(
+    () =>
+      colaboradoresElegidos.flatMap((cId) =>
+        (rutasElegidasPorColaborador[cId] ?? []).map((rId) => ({
+          colaboradorId: cId,
+          rutaId: rId,
+          observaciones: observacionesPorItem[claveItem(cId, rId)] ?? "",
+        }))
+      ),
+    [colaboradoresElegidos, rutasElegidasPorColaborador, observacionesPorItem]
+  );
+
+  const totalLote = useMemo(
+    () =>
+      itemsLote.reduce((acc, it) => {
+        const ruta = (rutasDisponiblesPorColaborador[it.colaboradorId] ?? []).find((r) => r.id === it.rutaId);
+        return acc + (ruta?.valor ?? 0);
+      }, 0),
+    [itemsLote, rutasDisponiblesPorColaborador]
+  );
+
   const abrirModal = () => {
     setModoEdicionId(null);
     setModalAbierto(true);
@@ -185,6 +389,10 @@ export default function PanelColaborador({
     setRutaId("");
     setObservaciones("");
     setError("");
+    setColaboradoresElegidos([colaboradorId]);
+    setRutasElegidasPorColaborador({});
+    setRutasDisponiblesPorColaborador({ [colaboradorId]: rutasPropias });
+    setObservacionesPorItem({});
   };
 
   const abrirEdicion = async (s: Solicitud) => {
@@ -202,14 +410,18 @@ export default function PanelColaborador({
     setEnviando(true);
     setError("");
 
-    const url = modoEdicionId ? `/api/solicitudes/${modoEdicionId}` : "/api/solicitudes";
-    const method = modoEdicionId ? "PATCH" : "POST";
+    const editando = !!modoEdicionId;
+    const url = editando ? `/api/solicitudes/${modoEdicionId}` : "/api/solicitudes/crear-lote";
+    const method = editando ? "PATCH" : "POST";
+    const body = editando
+      ? { colaboradorId: colaboradorSeleccionado, rutaId, fecha, observaciones }
+      : { fecha, items: itemsLote };
 
     try {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ colaboradorId: colaboradorSeleccionado, rutaId, fecha, observaciones }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -222,7 +434,13 @@ export default function PanelColaborador({
       setConfirmando(false);
       setModalAbierto(false);
       setModoEdicionId(null);
-      toast.exito(modoEdicionId ? "Solicitud actualizada" : "Solicitud registrada");
+      if (editando) {
+        toast.exito("Solicitud actualizada");
+      } else {
+        const data = await res.json().catch(() => ({ creadas: itemsLote.length }));
+        const n = data.creadas ?? itemsLote.length;
+        toast.exito(`${n} solicitud${n === 1 ? "" : "es"} registrada${n === 1 ? "" : "s"}`);
+      }
       router.refresh();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -275,6 +493,14 @@ export default function PanelColaborador({
             <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Registra y da seguimiento a tus solicitudes de pasajes</span>
           </div>
           <div className="flex flex-wrap gap-2">
+            {seleccionadas.size > 0 && (
+              <button
+                onClick={() => { setConfirmandoLote(true); setErrorLote(""); }}
+                className="text-xs sm:text-sm font-semibold bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+              >
+                Eliminar seleccionadas ({seleccionadas.size})
+              </button>
+            )}
             <button
               onClick={abrirModal}
               className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
@@ -284,21 +510,105 @@ export default function PanelColaborador({
           </div>
         </div>
 
-        <div className="relative max-w-sm">
-          <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-          <input
-            value={busqueda}
-            onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Buscar por código, ruta, colaborador u observación..."
-            className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative max-w-sm flex-1">
+            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+            <input
+              value={busqueda}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              placeholder="Buscar por código, ruta, colaborador u observación..."
+              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+            />
+          </div>
+          <SelectorVista valor={vista} onCambiar={setVista} className="sm:ml-auto" />
         </div>
 
+        {vista === "colaborador" ? (
+          <div className="space-y-3">
+            {tarjetasColaborador.length === 0 && (
+              <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 px-4 py-10">
+                <EstadoVacio mensaje={busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"} />
+              </div>
+            )}
+            {tarjetasColaborador.map((c) => {
+              const abierta = tarjetasAbiertas.has(c.id);
+              const total = c.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0);
+              return (
+                <div key={c.id} className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => alternarTarjeta(c.id)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${abierta ? "rotate-90" : ""}`} />
+                      <Avatar nombre={c.nombreCompleto} className="w-9 h-9 text-xs" />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-neutral-900 dark:text-white truncate">
+                          {c.nombreCompleto}
+                          {c.id === colaboradorId && <span className="text-neutral-400 dark:text-neutral-500 text-xs font-normal ml-1">(yo)</span>}
+                        </p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {c.solicitudes.length} {c.solicitudes.length === 1 ? "solicitud" : "solicitudes"}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">{formatearMoneda(total)}</span>
+                  </button>
+
+                  {abierta && (
+                    <div className="border-t border-neutral-200/70 dark:border-neutral-800/70 divide-y divide-neutral-200/70 dark:divide-neutral-800/70">
+                      {c.solicitudes.map((s) => (
+                        <div key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={seleccionadas.has(s.id)}
+                            onChange={() => alternarSeleccion(s.id)}
+                            disabled={!(s.estado === "PENDIENTE" || s.estado === "RECHAZADA")}
+                            className="w-4 h-4 accent-orange-500 rounded shrink-0 disabled:opacity-0"
+                          />
+                          <span className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{s.codigo}</span>
+                          <span className="font-medium">{formatearFecha(s.fecha)}</span>
+                          <span className="text-neutral-600 dark:text-neutral-300">{s.rutaLabel}</span>
+                          <span className="text-neutral-500 dark:text-neutral-400">{formatearMoneda(s.montoTotal)}</span>
+                          {s.observaciones && (
+                            <span className="text-neutral-500 dark:text-neutral-400 max-w-[220px] truncate" title={s.observaciones}>{s.observaciones}</span>
+                          )}
+                          <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
+                            {s.estado}
+                          </span>
+                          <span className="ml-auto">
+                            {(s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
+                              <MenuAcciones
+                                acciones={[
+                                  { label: "Editar", onClick: () => abrirEdicion(s) },
+                                  { label: "Eliminar", tono: "peligro", onClick: () => eliminarConDeshacer(s) },
+                                ]}
+                              />
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[760px]">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
+                  <th className="px-4 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={todasEnPaginaSeleccionadas}
+                      onChange={alternarSeleccionarTodo}
+                      className="w-4 h-4 accent-orange-500 rounded"
+                    />
+                  </th>
                   <th className="px-4 py-3 font-medium">Código</th>
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   {esSupervisor && <th className="px-4 py-3 font-medium">Colaborador</th>}
@@ -312,6 +622,16 @@ export default function PanelColaborador({
               <tbody>
                 {solicitudesPagina.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
+                    <td className="px-4 py-3">
+                      {(s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
+                        <input
+                          type="checkbox"
+                          checked={seleccionadas.has(s.id)}
+                          onChange={() => alternarSeleccion(s.id)}
+                          className="w-4 h-4 accent-orange-500 rounded"
+                        />
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(s.fecha)}</p>
@@ -331,7 +651,7 @@ export default function PanelColaborador({
                     )}
                     <td className="px-4 py-3">{s.rutaLabel}</td>
                     <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
-                    <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400 max-w-[180px] truncate" title={s.observaciones ?? ""}>
+                    <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400 max-w-[260px] whitespace-normal break-words">
                       {s.observaciones || "—"}
                     </td>
                     <td className="px-4 py-3">
@@ -339,29 +659,21 @@ export default function PanelColaborador({
                         {s.estado}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-right">
                       {(s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={() => abrirEdicion(s)}
-                            className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => eliminarConDeshacer(s)}
-                            className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
-                          >
-                            Eliminar
-                          </button>
-                        </div>
+                        <MenuAcciones
+                          acciones={[
+                            { label: "Editar", onClick: () => abrirEdicion(s) },
+                            { label: "Eliminar", tono: "peligro", onClick: () => eliminarConDeshacer(s) },
+                          ]}
+                        />
                       )}
                     </td>
                   </tr>
                 ))}
                 {solicitudesFiltradas.length === 0 && (
                   <tr>
-                    <td colSpan={esSupervisor ? 8 : 7} className="px-4 py-10">
+                    <td colSpan={esSupervisor ? 9 : 8} className="px-4 py-10">
                       <EstadoVacio mensaje={busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"} />
                     </td>
                   </tr>
@@ -371,7 +683,7 @@ export default function PanelColaborador({
               {solicitudesFiltradas.length > 0 && (
                 <tfoot>
                   <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-100/70 dark:bg-neutral-800/60 font-semibold">
-                    <td className="px-4 py-3" colSpan={esSupervisor ? 4 : 3}>
+                    <td className="px-4 py-3" colSpan={esSupervisor ? 5 : 4}>
                       Total ({solicitudesFiltradas.length} {solicitudesFiltradas.length === 1 ? "solicitud" : "solicitudes"})
                     </td>
                     <td className="px-4 py-3">{formatearMoneda(totalGeneral)}</td>
@@ -384,79 +696,175 @@ export default function PanelColaborador({
 
           <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
         </div>
+        )}
       </div>
 
       <Modal
         abierto={modalAbierto && !confirmando}
         onCerrar={() => setModalAbierto(false)}
-        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl"
+        className={`bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full ${
+          modoEdicionId ? "sm:max-w-md" : "sm:max-w-3xl"
+        } p-7 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl`}
       >
             <div>
               <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-                {modoEdicionId ? "Editar solicitud" : "Registrar pasaje del día"}
+                {modoEdicionId ? "Editar solicitud" : "Registrar pasajes"}
               </h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Completa los datos del viaje</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                {modoEdicionId
+                  ? "Completa los datos del viaje"
+                  : esSupervisor
+                  ? "Elige uno o más colaboradores y, para cada uno, una o más rutas"
+                  : "Elige una o más rutas para el mismo día"}
+              </p>
             </div>
 
-            {esSupervisor && !modoEdicionId && (
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                  ¿Para quién es esta solicitud?
-                </label>
-                <div className="mt-1.5">
-                  <ComboboxBuscable
-                    opciones={opcionesColaborador}
-                    value={colaboradorSeleccionado}
-                    onChange={cambiarColaborador}
-                    placeholder="Selecciona un colaborador"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
+            <div className="max-w-xs">
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Fecha</label>
               <div className="mt-1.5">
                 <CalendarioSelector value={fecha} onChange={setFecha} fechaMinima={fechaMinima} />
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ruta</label>
-              <div className="mt-1.5">
-                <ComboboxBuscable
-                  opciones={opcionesRutas}
-                  value={rutaId}
-                  onChange={setRutaId}
-                  placeholder="Selecciona una ruta"
-                  cargando={cargandoRutas}
-                />
-              </div>
-            </div>
+            {modoEdicionId ? (
+              <>
+                {esSupervisor && (
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                      ¿Para quién es esta solicitud?
+                    </label>
+                    <div className="mt-1.5">
+                      <ComboboxBuscable
+                        opciones={opcionesColaborador}
+                        value={colaboradorSeleccionado}
+                        onChange={cambiarColaborador}
+                        placeholder="Selecciona un colaborador"
+                      />
+                    </div>
+                  </div>
+                )}
 
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Valor</label>
-              <input
-                type="text"
-                readOnly
-                value={valorSeleccionado !== null ? `${formatearMoneda(valorSeleccionado)}` : ""}
-                placeholder="Se llena al elegir la ruta"
-                className="mt-1.5 w-full rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 text-neutral-600 dark:text-neutral-400 px-3.5 py-3 text-sm cursor-not-allowed"
-              />
-            </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Ruta</label>
+                  <div className="mt-1.5">
+                    <ComboboxBuscable
+                      opciones={opcionesRutas}
+                      value={rutaId}
+                      onChange={setRutaId}
+                      placeholder="Selecciona una ruta"
+                      cargando={cargandoRutas}
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                Observaciones (opcional)
-              </label>
-              <textarea
-                value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value.toUpperCase())}
-                rows={2}
-                className={`${CLASE_CAMPO} resize-none`}
-                placeholder="Algún comentario adicional..."
-              />
-            </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Valor</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={valorSeleccionado !== null ? `${formatearMoneda(valorSeleccionado)}` : ""}
+                    placeholder="Se llena al elegir la ruta"
+                    className="mt-1.5 w-full rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 text-neutral-600 dark:text-neutral-400 px-3.5 py-3 text-sm cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                    Observaciones (opcional)
+                  </label>
+                  <textarea
+                    value={observaciones}
+                    onChange={(e) => setObservaciones(e.target.value.toUpperCase())}
+                    rows={2}
+                    className={`${CLASE_CAMPO} resize-none`}
+                    placeholder="Algún comentario adicional..."
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {esSupervisor && (
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                      Colaboradores
+                    </label>
+                    <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-neutral-50 dark:bg-neutral-800/60 rounded-xl p-2 max-h-32 overflow-y-auto ring-1 ring-black/5 dark:ring-white/10">
+                      {opcionesColaborador.map((op) => (
+                        <label key={op.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm cursor-pointer hover:bg-white dark:hover:bg-neutral-800 transition">
+                          <input
+                            type="checkbox"
+                            checked={colaboradoresElegidos.includes(op.id)}
+                            onChange={() => alternarColaboradorLote(op.id)}
+                            className="w-4 h-4 accent-orange-500 rounded shrink-0"
+                          />
+                          <span className="truncate">{op.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {colaboradoresElegidos.map((cId) => {
+                    const rutasDeEste = rutasDisponiblesPorColaborador[cId] ?? [];
+                    const elegidasDeEste = rutasElegidasPorColaborador[cId] ?? [];
+                    return (
+                      <div key={cId} className="rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+                        <div className="px-3.5 py-2 bg-neutral-100 dark:bg-neutral-800 text-xs font-semibold text-neutral-600 dark:text-neutral-300 flex items-center justify-between">
+                          <span>{nombrePorColaboradorId.get(cId) ?? "Colaborador"}</span>
+                          {elegidasDeEste.length > 0 && (
+                            <span className="text-orange-600 dark:text-orange-400">{elegidasDeEste.length} ruta{elegidasDeEste.length === 1 ? "" : "s"}</span>
+                          )}
+                        </div>
+                        <div className="max-h-40 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800">
+                          {colaboradoresCargandoRutas.has(cId) ? (
+                            <div className="flex items-center justify-center py-6">
+                              <Spinner className="w-4 h-4 text-neutral-400" />
+                            </div>
+                          ) : rutasDeEste.length === 0 ? (
+                            <p className="px-3.5 py-4 text-xs text-neutral-400 dark:text-neutral-500 text-center">Sin rutas disponibles</p>
+                          ) : (
+                            rutasDeEste.map((r) => {
+                              const marcada = elegidasDeEste.includes(r.id);
+                              return (
+                                <div key={r.id} className={marcada ? "bg-orange-50/60 dark:bg-orange-500/5" : ""}>
+                                  <label className="flex items-center gap-3 px-3.5 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
+                                    <input
+                                      type="checkbox"
+                                      checked={marcada}
+                                      onChange={() => alternarRutaLote(cId, r.id)}
+                                      className="w-4 h-4 accent-orange-500 rounded shrink-0"
+                                    />
+                                    <span className="flex-1 text-neutral-800 dark:text-neutral-200">{r.label}</span>
+                                    <span className="text-neutral-400 dark:text-neutral-500 text-xs">{formatearMoneda(r.valor)}</span>
+                                  </label>
+                                  {marcada && (
+                                    <div className="px-3.5 pb-2.5">
+                                      <input
+                                        value={observacionesPorItem[claveItem(cId, r.id)] ?? ""}
+                                        onChange={(e) => cambiarObservacionItem(cId, r.id, e.target.value.toUpperCase())}
+                                        placeholder="Observación para esta ruta (opcional)"
+                                        className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 px-2.5 py-1.5 text-xs focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {!modoEdicionId && itemsLote.length > 0 && (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Se van a registrar <span className="font-semibold text-neutral-700 dark:text-neutral-200">{itemsLote.length} solicitud{itemsLote.length === 1 ? "" : "es"}</span> por un total de <span className="font-semibold text-neutral-700 dark:text-neutral-200">{formatearMoneda(totalLote)}</span>.
+              </p>
+            )}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -470,7 +878,7 @@ export default function PanelColaborador({
               </button>
               <button
                 type="button"
-                disabled={!fecha || !rutaId}
+                disabled={modoEdicionId ? !fecha || !rutaId : !fecha || itemsLote.length === 0}
                 onClick={() => setConfirmando(true)}
                 className="px-5 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40 transition shadow-sm hover:shadow-md"
               >
@@ -482,9 +890,15 @@ export default function PanelColaborador({
       <Modal abierto={confirmando} onCerrar={() => setConfirmando(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoPregunta className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">
-              {modoEdicionId ? "¿Guardar los cambios?" : "¿Seguro que quieres registrar este pasaje?"}
+              {modoEdicionId
+                ? "¿Guardar los cambios?"
+                : `¿Registrar ${itemsLote.length} solicitud${itemsLote.length === 1 ? "" : "es"}?`}
             </p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatearFecha(fecha)} · {formatearMoneda(valorSeleccionado ?? 0)}</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {modoEdicionId
+                ? `${formatearFecha(fecha)} · ${formatearMoneda(valorSeleccionado ?? 0)}`
+                : `${formatearFecha(fecha)} · ${formatearMoneda(totalLote)}`}
+            </p>
             <div className="flex gap-2 justify-center pt-1">
               <button
                 onClick={() => setConfirmando(false)}
@@ -501,6 +915,30 @@ export default function PanelColaborador({
                   {enviando && <Spinner className="w-4 h-4" />}
                   {enviando ? "Guardando..." : "Confirmar"}
                 </button>
+            </div>
+      </Modal>
+
+      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
+            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar {seleccionadas.size} solicitud{seleccionadas.size === 1 ? "" : "es"}?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
+            {errorLote && <p className="text-sm text-red-600">{errorLote}</p>}
+            <div className="flex gap-2 justify-center pt-1">
+              <button
+                onClick={() => setConfirmandoLote(false)}
+                disabled={eliminandoLote}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminarLote}
+                disabled={eliminandoLote}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+              >
+                {eliminandoLote && <Spinner className="w-4 h-4" />}
+                {eliminandoLote ? "Eliminando..." : "Sí, eliminar"}
+              </button>
             </div>
       </Modal>
     </div>

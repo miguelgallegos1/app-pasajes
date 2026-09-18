@@ -34,6 +34,7 @@ export default async function AprobacionesPage() {
     fechaSolicitud: s.fechaSolicitud.toISOString(),
     montoTotal: Number(s.montoTotal),
     observaciones: s.observaciones,
+    colaboradorId: s.colaboradorId,
     nombreColaborador: s.colaborador.nombreCompleto,
     rutaLabel: s.ruta.nombre,
   }));
