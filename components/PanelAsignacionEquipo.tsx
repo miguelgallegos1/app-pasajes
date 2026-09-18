@@ -16,7 +16,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
-import { IconoLupa, IconoPregunta } from "./Icons";
+import { IconoLupa, IconoPregunta, IconoChevron } from "./Icons";
 
 type Colaborador = {
   id: string;
@@ -61,6 +61,10 @@ export default function PanelAsignacionEquipo({
   const [empresaFiltro, setEmpresaFiltro] = useState("");
   const [sitioFiltro, setSitioFiltro] = useState("");
   const [areaFiltro, setAreaFiltro] = useState("");
+  // Colapsados por defecto: Empresa/Sitio/Área ocupan bastante espacio y
+  // no siempre hacen falta — se abren solo cuando el usuario los pide.
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const cantidadFiltrosActivos = [empresaFiltro, sitioFiltro, areaFiltro].filter(Boolean).length;
 
   const sitiosFiltro = useMemo(
     () =>
@@ -312,6 +316,46 @@ export default function PanelAsignacionEquipo({
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Columna izquierda: filtros + lista de supervisores */}
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setFiltrosAbiertos((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition"
+            >
+              <span className="flex items-center gap-2">
+                Filtrar por Empresa / Sitio / Área
+                {cantidadFiltrosActivos > 0 && (
+                  <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 px-1.5 py-0.5 rounded-full">
+                    {cantidadFiltrosActivos}
+                  </span>
+                )}
+              </span>
+              <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${filtrosAbiertos ? "rotate-90" : ""}`} />
+            </button>
+            {filtrosAbiertos && (
+              <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-neutral-100 dark:border-neutral-800">
+                <ComboboxBuscable
+                  opciones={empresas}
+                  value={empresaFiltro}
+                  onChange={cambiarEmpresaFiltro}
+                  placeholder="Todas las empresas"
+                />
+                <ComboboxBuscable
+                  opciones={sitiosFiltro}
+                  value={sitioFiltro}
+                  onChange={cambiarSitioFiltro}
+                  placeholder="Todos los sitios"
+                />
+                <ComboboxBuscable
+                  opciones={areasFiltro}
+                  value={areaFiltro}
+                  onChange={cambiarAreaFiltro}
+                  placeholder="Todas las áreas"
+                />
+              </div>
+            )}
+          </div>
+
           <div className="relative">
             <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
             <input
@@ -319,27 +363,6 @@ export default function PanelAsignacionEquipo({
               onChange={(e) => cambiarBusqueda(e.target.value)}
               placeholder="Buscar supervisor por nombre o código..."
               className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <ComboboxBuscable
-              opciones={empresas}
-              value={empresaFiltro}
-              onChange={cambiarEmpresaFiltro}
-              placeholder="Todas las empresas"
-            />
-            <ComboboxBuscable
-              opciones={sitiosFiltro}
-              value={sitioFiltro}
-              onChange={cambiarSitioFiltro}
-              placeholder="Todos los sitios"
-            />
-            <ComboboxBuscable
-              opciones={areasFiltro}
-              value={areaFiltro}
-              onChange={cambiarAreaFiltro}
-              placeholder="Todas las áreas"
             />
           </div>
 
