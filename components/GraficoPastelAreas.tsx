@@ -172,7 +172,7 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
         <text x={CX} y={CY - 4} textAnchor="middle" fontSize="11" fill="#898781">
           Total
         </text>
-        <text x={CX} y={CY + 12} textAnchor="middle" fontSize="14" fontWeight="700" fill="#0b0b0b">
+        <text x={CX} y={CY + 12} textAnchor="middle" fontSize="14" fontWeight="700" className="fill-neutral-900 dark:fill-white">
           {totalGeneral >= 1000 ? `$${(totalGeneral / 1000).toFixed(1)}K` : formatearMoneda(totalGeneral)}
         </text>
       </svg>
