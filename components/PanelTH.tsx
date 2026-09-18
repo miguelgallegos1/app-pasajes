@@ -385,9 +385,7 @@ export default function PanelTH({
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(s.fecha)}</p>
                       <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                        Registrado: {new Date(s.fechaSolicitud).toLocaleString("es-EC", {
-                          day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                        })}
+                        {new Date(s.fechaSolicitud).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </td>
                     <td className="px-4 py-3">
