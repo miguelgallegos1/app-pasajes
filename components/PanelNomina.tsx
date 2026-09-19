@@ -390,15 +390,15 @@ export default function PanelNomina({
               <button
                 onClick={() => setConfirmandoLoteNovedad(true)}
                 title="Reportar novedad"
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
               >
-                <IconoDevolver className="w-4 h-4" /> Novedad
+                <IconoDevolver className="w-4 h-4 shrink-0" /> Novedad ({seleccionadas.size})
               </button>
               <button
                 onClick={() => setConfirmandoLote(true)}
-                className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+                className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
               >
-                Pagar seleccionadas
+                Pagar ({seleccionadas.size})
               </button>
             </div>
           </div>
@@ -409,19 +409,45 @@ export default function PanelNomina({
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <TablaColaboradores
           filas={filasColaborador}
+          cargarItems={(colaboradorId) => gruposPorColaborador.get(colaboradorId)?.items ?? []}
+          clave={(a) => a.id}
           porPagina={POR_PAGINA}
           seleccion={{
             seleccionadas,
+            alternar: alternarSeleccion,
             idsDe: (colaboradorId) => (gruposPorColaborador.get(colaboradorId)?.items ?? []).map((a) => a.id),
             alternarGrupo: alternarGrupoSeleccion,
           }}
+          columnas={[
+            { encabezado: "Código", render: (a) => <span className="font-mono">{a.codigo}</span> },
+            { encabezado: "Fecha", render: (a) => formatearFecha(a.fecha) },
+            { encabezado: "Ruta", render: (a) => a.rutaNombre },
+            { encabezado: "Valor", render: (a) => formatearMoneda(a.montoTotal) },
+          ]}
+          acciones={(a) => (
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => setIdAPagar(a.id)}
+                className="text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-full transition"
+              >
+                Pagar
+              </button>
+              <button
+                onClick={() => abrirNovedad(a.id)}
+                title="Reportar novedad"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-2.5 py-1.5 rounded-lg transition"
+              >
+                <IconoDevolver className="w-3.5 h-3.5" /> Novedad
+              </button>
+            </div>
+          )}
           vacio="Sin resultados con esos filtros"
         />
         </div>
       ) : (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[720px]">
+            <table className="w-full text-xs min-w-[720px]">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 w-10">

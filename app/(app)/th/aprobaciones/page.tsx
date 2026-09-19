@@ -22,7 +22,13 @@ export default async function AprobacionesPage() {
         },
         orderBy: { fecha: "asc" },
         include: {
-          colaborador: { select: { nombreCompleto: true } },
+          colaborador: {
+            select: {
+              nombreCompleto: true,
+              supervisorId: true,
+              supervisor: { select: { nombreCompleto: true } },
+            },
+          },
           ruta: { select: { nombre: true } },
         },
       });
@@ -36,6 +42,8 @@ export default async function AprobacionesPage() {
     observaciones: s.observaciones,
     colaboradorId: s.colaboradorId,
     nombreColaborador: s.colaborador.nombreCompleto,
+    supervisorId: s.colaborador.supervisorId,
+    supervisorNombre: s.colaborador.supervisor?.nombreCompleto ?? null,
     rutaLabel: s.ruta.nombre,
   }));
 

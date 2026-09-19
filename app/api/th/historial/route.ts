@@ -10,6 +10,10 @@ import { fechaValida } from "../../../../lib/fechas";
 
 const POR_PAGINA = 15;
 
+// Debe coincidir con el mismo sentinel del combo "Supervisor" en el
+// cliente — no es un id real, así que no puede chocar con uno.
+const SIN_SUPERVISOR = "__sin_supervisor__";
+
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
@@ -21,6 +25,7 @@ export async function GET(req: Request) {
   const hasta = searchParams.get("hasta");
   const estado = searchParams.get("estado");
   const colaboradorId = searchParams.get("colaboradorId");
+  const supervisorId = searchParams.get("supervisorId");
   const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1"));
 
   if (!desde || !hasta) {
@@ -46,6 +51,11 @@ export async function GET(req: Request) {
     fecha: { gte: desdeFecha, lte: hastaFecha },
     ...(sinRestriccion ? {} : { ruta: condicion }),
     ...(colaboradorId ? { colaboradorId } : {}),
+    ...(supervisorId === SIN_SUPERVISOR
+      ? { colaborador: { supervisorId: null } }
+      : supervisorId
+      ? { colaborador: { supervisorId } }
+      : {}),
     ...filtroEstado,
   };
 

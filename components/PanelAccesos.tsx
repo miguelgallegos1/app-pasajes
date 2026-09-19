@@ -16,7 +16,7 @@ import EstadoVacio from "./EstadoVacio";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
-import { IconoLupa, IconoHuella } from "./Icons";
+import { IconoLupa, IconoHuella, IconoSalir } from "./Icons";
 import { ETIQUETAS_ROL } from "../lib/roles";
 
 type Fila = {
@@ -152,7 +152,7 @@ export default function PanelAccesos() {
       ) : (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Usuario</th>
@@ -201,9 +201,10 @@ export default function PanelAccesos() {
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => setUsuarioARevocar({ id: r.usuarioId, nombre: r.nombreUsuario })}
-                        className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition"
+                        title="Cerrar sesión"
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 px-2.5 py-1.5 rounded-lg transition"
                       >
-                        Cerrar sesión
+                        <IconoSalir className="w-3.5 h-3.5 shrink-0" /> Cerrar
                       </button>
                     </td>
                   </tr>
@@ -246,7 +247,7 @@ export default function PanelAccesos() {
             className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
           >
             {revocando && <Spinner className="w-4 h-4" />}
-            {revocando ? "Cerrando..." : "Sí, cerrar sesión"}
+            {revocando ? "Cerrando..." : "Sí, cerrar"}
           </button>
         </div>
       </Modal>

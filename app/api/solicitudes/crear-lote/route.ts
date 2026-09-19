@@ -18,7 +18,7 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
 import { obtenerCondicionColaboradorTH } from "../../../../lib/alcanceTH";
-import { generarCodigoSolicitud } from "../../../../lib/codigoSolicitud";
+import { generarCodigosSolicitud } from "../../../../lib/codigoSolicitud";
 import { fechaValida } from "../../../../lib/fechas";
 
 const MAX_ITEMS = 100;
@@ -88,8 +88,17 @@ export async function POST(req: Request) {
     }
   }
 
-  let creadas = 0;
+  // Primera pasada: resuelve qué combinaciones colaborador+ruta son
+  // válidas, sin crear nada todavía — así la creación en sí (más abajo)
+  // se hace en una sola consulta en vez de una por fila.
   let ultimoError = "No se pudo crear ninguna solicitud";
+  const filasAInsertar: {
+    colaboradorId: string;
+    rutaId: string;
+    montoTotal: Awaited<ReturnType<typeof db.ruta.findMany>>[number]["valor"];
+    observaciones: string | null;
+    creadoPorUsuarioId: string | null;
+  }[] = [];
 
   for (const colaboradorId of idsColaboradores) {
     const colaborador = colaboradorPorId.get(colaboradorId);
@@ -122,26 +131,37 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const codigo = await generarCodigoSolicitud();
-      await db.solicitudPasaje.create({
-        data: {
-          codigo,
-          colaboradorId: colaborador.id,
-          rutaId: ruta.id,
-          fecha: fechaSolicitud,
-          montoTotal: ruta.valor,
-          observaciones: item.observaciones,
-          estado: "PENDIENTE",
-          creadoPorUsuarioId: !esUnoMismo ? session.id : null,
-        },
+      filasAInsertar.push({
+        colaboradorId: colaborador.id,
+        rutaId: ruta.id,
+        montoTotal: ruta.valor,
+        observaciones: item.observaciones,
+        creadoPorUsuarioId: !esUnoMismo ? session.id : null,
       });
-      creadas++;
     }
   }
 
-  if (creadas === 0) {
+  if (filasAInsertar.length === 0) {
     return NextResponse.json({ error: ultimoError }, { status: 400 });
   }
 
+  // Segunda pasada: un solo lote de códigos y una sola inserción masiva,
+  // en vez de generar+crear una fila a la vez (lo que hacía que crear 50
+  // o 100 solicitudes tardara decenas de segundos).
+  const codigos = await generarCodigosSolicitud(filasAInsertar.length);
+  await db.solicitudPasaje.createMany({
+    data: filasAInsertar.map((fila, i) => ({
+      codigo: codigos[i],
+      colaboradorId: fila.colaboradorId,
+      rutaId: fila.rutaId,
+      fecha: fechaSolicitud,
+      montoTotal: fila.montoTotal,
+      observaciones: fila.observaciones,
+      estado: "PENDIENTE",
+      creadoPorUsuarioId: fila.creadoPorUsuarioId,
+    })),
+  });
+
+  const creadas = filasAInsertar.length;
   return NextResponse.json({ creadas, omitidas: itemsValidos.length - creadas });
 }

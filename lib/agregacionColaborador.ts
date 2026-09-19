@@ -38,3 +38,40 @@ export async function agregarPorColaborador(where: Record<string, unknown>): Pro
     }))
     .sort((a, b) => a.nombreColaborador.localeCompare(b.nombreColaborador));
 }
+
+export type SupervisoresConActividad = {
+  supervisores: { id: string; nombre: string }[];
+  haySinSupervisor: boolean;
+};
+
+// Supervisores (y si hay alguien "sin supervisor", que solicita directo
+// con su propio PIN) con al menos una solicitud dentro del filtro dado —
+// para poblar el combo "Supervisor" de los historiales sin cargar todos
+// los supervisores de la empresa. groupBy no puede agrupar por un campo
+// de una relación (colaborador.supervisorId), así que se resuelve con
+// una sola consulta distinct por colaborador en vez de un groupBy.
+export async function supervisoresConActividad(where: Record<string, unknown>): Promise<SupervisoresConActividad> {
+  const filas = await db.solicitudPasaje.findMany({
+    where,
+    distinct: ["colaboradorId"],
+    select: {
+      colaborador: {
+        select: { supervisorId: true, supervisor: { select: { nombreCompleto: true } } },
+      },
+    },
+  });
+
+  const vistos = new Map<string, string>();
+  let haySinSupervisor = false;
+  for (const f of filas) {
+    if (f.colaborador.supervisorId) vistos.set(f.colaborador.supervisorId, f.colaborador.supervisor?.nombreCompleto ?? "");
+    else haySinSupervisor = true;
+  }
+
+  return {
+    supervisores: Array.from(vistos.entries())
+      .map(([id, nombre]) => ({ id, nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    haySinSupervisor,
+  };
+}

@@ -9,6 +9,10 @@ import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 import { fechaValida, formatearFecha } from "../../../../../lib/fechas";
 import { construirLibroExcel, limitarFilasExportacion } from "../../../../../lib/exportarExcel";
 
+// Debe coincidir con el mismo sentinel del combo "Supervisor" en el
+// cliente — no es un id real, así que no puede chocar con uno.
+const SIN_SUPERVISOR = "__sin_supervisor__";
+
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session || !["COORDINADOR", "SUPER_ADMIN"].includes(session.rol)) {
@@ -20,6 +24,7 @@ export async function GET(req: Request) {
   const hasta = searchParams.get("hasta");
   const estado = searchParams.get("estado");
   const colaboradorId = searchParams.get("colaboradorId");
+  const supervisorId = searchParams.get("supervisorId");
 
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
@@ -44,6 +49,11 @@ export async function GET(req: Request) {
     fecha: { gte: desdeFecha, lte: hastaFecha },
     ...(sinRestriccion ? {} : { ruta: condicion }),
     ...(colaboradorId ? { colaboradorId } : {}),
+    ...(supervisorId === SIN_SUPERVISOR
+      ? { colaborador: { supervisorId: null } }
+      : supervisorId
+      ? { colaborador: { supervisorId } }
+      : {}),
     ...filtroEstado,
   };
 

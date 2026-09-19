@@ -1,18 +1,14 @@
-// app/api/th/historial/colaboradores-filtro/route.ts
-// GET: colaboradores con al menos una solicitud Aprobada/Pagada dentro
-// del alcance del TH y el rango de fechas dado — para poblar el combo
-// "Colaborador" del historial sin cargar la lista completa de la empresa
-// (que puede ser grande y no tiene relación con lo que se está buscando).
+// app/api/th/historial/supervisores-filtro/route.ts
+// GET: supervisores con al menos una solicitud Aprobada/Pagada dentro del
+// alcance del TH y el rango de fechas dado — para poblar el combo
+// "Supervisor" del historial sin cargar todos los supervisores de la
+// empresa.
 
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 import { fechaValida } from "../../../../../lib/fechas";
-import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
-
-// Debe coincidir con el mismo sentinel del combo "Supervisor" en el
-// cliente — no es un id real, así que no puede chocar con uno.
-const SIN_SUPERVISOR = "__sin_supervisor__";
+import { supervisoresConActividad } from "../../../../../lib/agregacionColaborador";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -24,7 +20,6 @@ export async function GET(req: Request) {
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
   const estado = searchParams.get("estado");
-  const supervisorId = searchParams.get("supervisorId");
 
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
@@ -48,14 +43,8 @@ export async function GET(req: Request) {
   const filtro = {
     fecha: { gte: desdeFecha, lte: hastaFecha },
     ...(sinRestriccion ? {} : { ruta: condicion }),
-    ...(supervisorId === SIN_SUPERVISOR
-      ? { colaborador: { supervisorId: null } }
-      : supervisorId
-      ? { colaborador: { supervisorId } }
-      : {}),
     ...filtroEstado,
   };
 
-  const colaboradores = await agregarPorColaborador(filtro);
-  return NextResponse.json(colaboradores.map((c) => ({ id: c.colaboradorId, nombreCompleto: c.nombreColaborador })));
+  return NextResponse.json(await supervisoresConActividad(filtro));
 }

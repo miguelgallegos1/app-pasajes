@@ -22,7 +22,13 @@ export default async function RevisionPage() {
         },
         orderBy: { fechaAprobacion: "asc" },
         include: {
-          colaborador: { select: { nombreCompleto: true } },
+          colaborador: {
+            select: {
+              nombreCompleto: true,
+              supervisorId: true,
+              supervisor: { select: { nombreCompleto: true } },
+            },
+          },
           ruta: { include: { area: { include: { sitio: { include: { empresa: true } } } } } },
         },
       });
@@ -35,6 +41,8 @@ export default async function RevisionPage() {
     montoTotal: Number(s.montoTotal),
     colaboradorId: s.colaboradorId,
     nombreColaborador: s.colaborador.nombreCompleto,
+    supervisorId: s.colaborador.supervisorId,
+    supervisorNombre: s.colaborador.supervisor?.nombreCompleto ?? null,
     empresaId: s.ruta.area.sitio.empresaId,
     empresaNombre: s.ruta.area.sitio.empresa.nombre,
     sitioId: s.ruta.area.sitioId,

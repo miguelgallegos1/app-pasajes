@@ -28,6 +28,8 @@ type Aprobada = {
   montoTotal: number;
   colaboradorId: string;
   nombreColaborador: string;
+  supervisorId: string | null;
+  supervisorNombre: string | null;
   empresaId: string;
   empresaNombre: string;
   sitioId: string;
@@ -39,6 +41,10 @@ type Aprobada = {
 };
 
 const POR_PAGINA = 8;
+
+// Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
+// id real de colaborador, así que no puede chocar con uno.
+const SIN_SUPERVISOR = "__sin_supervisor__";
 
 function opcionesUnicas<T>(items: T[], idKey: keyof T, labelKey: keyof T) {
   const vistos = new Map<string, string>();
@@ -69,6 +75,7 @@ export default function PanelCoordinador({
   const [empresaId, setEmpresaId] = useState("");
   const [sitioId, setSitioId] = useState("");
   const [areaId, setAreaId] = useState("");
+  const [supervisorId, setSupervisorId] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
 
@@ -83,18 +90,40 @@ export default function PanelCoordinador({
     [sitiosBase, sitioId]
   );
   const areasOpciones = useMemo(() => opcionesUnicas(areasBase, "areaId", "areaNombre"), [areasBase]);
-  const colaboradoresBase = useMemo(
+  const supervisoresBase = useMemo(
     () => (areaId ? areasBase.filter((a) => a.areaId === areaId) : areasBase),
     [areasBase, areaId]
   );
+  // Solo supervisores con algo pendiente de revisar dentro de lo ya
+  // filtrado arriba (no todos los supervisores de la empresa), más "Sin
+  // supervisor" para quienes solicitan directo con su propio PIN.
+  const supervisoresOpciones = useMemo(() => {
+    const vistos = new Map<string, string>();
+    let haySinSupervisor = false;
+    for (const a of supervisoresBase) {
+      if (a.supervisorId) vistos.set(a.supervisorId, a.supervisorNombre ?? "");
+      else haySinSupervisor = true;
+    }
+    const opciones = Array.from(vistos.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (haySinSupervisor) opciones.push({ id: SIN_SUPERVISOR, label: "Sin supervisor (solicita directo)" });
+    return opciones;
+  }, [supervisoresBase]);
+  const colaboradoresBase = useMemo(() => {
+    if (supervisorId === SIN_SUPERVISOR) return supervisoresBase.filter((a) => !a.supervisorId);
+    if (supervisorId) return supervisoresBase.filter((a) => a.supervisorId === supervisorId);
+    return supervisoresBase;
+  }, [supervisoresBase, supervisorId]);
   const colaboradoresOpciones = useMemo(
     () => opcionesUnicas(colaboradoresBase, "colaboradorId", "nombreColaborador"),
     [colaboradoresBase]
   );
 
-  const cambiarEmpresa = (v: string) => { setEmpresaId(v); setSitioId(""); setAreaId(""); setColaboradorId(""); setPaginaActual(1); };
-  const cambiarSitio = (v: string) => { setSitioId(v); setAreaId(""); setColaboradorId(""); setPaginaActual(1); };
-  const cambiarArea = (v: string) => { setAreaId(v); setColaboradorId(""); setPaginaActual(1); };
+  const cambiarEmpresa = (v: string) => { setEmpresaId(v); setSitioId(""); setAreaId(""); setSupervisorId(""); setColaboradorId(""); setPaginaActual(1); };
+  const cambiarSitio = (v: string) => { setSitioId(v); setAreaId(""); setSupervisorId(""); setColaboradorId(""); setPaginaActual(1); };
+  const cambiarArea = (v: string) => { setAreaId(v); setSupervisorId(""); setColaboradorId(""); setPaginaActual(1); };
+  const cambiarSupervisor = (v: string) => { setSupervisorId(v); setColaboradorId(""); setPaginaActual(1); };
   const cambiarColaboradorFiltro = (v: string) => { setColaboradorId(v); setPaginaActual(1); };
 
   const aprobadasFiltradas = useMemo(() => {
@@ -103,6 +132,8 @@ export default function PanelCoordinador({
       if (empresaId && s.empresaId !== empresaId) return false;
       if (sitioId && s.sitioId !== sitioId) return false;
       if (areaId && s.areaId !== areaId) return false;
+      if (supervisorId === SIN_SUPERVISOR && s.supervisorId) return false;
+      if (supervisorId && supervisorId !== SIN_SUPERVISOR && s.supervisorId !== supervisorId) return false;
       if (colaboradorId && s.colaboradorId !== colaboradorId) return false;
       if (!texto) return true;
       return (
@@ -111,7 +142,7 @@ export default function PanelCoordinador({
         s.rutaLabel.toLowerCase().includes(texto)
       );
     });
-  }, [aprobadas, empresaId, sitioId, areaId, colaboradorId, busqueda]);
+  }, [aprobadas, empresaId, sitioId, areaId, supervisorId, colaboradorId, busqueda]);
 
   const cambiarBusqueda = (v: string) => { setBusqueda(v); setPaginaActual(1); };
 
@@ -338,7 +369,7 @@ export default function PanelCoordinador({
         )}
 
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Empresa</label>
               <div className="mt-1.5">
@@ -355,6 +386,12 @@ export default function PanelCoordinador({
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
               <div className="mt-1.5">
                 <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todas" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Supervisor</label>
+              <div className="mt-1.5">
+                <ComboboxBuscable opciones={supervisoresOpciones} value={supervisorId} onChange={cambiarSupervisor} placeholder="Todos" />
               </div>
             </div>
             <div>
@@ -397,15 +434,15 @@ export default function PanelCoordinador({
                 <button
                   onClick={() => setConfirmandoLoteDiscrepancia(true)}
                   title="Reportar discrepancia"
-                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
                 >
-                  <IconoDevolver className="w-4 h-4" /> Discrepancia
+                  <IconoDevolver className="w-4 h-4 shrink-0" /> Discrepancia ({seleccionadas.size})
                 </button>
                 <button
                   onClick={() => setConfirmandoLote(true)}
-                  className="text-xs sm:text-sm font-semibold bg-sky-600 hover:bg-sky-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+                  className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-sky-600 hover:bg-sky-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
                 >
-                  Revisar seleccionadas
+                  Revisar ({seleccionadas.size})
                 </button>
               </div>
             </div>
@@ -416,19 +453,45 @@ export default function PanelCoordinador({
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <TablaColaboradores
             filas={filasColaborador}
+            cargarItems={(colaboradorId) => gruposPorColaborador.get(colaboradorId)?.items ?? []}
+            clave={(s) => s.id}
             porPagina={POR_PAGINA}
             seleccion={{
               seleccionadas,
+              alternar: alternarSeleccion,
               idsDe: (colaboradorId) => (gruposPorColaborador.get(colaboradorId)?.items ?? []).map((s) => s.id),
               alternarGrupo: alternarGrupoSeleccion,
             }}
+            columnas={[
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
+              { encabezado: "Ruta", render: (s) => s.rutaLabel },
+              { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+            ]}
+            acciones={(s) => (
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setIdARevisar(s.id)}
+                  className="text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 px-3 py-1.5 rounded-full transition"
+                >
+                  Revisar
+                </button>
+                <button
+                  onClick={() => abrirDiscrepancia(s.id)}
+                  title="Reportar discrepancia"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-2.5 py-1.5 rounded-lg transition"
+                >
+                  <IconoDevolver className="w-3.5 h-3.5" /> Discrepancia
+                </button>
+              </div>
+            )}
             vacio={busqueda ? "Sin resultados para esa búsqueda" : sinAsignaciones ? "Sin áreas asignadas" : "No hay solicitudes aprobadas pendientes de revisión"}
           />
           </div>
         ) : (
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[680px]">
+              <table className="w-full text-xs min-w-[680px]">
                 <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                   <tr>
                     <th className="px-4 py-3 w-10">

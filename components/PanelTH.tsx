@@ -12,6 +12,7 @@ import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
+import ComboboxBuscable from "./ComboboxBuscable";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
@@ -27,10 +28,16 @@ type Pendiente = {
   observaciones: string | null;
   colaboradorId: string;
   nombreColaborador: string;
+  supervisorId: string | null;
+  supervisorNombre: string | null;
   rutaLabel: string;
 };
 
 const POR_PAGINA = 8;
+
+// Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
+// id real de colaborador, así que no puede chocar con uno.
+const SIN_SUPERVISOR = "__sin_supervisor__";
 
 export default function PanelTH({
   esSuperAdmin,
@@ -49,23 +56,49 @@ export default function PanelTH({
   const [pendientes, setPendientes] = useState(pendientesIniciales);
 
   const [busqueda, setBusqueda] = useState("");
+  const [supervisorId, setSupervisorId] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
   const [vista, setVista] = useState<VistaListado>("lista");
 
+  // Opciones del filtro "Supervisor": solo los que de verdad tienen algo
+  // pendiente ahora mismo (no todos los supervisores de la empresa), más
+  // "Sin supervisor" para quienes solicitan directo con su propio PIN.
+  const supervisoresOpciones = useMemo(() => {
+    const vistos = new Map<string, string>();
+    let haySinSupervisor = false;
+    for (const p of pendientes) {
+      if (p.supervisorId) vistos.set(p.supervisorId, p.supervisorNombre ?? "");
+      else haySinSupervisor = true;
+    }
+    const opciones = Array.from(vistos.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (haySinSupervisor) opciones.push({ id: SIN_SUPERVISOR, label: "Sin supervisor (solicita directo)" });
+    return opciones;
+  }, [pendientes]);
+
   const pendientesFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
-    if (!texto) return pendientes;
-    return pendientes.filter(
-      (p) =>
+    return pendientes.filter((p) => {
+      if (supervisorId === SIN_SUPERVISOR && p.supervisorId) return false;
+      if (supervisorId && supervisorId !== SIN_SUPERVISOR && p.supervisorId !== supervisorId) return false;
+      if (!texto) return true;
+      return (
         p.codigo.toLowerCase().includes(texto) ||
         p.nombreColaborador.toLowerCase().includes(texto) ||
         p.rutaLabel.toLowerCase().includes(texto) ||
         (p.observaciones ?? "").toLowerCase().includes(texto)
-    );
-  }, [pendientes, busqueda]);
+      );
+    });
+  }, [pendientes, busqueda, supervisorId]);
 
   const cambiarBusqueda = (v: string) => {
     setBusqueda(v);
+    setPaginaActual(1);
+  };
+
+  const cambiarSupervisor = (v: string) => {
+    setSupervisorId(v);
     setPaginaActual(1);
   };
 
@@ -281,25 +314,25 @@ export default function PanelTH({
   return (
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-baseline gap-2">
             <h1 className="text-lg sm:text-xl font-bold">Aprobaciones Pendientes</h1>
             <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes de colaboradores esperando aprobación</span>
           </div>
           {seleccionadas.size > 0 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <button
                 onClick={() => setConfirmandoLoteDevolver(true)}
                 title="Devolver para corrección"
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
               >
-                <IconoDevolver className="w-4 h-4" /> Devolver seleccionadas
+                <IconoDevolver className="w-4 h-4 shrink-0" /> Devolver ({seleccionadas.size})
               </button>
               <button
                 onClick={() => setConfirmandoLote(true)}
-                className="text-xs sm:text-sm font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+                className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
               >
-                Aprobar seleccionadas ({seleccionadas.size})
+                Aprobar ({seleccionadas.size})
               </button>
             </div>
           )}
@@ -322,6 +355,14 @@ export default function PanelTH({
               className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
             />
           </div>
+          <div className="w-full sm:w-60">
+            <ComboboxBuscable
+              opciones={[{ id: "", label: "Todos los supervisores" }, ...supervisoresOpciones]}
+              value={supervisorId}
+              onChange={cambiarSupervisor}
+              placeholder="Todos los supervisores"
+            />
+          </div>
           <SelectorVista valor={vista} onCambiar={setVista} className="sm:ml-auto" />
         </div>
 
@@ -329,12 +370,38 @@ export default function PanelTH({
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <TablaColaboradores
             filas={filasColaborador}
+            cargarItems={(colaboradorId) => gruposColaborador.get(colaboradorId)?.solicitudes ?? []}
+            clave={(s) => s.id}
             porPagina={POR_PAGINA}
             seleccion={{
               seleccionadas,
+              alternar: alternarSeleccion,
               idsDe: (colaboradorId) => (gruposColaborador.get(colaboradorId)?.solicitudes ?? []).map((s) => s.id),
               alternarGrupo: alternarGrupoSeleccion,
             }}
+            columnas={[
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
+              { encabezado: "Ruta", render: (s) => s.rutaLabel },
+              { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+            ]}
+            acciones={(s) => (
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setIdAAprobar(s.id)}
+                  className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-full transition"
+                >
+                  Aprobar
+                </button>
+                <button
+                  onClick={() => abrirModalDevolucion(s.id)}
+                  title="Devolver para corrección"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-2.5 py-1.5 rounded-lg transition"
+                >
+                  <IconoDevolver className="w-3.5 h-3.5" /> Devolver
+                </button>
+              </div>
+            )}
             vacio={
               busqueda
                 ? "Sin resultados para esa búsqueda"
@@ -347,7 +414,7 @@ export default function PanelTH({
         ) : (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[720px]">
+            <table className="w-full text-xs min-w-[720px]">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 w-10">

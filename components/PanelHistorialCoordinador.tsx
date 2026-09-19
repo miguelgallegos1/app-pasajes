@@ -46,30 +46,67 @@ const ESTILOS_ESTADO: Record<string, string> = {
   PAGADA: "bg-orange-100 text-orange-800",
 };
 
-export default function PanelHistorialCoordinador({
-  sinAsignaciones,
-}: {
-  sinAsignaciones: boolean;
-}) {
+// Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
+// id real de colaborador, así que no puede chocar con uno.
+const SIN_SUPERVISOR = "__sin_supervisor__";
+
+export default function PanelHistorialCoordinador() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
   const [estado, setEstado] = useState("");
+  const [supervisorId, setSupervisorId] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
 
-  // Opciones del combo "Colaborador": solo quienes tienen actividad en el
-  // rango/estado elegidos, no la lista completa dentro del alcance (que
-  // puede ser grande y no tiene relación con lo que se está por buscar).
-  const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
+  // "Sin áreas asignadas" se resuelve en el cliente (mismo chequeo que ya
+  // hace el backend al armar el combo de colaboradores, vía el 403 de esa
+  // misma consulta) para que la pantalla se muestre de inmediato en vez
+  // de esperar esa consulta antes de mostrar nada.
+  const [sinAsignaciones, setSinAsignaciones] = useState(false);
+
+  // Opciones del combo "Supervisor": solo quienes tienen algo de su
+  // equipo con actividad en el rango/estado elegidos, más "Sin
+  // supervisor" para quienes solicitan directo con su propio PIN.
+  const [supervisoresOpciones, setSupervisoresOpciones] = useState<{ id: string; label: string }[]>([]);
   useEffect(() => {
-    if (sinAsignaciones || !desde || !hasta) return;
+    if (!desde || !hasta) return;
     const params = new URLSearchParams({ desde, hasta });
     if (estado) params.set("estado", estado);
     let cancelado = false;
+    fetch(`/api/coordinador/historial/supervisores-filtro?${params.toString()}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { supervisores: { id: string; nombre: string }[]; haySinSupervisor: boolean } | null) => {
+        if (cancelado || !data) return;
+        const opciones = data.supervisores.map((s) => ({ id: s.id, label: s.nombre }));
+        if (data.haySinSupervisor) opciones.push({ id: SIN_SUPERVISOR, label: "Sin supervisor (solicita directo)" });
+        setSupervisoresOpciones(opciones);
+        setSupervisorId((actual) => (actual && !opciones.some((o) => o.id === actual) ? "" : actual));
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [desde, hasta, estado]);
+
+  // Opciones del combo "Colaborador": solo quienes tienen actividad en el
+  // rango/estado/supervisor elegidos, no la lista completa dentro del
+  // alcance (que puede ser grande y no tiene relación con lo que se está
+  // por buscar).
+  const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
+  useEffect(() => {
+    if (!desde || !hasta) return;
+    const params = new URLSearchParams({ desde, hasta });
+    if (estado) params.set("estado", estado);
+    if (supervisorId) params.set("supervisorId", supervisorId);
+    let cancelado = false;
     fetch(`/api/coordinador/historial/colaboradores-filtro?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : []))
+      .then((res) => {
+        if (cancelado) return null;
+        setSinAsignaciones(res.status === 403);
+        return res.ok ? res.json() : [];
+      })
       .then((data) => {
-        if (cancelado) return;
+        if (cancelado || !data) return;
         setColaboradores(data);
         setColaboradorId((actual) => (actual && !data.some((c: { id: string }) => c.id === actual) ? "" : actual));
       })
@@ -77,7 +114,7 @@ export default function PanelHistorialCoordinador({
     return () => {
       cancelado = true;
     };
-  }, [desde, hasta, estado, sinAsignaciones]);
+  }, [desde, hasta, estado, supervisorId]);
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -103,8 +140,14 @@ export default function PanelHistorialCoordinador({
   const parametrosBase = () => {
     const params = new URLSearchParams({ desde, hasta });
     if (estado) params.set("estado", estado);
+    if (supervisorId) params.set("supervisorId", supervisorId);
     if (colaboradorId) params.set("colaboradorId", colaboradorId);
     return params;
+  };
+
+  const cambiarSupervisor = (v: string) => {
+    setSupervisorId(v);
+    setColaboradorId("");
   };
 
   const buscar = async (paginaNueva = 1) => {
@@ -156,6 +199,17 @@ export default function PanelHistorialCoordinador({
     setError("");
   };
 
+  // Detalle (código/fecha/ruta/valor/estado) de UN colaborador, pedido
+  // solo cuando lo expande — no viaja con la lista completa.
+  const cargarItemsColaborador = async (idColaborador: string): Promise<Fila[]> => {
+    const params = new URLSearchParams({ desde, hasta, colaboradorId: idColaborador, pagina: "1" });
+    if (estado) params.set("estado", estado);
+    const res = await fetch(`/api/coordinador/historial?${params.toString()}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.items;
+  };
+
   const urlExportar = () => `/api/coordinador/historial/exportar?${parametrosBase().toString()}`;
   // Exportar usa los mismos filtros que "Buscar", así que solo habilitamos
   // el botón cuando esa búsqueda ya trajo resultados — evita generar un
@@ -177,7 +231,7 @@ export default function PanelHistorialCoordinador({
       )}
 
       <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
             <div className="mt-1.5">
@@ -196,6 +250,17 @@ export default function PanelHistorialCoordinador({
                 value={estado}
                 onChange={setEstado}
                 placeholder="Todas"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Supervisor</label>
+            <div className="mt-1.5">
+              <ComboboxBuscable
+                opciones={[{ id: "", label: "Todos" }, ...supervisoresOpciones]}
+                value={supervisorId}
+                onChange={cambiarSupervisor}
+                placeholder="Todos"
               />
             </div>
           </div>
@@ -242,7 +307,29 @@ export default function PanelHistorialCoordinador({
 
       {!cargando && vista === "colaborador" && filasColaborador && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-          <TablaColaboradores filas={filasColaborador} vacio="No hay resultados en ese rango" />
+          <TablaColaboradores
+            filas={filasColaborador}
+            cargarItems={cargarItemsColaborador}
+            clave={(s) => s.id}
+            columnas={[
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
+              { encabezado: "Ruta", render: (s) => s.rutaLabel },
+              { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+              {
+                encabezado: "Estado",
+                render: (s) => (
+                  <span
+                    title={DESCRIPCION_ESTADO[s.estado]}
+                    className={`text-[11px] px-2 py-0.5 rounded-full ${ESTILOS_ESTADO[s.estado] ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"}`}
+                  >
+                    {s.estado}
+                  </span>
+                ),
+              },
+            ]}
+            vacio="No hay resultados en ese rango"
+          />
           <Paginacion paginaActual={paginaColab} totalPaginas={totalPaginasColab} onCambiarPagina={buscar} deshabilitado={cargando} />
         </div>
       )}
@@ -250,7 +337,7 @@ export default function PanelHistorialCoordinador({
       {!cargando && vista === "lista" && items && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-sm">
+            <table className="w-full min-w-[680px] text-xs">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>

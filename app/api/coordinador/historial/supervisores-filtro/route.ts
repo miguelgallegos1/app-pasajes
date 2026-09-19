@@ -1,18 +1,14 @@
-// app/api/coordinador/historial/colaboradores/route.ts
-// GET: total de rutas + valor por colaborador (Revisadas + Pagadas) dentro
-// del alcance del Coordinador. Paginado por colaborador.
+// app/api/coordinador/historial/supervisores-filtro/route.ts
+// GET: supervisores con al menos una solicitud Revisada/Pagada dentro del
+// alcance del Coordinador y el rango de fechas dado — para poblar el
+// combo "Supervisor" del historial sin cargar todos los supervisores de
+// la empresa.
 
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 import { fechaValida } from "../../../../../lib/fechas";
-import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
-
-const POR_PAGINA = 10;
-
-// Debe coincidir con el mismo sentinel del combo "Supervisor" en el
-// cliente — no es un id real, así que no puede chocar con uno.
-const SIN_SUPERVISOR = "__sin_supervisor__";
+import { supervisoresConActividad } from "../../../../../lib/agregacionColaborador";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -24,8 +20,6 @@ export async function GET(req: Request) {
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
   const estado = searchParams.get("estado");
-  const supervisorId = searchParams.get("supervisorId");
-  const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1"));
 
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
@@ -46,25 +40,11 @@ export async function GET(req: Request) {
       ? { estado: estado as "REVISADO" | "PAGADA" }
       : { estado: { in: ["REVISADO", "PAGADA"] as Array<"REVISADO" | "PAGADA"> } };
 
-  const filtro: Record<string, unknown> = {
+  const filtro = {
     fecha: { gte: desdeFecha, lte: hastaFecha },
     ...(sinRestriccion ? {} : { ruta: condicion }),
-    ...(supervisorId === SIN_SUPERVISOR
-      ? { colaborador: { supervisorId: null } }
-      : supervisorId
-      ? { colaborador: { supervisorId } }
-      : {}),
     ...filtroEstado,
   };
 
-  const todos = await agregarPorColaborador(filtro);
-  const total = todos.length;
-  const pagina_ = todos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
-
-  return NextResponse.json({
-    items: pagina_.map((c) => ({ id: c.colaboradorId, nombre: c.nombreColaborador, cantidad: c.cantidad, total: c.total })),
-    total,
-    totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),
-    pagina,
-  });
+  return NextResponse.json(await supervisoresConActividad(filtro));
 }

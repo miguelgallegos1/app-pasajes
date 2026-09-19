@@ -45,15 +45,7 @@ const ESTILOS_ESTADO: Record<string, string> = {
   PAGADA: "bg-orange-100 text-orange-800",
 };
 
-export default function PanelHistorialJefe({
-  empresas,
-  sitios,
-  areas,
-}: {
-  empresas: Empresa[];
-  sitios: Sitio[];
-  areas: Area[];
-}) {
+export default function PanelHistorialJefe() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
@@ -62,6 +54,25 @@ export default function PanelHistorialJefe({
   const [sitioId, setSitioId] = useState("");
   const [areaId, setAreaId] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
+
+  // Empresa/Sitio/Área para los combos de filtro: se piden al montar en
+  // vez de esperar a que el servidor las traiga antes de mostrar la
+  // pantalla — los controles aparecen de una, y los combos se llenan un
+  // instante después.
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  useEffect(() => {
+    fetch("/api/jefe/historial/filtros")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setEmpresas(data.empresas);
+        setSitios(data.sitios);
+        setAreas(data.areas);
+      })
+      .catch(() => {});
+  }, []);
 
   // Opciones del combo "Colaborador": solo quienes tienen actividad en el
   // rango y los filtros (Empresa/Sitio/Área/Estado) elegidos, no la lista
@@ -186,6 +197,17 @@ export default function PanelHistorialJefe({
     setError("");
   };
 
+  // Detalle (código/fecha/ruta/valor/estado) de UN colaborador, pedido
+  // solo cuando lo expande — no viaja con la lista completa.
+  const cargarItemsColaborador = async (idColaborador: string): Promise<Fila[]> => {
+    const params = new URLSearchParams({ desde, hasta, colaboradorId: idColaborador, pagina: "1" });
+    if (estado) params.set("estado", estado);
+    const res = await fetch(`/api/jefe/historial?${params.toString()}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.items;
+  };
+
   const urlExportar = () => `/api/jefe/historial/exportar?${parametrosBase().toString()}`;
   // Exportar usa los mismos filtros que "Buscar", así que solo habilitamos
   // el botón cuando esa búsqueda ya trajo resultados — evita generar un
@@ -295,7 +317,29 @@ export default function PanelHistorialJefe({
 
       {!cargando && vista === "colaborador" && filasColaborador && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-          <TablaColaboradores filas={filasColaborador} vacio="No hay resultados en ese rango" />
+          <TablaColaboradores
+            filas={filasColaborador}
+            cargarItems={cargarItemsColaborador}
+            clave={(s) => s.id}
+            columnas={[
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
+              { encabezado: "Ruta", render: (s) => s.rutaLabel },
+              { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+              {
+                encabezado: "Estado",
+                render: (s) => (
+                  <span
+                    title={DESCRIPCION_ESTADO[s.estado]}
+                    className={`text-[11px] px-2 py-0.5 rounded-full ${ESTILOS_ESTADO[s.estado] ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"}`}
+                  >
+                    {s.estado}
+                  </span>
+                ),
+              },
+            ]}
+            vacio="No hay resultados en ese rango"
+          />
           <Paginacion paginaActual={paginaColab} totalPaginas={totalPaginasColab} onCambiarPagina={buscar} deshabilitado={cargando} />
         </div>
       )}
@@ -303,7 +347,7 @@ export default function PanelHistorialJefe({
       {!cargando && vista === "lista" && items && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-sm">
+            <table className="w-full min-w-[680px] text-xs">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>

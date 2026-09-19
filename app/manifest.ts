@@ -14,10 +14,16 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Sistema de registro y gestión de pasajes corporativos",
     start_url: "/",
     display: "standalone",
-    background_color: "#0a0a0a",
+    // Blanco (no negro): es el fondo que el sistema operativo muestra un
+    // instante al abrir la app instalada, antes de que cargue cualquier
+    // CSS — con el ícono ahora armado sobre fondo blanco (ver app/icon.png),
+    // esto hace que esa pantalla de arranque se sienta continua en vez de
+    // un flash oscuro feo.
+    background_color: "#ffffff",
     theme_color: "#f97316",
     icons: [
-      { src: "/logo.png", sizes: "480x480", type: "image/png", purpose: "any" },
+      { src: "/logo-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/logo.png", sizes: "512x512", type: "image/png", purpose: "any" },
     ],
   };
 }

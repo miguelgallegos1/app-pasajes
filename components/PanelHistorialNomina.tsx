@@ -32,15 +32,7 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
   montoTotal: (f) => f.montoTotal,
 };
 
-export default function PanelHistorialNomina({
-  empresas,
-  sitios,
-  areas,
-}: {
-  empresas: Empresa[];
-  sitios: Sitio[];
-  areas: Area[];
-}) {
+export default function PanelHistorialNomina() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
@@ -48,6 +40,25 @@ export default function PanelHistorialNomina({
   const [sitioId, setSitioId] = useState("");
   const [areaId, setAreaId] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
+
+  // Empresa/Sitio/Área para los combos de filtro: se piden al montar en
+  // vez de esperar a que el servidor las traiga antes de mostrar la
+  // pantalla — los controles aparecen de una, y los combos se llenan un
+  // instante después.
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  useEffect(() => {
+    fetch("/api/nomina/historial/filtros")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setEmpresas(data.empresas);
+        setSitios(data.sitios);
+        setAreas(data.areas);
+      })
+      .catch(() => {});
+  }, []);
 
   // Opciones del combo "Colaborador": solo quienes tienen actividad en el
   // rango y los filtros Empresa/Sitio/Área elegidos, no la lista completa
@@ -170,6 +181,16 @@ export default function PanelHistorialNomina({
     setError("");
   };
 
+  // Detalle (código/fecha/ruta/valor) de UN colaborador, pedido solo
+  // cuando lo expande — no viaja con la lista completa.
+  const cargarItemsColaborador = async (idColaborador: string): Promise<Fila[]> => {
+    const params = new URLSearchParams({ desde, hasta, colaboradorId: idColaborador, pagina: "1" });
+    const res = await fetch(`/api/nomina/historial?${params.toString()}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.items;
+  };
+
   const urlExportar = () => `/api/nomina/historial/exportar?${parametrosBase().toString()}`;
   // Exportar usa los mismos filtros que "Buscar", así que solo habilitamos
   // el botón cuando esa búsqueda ya trajo resultados — evita generar un
@@ -259,7 +280,28 @@ export default function PanelHistorialNomina({
 
       {!cargando && vista === "colaborador" && filasColaborador && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-          <TablaColaboradores filas={filasColaborador} vacio="No hay pagos registrados en ese rango" />
+          <TablaColaboradores
+            filas={filasColaborador}
+            cargarItems={cargarItemsColaborador}
+            clave={(s) => s.id}
+            columnas={[
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              {
+                encabezado: "Fecha",
+                render: (s) => (
+                  <>
+                    <p>{formatearFecha(s.fecha)}</p>
+                    {s.fechaPago && (
+                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">Pagada {formatearFecha(s.fechaPago)}</p>
+                    )}
+                  </>
+                ),
+              },
+              { encabezado: "Ruta", render: (s) => s.rutaLabel },
+              { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+            ]}
+            vacio="No hay pagos registrados en ese rango"
+          />
           <Paginacion paginaActual={paginaColab} totalPaginas={totalPaginasColab} onCambiarPagina={buscar} deshabilitado={cargando} />
         </div>
       )}
@@ -267,7 +309,7 @@ export default function PanelHistorialNomina({
       {!cargando && vista === "lista" && items && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[720px] text-xs">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>

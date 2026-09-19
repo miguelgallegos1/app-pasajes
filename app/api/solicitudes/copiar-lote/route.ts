@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
-import { generarCodigoSolicitud } from "../../../../lib/codigoSolicitud";
+import { generarCodigosSolicitud } from "../../../../lib/codigoSolicitud";
 import { fechaValida } from "../../../../lib/fechas";
 
 export async function POST(req: Request) {
@@ -94,7 +94,18 @@ export async function POST(req: Request) {
     rutasVisiblesPorColaborador.set(colaboradorId, new Map(rutas.map((r) => [r.id, r])));
   }
 
-  let copiadas = 0;
+  // Resuelve qué copiar sin escribir nada todavía, para poder generar los
+  // códigos e insertar todo en un solo lote más abajo (en vez de generar
+  // código + crear fila por fila, que es lo que hacía que copiar varias
+  // rutas de golpe tardara varios segundos).
+  const filasAInsertar: {
+    colaboradorId: string;
+    rutaId: string;
+    montoTotal: Awaited<ReturnType<typeof db.ruta.findMany>>[number]["valor"];
+    observaciones: string | null;
+    creadoPorUsuarioId: string | null;
+  }[] = [];
+
   for (const fuente of fuentesValidas) {
     const colaborador = colaboradorPorId.get(fuente.colaboradorId);
     if (!colaborador) continue;
@@ -102,25 +113,32 @@ export async function POST(req: Request) {
     const ruta = rutasVisiblesPorColaborador.get(fuente.colaboradorId)?.get(fuente.rutaId);
     if (!ruta) continue; // ruta ya no válida para este colaborador (desactivada, cambio de área, etc.)
 
-    const codigo = await generarCodigoSolicitud();
-    await db.solicitudPasaje.create({
-      data: {
-        codigo,
-        colaboradorId: colaborador.id,
-        rutaId: ruta.id,
-        fecha: fechaDestino,
-        montoTotal: ruta.valor,
-        observaciones: observacionPorId.get(fuente.id) ?? null,
-        estado: "PENDIENTE",
-        creadoPorUsuarioId: colaborador.id !== miColaborador.id ? session.id : null,
-      },
+    filasAInsertar.push({
+      colaboradorId: colaborador.id,
+      rutaId: ruta.id,
+      montoTotal: ruta.valor,
+      observaciones: observacionPorId.get(fuente.id) ?? null,
+      creadoPorUsuarioId: colaborador.id !== miColaborador.id ? session.id : null,
     });
-    copiadas++;
   }
 
-  if (copiadas === 0) {
+  if (filasAInsertar.length === 0) {
     return NextResponse.json({ error: "Ninguna de las rutas elegidas sigue siendo válida" }, { status: 400 });
   }
 
-  return NextResponse.json({ copiadas });
+  const codigos = await generarCodigosSolicitud(filasAInsertar.length);
+  await db.solicitudPasaje.createMany({
+    data: filasAInsertar.map((fila, i) => ({
+      codigo: codigos[i],
+      colaboradorId: fila.colaboradorId,
+      rutaId: fila.rutaId,
+      fecha: fechaDestino,
+      montoTotal: fila.montoTotal,
+      observaciones: fila.observaciones,
+      estado: "PENDIENTE",
+      creadoPorUsuarioId: fila.creadoPorUsuarioId,
+    })),
+  });
+
+  return NextResponse.json({ copiadas: filasAInsertar.length });
 }
