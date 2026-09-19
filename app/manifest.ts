@@ -16,14 +16,24 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     // Blanco (no negro): es el fondo que el sistema operativo muestra un
     // instante al abrir la app instalada, antes de que cargue cualquier
-    // CSS — con el ícono ahora armado sobre fondo blanco (ver app/icon.png),
-    // esto hace que esa pantalla de arranque se sienta continua en vez de
-    // un flash oscuro feo.
+    // CSS — con el ícono de abajo armado sobre fondo blanco, esto hace que
+    // esa pantalla de arranque se sienta continua en vez de un flash
+    // oscuro feo.
+    //
+    // Los archivos "pwa-icon-*" son EXCLUSIVOS de la instalación/splash —
+    // no son los mismos que /logo.png (que usan el login y el menú, con
+    // su propia sombra por CSS y sin fondo). Si algún día hace falta
+    // regenerarlos, no tocar public/logo.png.
     background_color: "#ffffff",
     theme_color: "#f97316",
     icons: [
-      { src: "/logo-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/logo.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/pwa-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/pwa-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      // Android recorta este en la forma que use el launcher (círculo,
+      // squircle, etc.) — a diferencia de los "any" de arriba, este va a
+      // todo el lienzo, sin margen propio, así no aparece una segunda
+      // caja blanca alrededor cuando el sistema le aplica su máscara.
+      { src: "/pwa-icon-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

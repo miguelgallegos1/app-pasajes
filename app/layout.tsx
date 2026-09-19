@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "../components/Toast";
 import ThemeProvider from "../components/ThemeProvider";
+import Spinner from "../components/Spinner";
+import { APP_NOMBRE } from "../lib/config";
 import "./globals.css";
 
 // Se ejecuta antes de pintar la página: decide "dark" u "light" (localStorage,
@@ -14,6 +16,40 @@ const SCRIPT_TEMA_INICIAL = `
     var esOscuro = guardado === "dark" || (guardado !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     if (esOscuro) document.documentElement.classList.add("dark");
   } catch (e) {}
+})();
+`;
+
+// Detecta si se abrió como app instalada (no una pestaña normal del
+// navegador) ANTES de pintar, para poder mostrar la pantalla de carga de
+// abajo solo ahí — en una pestaña normal no hace falta.
+const SCRIPT_DETECTAR_PWA = `
+(function () {
+  try {
+    var esPWA = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+    if (esPWA) document.documentElement.classList.add("es-pwa");
+  } catch (e) {}
+})();
+`;
+
+// El splash nativo del sistema operativo (armado desde manifest.ts) no es
+// confiable: en iOS nunca muestra el nombre de la app, y en Android
+// depende de la versión. Esta pantalla propia sí lo garantiza — se pinta
+// de una (viene en el HTML inicial, sin esperar a React) y se oculta sola
+// cuando la página ya cargó, con un mínimo de tiempo visible para que no
+// sea solo un parpadeo en conexiones rápidas.
+const SCRIPT_OCULTAR_SPLASH = `
+(function () {
+  var minimo = new Promise(function (resolve) { setTimeout(resolve, 350); });
+  var cargada = new Promise(function (resolve) {
+    if (document.readyState === "complete") resolve();
+    else window.addEventListener("load", resolve);
+  });
+  Promise.all([minimo, cargada]).then(function () {
+    var el = document.getElementById("app-splash");
+    if (!el) return;
+    el.style.opacity = "0";
+    setTimeout(function () { el.remove(); }, 300);
+  });
 })();
 `;
 
@@ -80,9 +116,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_DETECTAR_PWA }} />
+        <style>{`#app-splash{display:none}html.es-pwa #app-splash{display:flex}`}</style>
         {SCRIPT_SERVICE_WORKER && <script dangerouslySetInnerHTML={{ __html: SCRIPT_SERVICE_WORKER }} />}
       </head>
       <body className="min-h-full flex flex-col">
+        <div
+          id="app-splash"
+          className="fixed inset-0 z-[9999] flex-col items-center justify-center gap-4 bg-white"
+          style={{ transition: "opacity .3s ease" }}
+        >
+          <img src="/pwa-icon-512.png" alt="" width={88} height={88} />
+          <p className="text-[15px] font-bold text-neutral-800 tracking-tight">{APP_NOMBRE}</p>
+          <Spinner className="w-5 h-5 text-orange-500" />
+        </div>
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_OCULTAR_SPLASH }} />
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>
