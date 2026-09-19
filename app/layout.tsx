@@ -34,9 +34,10 @@ const SCRIPT_DETECTAR_PWA = `
 // El splash nativo del sistema operativo (armado desde manifest.ts) no es
 // confiable: en iOS nunca muestra el nombre de la app, y en Android
 // depende de la versión. Esta pantalla propia sí lo garantiza — se pinta
-// de una (viene en el HTML inicial, sin esperar a React) y se oculta sola
-// cuando la página ya cargó, con un mínimo de tiempo visible para que no
-// sea solo un parpadeo en conexiones rápidas.
+// de una (viene en el HTML inicial, sin esperar a React), en dos etapas:
+// primero nombre + indicador de carga, y una vez que la página ya cargó
+// (con un mínimo de tiempo visible, para que no sea solo un parpadeo en
+// conexiones rápidas) pasa al ícono un instante antes de mostrar el login.
 const SCRIPT_OCULTAR_SPLASH = `
 (function () {
   var minimo = new Promise(function (resolve) { setTimeout(resolve, 350); });
@@ -45,10 +46,16 @@ const SCRIPT_OCULTAR_SPLASH = `
     else window.addEventListener("load", resolve);
   });
   Promise.all([minimo, cargada]).then(function () {
-    var el = document.getElementById("app-splash");
-    if (!el) return;
-    el.style.opacity = "0";
-    setTimeout(function () { el.remove(); }, 300);
+    var nombre = document.getElementById("app-splash-nombre");
+    var icono = document.getElementById("app-splash-icono");
+    if (nombre) nombre.style.display = "none";
+    if (icono) icono.style.display = "flex";
+    setTimeout(function () {
+      var el = document.getElementById("app-splash");
+      if (!el) return;
+      el.style.opacity = "0";
+      setTimeout(function () { el.remove(); }, 300);
+    }, 400);
   });
 })();
 `;
@@ -121,18 +128,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {SCRIPT_SERVICE_WORKER && <script dangerouslySetInnerHTML={{ __html: SCRIPT_SERVICE_WORKER }} />}
       </head>
       <body className="min-h-full flex flex-col">
-        {/* Sin ícono a propósito: el splash nativo del sistema (armado desde
-            manifest.ts) ya muestra el ícono un instante antes que esto —
-            repetirlo acá se sentía como si el ícono "saltara" entre los dos.
-            Esta pantalla solo agrega lo que el splash nativo no garantiza:
-            el nombre de la app y un indicador de carga. */}
+        {/* Dos etapas: primero nombre + carga (lo que el splash nativo del
+            sistema no garantiza), y recién cuando la página ya está lista
+            pasa al ícono un instante antes de revelar el login. */}
         <div
           id="app-splash"
-          className="fixed inset-0 z-[9999] flex-col items-center justify-center gap-3 bg-white"
+          className="fixed inset-0 z-[9999] flex-col items-center justify-center bg-white"
           style={{ transition: "opacity .3s ease" }}
         >
-          <p className="text-lg font-bold text-neutral-800 tracking-tight">{APP_NOMBRE}</p>
-          <Spinner className="w-5 h-5 text-orange-500" />
+          <div id="app-splash-nombre" className="flex flex-col items-center gap-3">
+            <p className="text-lg font-bold text-neutral-800 tracking-tight">{APP_NOMBRE}</p>
+            <Spinner className="w-5 h-5 text-orange-500" />
+          </div>
+          <div id="app-splash-icono" className="hidden">
+            <img src="/pwa-icon-512.png" alt="" width={88} height={88} />
+          </div>
         </div>
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_OCULTAR_SPLASH }} />
         <ThemeProvider>
