@@ -121,13 +121,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {SCRIPT_SERVICE_WORKER && <script dangerouslySetInnerHTML={{ __html: SCRIPT_SERVICE_WORKER }} />}
       </head>
       <body className="min-h-full flex flex-col">
+        {/* Sin ícono a propósito: el splash nativo del sistema (armado desde
+            manifest.ts) ya muestra el ícono un instante antes que esto —
+            repetirlo acá se sentía como si el ícono "saltara" entre los dos.
+            Esta pantalla solo agrega lo que el splash nativo no garantiza:
+            el nombre de la app y un indicador de carga. */}
         <div
           id="app-splash"
-          className="fixed inset-0 z-[9999] flex-col items-center justify-center gap-4 bg-white"
+          className="fixed inset-0 z-[9999] flex-col items-center justify-center gap-3 bg-white"
           style={{ transition: "opacity .3s ease" }}
         >
-          <img src="/pwa-icon-512.png" alt="" width={88} height={88} />
-          <p className="text-[15px] font-bold text-neutral-800 tracking-tight">{APP_NOMBRE}</p>
+          <p className="text-lg font-bold text-neutral-800 tracking-tight">{APP_NOMBRE}</p>
           <Spinner className="w-5 h-5 text-orange-500" />
         </div>
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_OCULTAR_SPLASH }} />
