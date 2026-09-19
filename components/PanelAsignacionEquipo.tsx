@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -39,21 +39,69 @@ type Area = { id: string; nombre: string; sitioId: string; empresaId: string };
 
 const POR_PAGINA = 8;
 
-export default function PanelAsignacionEquipo({
-  colaboradores,
-  empresas,
-  sitios,
-  areas,
-  sinAsignaciones,
-}: {
-  colaboradores: Colaborador[];
-  empresas: Opcion[];
-  sitios: Sitio[];
-  areas: Area[];
-  sinAsignaciones: boolean;
-}) {
+export default function PanelAsignacionEquipo() {
   const router = useRouter();
   const toast = useToast();
+
+  // Se pide una sola vez al montar: esta pantalla necesita el listado
+  // completo del alcance de TH para calcular equipos en el cliente (no
+  // tiene sentido paginarlo en el servidor).
+  const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
+  const [empresas, setEmpresas] = useState<Opcion[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [sinAsignaciones, setSinAsignaciones] = useState(false);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+
+  // Usada tanto por la carga inicial (abajo) como para refrescar después
+  // de guardar cambios, sin depender de router.refresh() (esta pantalla ya
+  // no tiene datos del servidor que refrescar).
+  const cargarDatos = async () => {
+    try {
+      const res = await fetch("/api/th/colaboradores/asignacion-equipo");
+      if (!res.ok) {
+        setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+        return;
+      }
+      const data = await res.json();
+      setColaboradores(data.colaboradores);
+      setEmpresas(data.empresas);
+      setSitios(data.sitios);
+      setAreas(data.areas);
+      setSinAsignaciones(data.sinAsignaciones);
+      setErrorInicial("");
+    } catch {
+      setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    }
+  };
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/th/colaboradores/asignacion-equipo")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data = await res.json();
+        setColaboradores(data.colaboradores);
+        setEmpresas(data.empresas);
+        setSitios(data.sitios);
+        setAreas(data.areas);
+        setSinAsignaciones(data.sinAsignaciones);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
@@ -216,7 +264,7 @@ export default function PanelAsignacionEquipo({
         return;
       }
       toast.exito("Equipo actualizado");
-      router.refresh();
+      await cargarDatos();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -266,7 +314,7 @@ export default function PanelAsignacionEquipo({
       setConfirmandoMover(false);
       setVerSoloEquipo(false);
       setSupervisorDestinoId("");
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorMover("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -292,17 +340,27 @@ export default function PanelAsignacionEquipo({
         </button>
       </div>
 
-      {sinAsignaciones && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
-          No tienes ninguna Empresa/Sitio/Área asignada todavía.
-        </div>
+      {errorInicial && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
       )}
 
-      {!sinAsignaciones && supervisores.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
-          Todavía no hay ningún colaborador marcado como Supervisor. Marcalo desde la pantalla de Colaboradores.
+      {cargandoInicial ? (
+        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+          <Spinner className="w-4 h-4" /> Cargando...
         </div>
-      )}
+      ) : (
+        <>
+          {sinAsignaciones && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
+              No tienes ninguna Empresa/Sitio/Área asignada todavía.
+            </div>
+          )}
+
+          {!sinAsignaciones && supervisores.length === 0 && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
+              Todavía no hay ningún colaborador marcado como Supervisor. Marcalo desde la pantalla de Colaboradores.
+            </div>
+          )}
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Columna izquierda: filtros + lista de supervisores */}
@@ -604,6 +662,8 @@ export default function PanelAsignacionEquipo({
           )}
         </div>
       </div>
+        </>
+      )}
 
       <Modal
         abierto={confirmandoMover}
