@@ -14,10 +14,6 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener("fetch", () => {
-  // No-op: deja pasar todos los pedidos directo a la red, sin cache.
-});
-
 self.addEventListener("push", (event) => {
   let datos = { title: "Gestión de Pasajes", body: "" };
   if (event.data) {
