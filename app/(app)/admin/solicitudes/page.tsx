@@ -1,6 +1,10 @@
 // app/(app)/admin/solicitudes/page.tsx
+// Solo valida sesión/rol acá: los colaboradores del filtro se piden desde
+// el cliente (ver PanelControlSolicitudes) para que la pantalla se
+// muestre de inmediato en vez de bloquear la navegación esperando esa
+// consulta en el servidor.
+
 import { redirect } from "next/navigation";
-import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import PanelControlSolicitudes from "../../../../components/PanelControlSolicitudes";
 
@@ -9,10 +13,5 @@ export default async function ControlSolicitudesPage() {
   if (!session) redirect("/login");
   if (session.rol !== "SUPER_ADMIN") redirect("/login");
 
-  const colaboradores = await db.colaborador.findMany({
-    select: { id: true, nombreCompleto: true },
-    orderBy: { nombreCompleto: "asc" },
-  });
-
-  return <PanelControlSolicitudes colaboradores={colaboradores} />;
+  return <PanelControlSolicitudes />;
 }

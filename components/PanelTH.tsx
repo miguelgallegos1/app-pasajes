@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { IconoCheck, IconoLupa, IconoDevolver } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
@@ -39,21 +39,40 @@ const POR_PAGINA = 8;
 // id real de colaborador, así que no puede chocar con uno.
 const SIN_SUPERVISOR = "__sin_supervisor__";
 
-export default function PanelTH({
-  esSuperAdmin,
-  sinAsignaciones,
-  pendientes: pendientesIniciales,
-}: {
-  esSuperAdmin: boolean;
-  sinAsignaciones: boolean;
-  pendientes: Pendiente[];
-}) {
+export default function PanelTH() {
   const toast = useToast();
 
   // Copia local editable: al aprobar/devolver se quita la fila al instante
   // (no hace falta esperar un router.refresh() ni volver a pedirle la
   // lista entera al servidor — ya sabemos exactamente qué cambió).
-  const [pendientes, setPendientes] = useState(pendientesIniciales);
+  const [pendientes, setPendientes] = useState<Pendiente[]>([]);
+  const [sinAsignaciones, setSinAsignaciones] = useState(false);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/th/aprobaciones/pendientes")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data = await res.json();
+        setPendientes(data.pendientes);
+        setSinAsignaciones(data.sinAsignaciones);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const [busqueda, setBusqueda] = useState("");
   const [supervisorId, setSupervisorId] = useState("");
@@ -338,6 +357,10 @@ export default function PanelTH({
           )}
         </div>
 
+        {errorInicial && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
+        )}
+
         {sinAsignaciones && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
             Todavía no tienes ninguna Empresa/Sitio/Área asignada. Pide al Super Administrador que te
@@ -345,6 +368,12 @@ export default function PanelTH({
           </div>
         )}
 
+        {cargandoInicial ? (
+          <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+            <Spinner className="w-4 h-4" /> Cargando...
+          </div>
+        ) : (
+        <>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="relative max-w-sm flex-1">
             <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
@@ -520,6 +549,8 @@ export default function PanelTH({
 
           <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
         </div>
+        )}
+        </>
         )}
       </div>
 

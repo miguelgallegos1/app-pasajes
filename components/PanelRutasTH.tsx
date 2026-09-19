@@ -8,7 +8,6 @@ import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { IconoAlerta, IconoLupa, IconoChevron } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
-import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
@@ -47,32 +46,76 @@ const VALOR_ORDEN: Record<CampoOrden, (r: Ruta) => string | number> = {
 
 const POR_PAGINA = 10;
 
-export default function PanelRutasTH({
-  rutas,
-  areasDisponibles,
-  empresas,
-  sitios,
-  areas,
-  sinAsignaciones,
-  esSuperAdmin,
-}: {
-  rutas: Ruta[];
-  areasDisponibles: Opcion[];
-  empresas: Opcion[];
-  sitios: Sitio[];
-  areas: Area[];
-  sinAsignaciones: boolean;
-  esSuperAdmin: boolean;
-}) {
-  const router = useRouter();
+export default function PanelRutasTH() {
   const toast = useToast();
+
+  const [rutas, setRutas] = useState<Ruta[]>([]);
+  const [areasDisponibles, setAreasDisponibles] = useState<Opcion[]>([]);
+  const [empresas, setEmpresas] = useState<Opcion[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [sinAsignaciones, setSinAsignaciones] = useState(false);
+  const [esSuperAdmin, setEsSuperAdmin] = useState(false);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+
+  const cargarDatos = async () => {
+    try {
+      const res = await fetch("/api/th/rutas/datos");
+      if (!res.ok) {
+        setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+        return;
+      }
+      const data = await res.json();
+      setRutas(data.rutas);
+      setAreasDisponibles(data.areasDisponibles);
+      setEmpresas(data.empresas);
+      setSitios(data.sitios);
+      setAreas(data.areas);
+      setSinAsignaciones(data.sinAsignaciones);
+      setEsSuperAdmin(data.esSuperAdmin);
+      setErrorInicial("");
+    } catch {
+      setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    }
+  };
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/th/rutas/datos")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data = await res.json();
+        setRutas(data.rutas);
+        setAreasDisponibles(data.areasDisponibles);
+        setEmpresas(data.empresas);
+        setSitios(data.sitios);
+        setAreas(data.areas);
+        setSinAsignaciones(data.sinAsignaciones);
+        setEsSuperAdmin(data.esSuperAdmin);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   const [busqueda, setBusqueda] = useState("");
   const [soloActivas, setSoloActivas] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
   const resetPagina = () => setPaginaActual(1);
 
   // Al eliminar, la fila se oculta al instante (no depende de que
-  // router.refresh() termine su viaje de ida y vuelta al servidor, que con
+  // cargarDatos() termine su viaje de ida y vuelta al servidor, que con
   // Neon puede demorar un poco) — así que buscar o filtrar justo después
   // de borrar ya no la muestra, aunque la lista de servidor recién esté
   // poniéndose al día. Mismo patrón que "Mis Pasajes" al eliminar una
@@ -206,7 +249,7 @@ export default function PanelRutasTH({
           ? `${data.eliminadas} ruta(s) eliminada(s); ${data.omitidas} se omitieron por tener solicitudes registradas`
           : `${data.eliminadas} ruta(s) eliminada(s)`
       );
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorLote("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -293,7 +336,7 @@ export default function PanelRutasTH({
       }
       setModalAbierto(false);
       toast.exito(editandoId ? "Ruta actualizada" : "Ruta creada");
-      router.refresh();
+      await cargarDatos();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -322,7 +365,7 @@ export default function PanelRutasTH({
       }
       setIdGestionar(null);
       toast.exito(nuevoActivo ? "Ruta reactivada" : "Ruta desactivada");
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -347,7 +390,7 @@ export default function PanelRutasTH({
       setIdGestionar(null);
       setConfirmandoEliminar(false);
       toast.exito("Ruta eliminada");
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -382,12 +425,22 @@ export default function PanelRutasTH({
         </div>
       </div>
 
+      {errorInicial && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
+      )}
+
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
           No tienes ninguna Empresa/Sitio/Área asignada todavía.
         </div>
       )}
 
+      {cargandoInicial ? (
+        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+          <Spinner className="w-4 h-4" /> Cargando...
+        </div>
+      ) : (
+      <>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="relative flex-1 max-w-sm">
@@ -541,6 +594,8 @@ export default function PanelRutasTH({
         </div>
         <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
       </div>
+      </>
+      )}
 
       <Modal
         abierto={modalAbierto}

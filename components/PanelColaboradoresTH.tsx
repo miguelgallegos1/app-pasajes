@@ -6,7 +6,6 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
@@ -53,23 +52,65 @@ type Area = { id: string; nombre: string; sitioId: string };
 
 const POR_PAGINA = 10;
 
-export default function PanelColaboradoresTH({
-  colaboradores,
-  areasDisponibles,
-  empresas,
-  sitios,
-  areas,
-  sinAsignaciones,
-}: {
-  colaboradores: Colaborador[];
-  areasDisponibles: Opcion[];
-  empresas: Opcion[];
-  sitios: Sitio[];
-  areas: Area[];
-  sinAsignaciones: boolean;
-}) {
-  const router = useRouter();
+export default function PanelColaboradoresTH() {
   const toast = useToast();
+
+  const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
+  const [areasDisponibles, setAreasDisponibles] = useState<Opcion[]>([]);
+  const [empresas, setEmpresas] = useState<Opcion[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [sinAsignaciones, setSinAsignaciones] = useState(false);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+
+  const cargarDatos = async () => {
+    try {
+      const res = await fetch("/api/th/colaboradores/datos");
+      if (!res.ok) {
+        setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+        return;
+      }
+      const data = await res.json();
+      setColaboradores(data.colaboradores);
+      setAreasDisponibles(data.areasDisponibles);
+      setEmpresas(data.empresas);
+      setSitios(data.sitios);
+      setAreas(data.areas);
+      setSinAsignaciones(data.sinAsignaciones);
+      setErrorInicial("");
+    } catch {
+      setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    }
+  };
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/th/colaboradores/datos")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data = await res.json();
+        setColaboradores(data.colaboradores);
+        setAreasDisponibles(data.areasDisponibles);
+        setEmpresas(data.empresas);
+        setSitios(data.sitios);
+        setAreas(data.areas);
+        setSinAsignaciones(data.sinAsignaciones);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   // Precarga la búsqueda si se llegó desde la paleta de comandos con un
   // resultado de colaborador (?q=...) — lectura directa del DOM, no
@@ -272,7 +313,7 @@ export default function PanelColaboradoresTH({
       toast.exito(
         editandoId ? (reseteandoPin ? "Colaborador actualizado y PIN reseteado" : "Colaborador actualizado") : "Colaborador creado"
       );
-      router.refresh();
+      await cargarDatos();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -301,7 +342,7 @@ export default function PanelColaboradoresTH({
       }
       setIdGestionar(null);
       toast.exito(nuevoEstado === "ACTIVO" ? "Colaborador reactivado" : "Colaborador desactivado");
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -325,7 +366,7 @@ export default function PanelColaboradoresTH({
       setIdGestionar(null);
       setConfirmandoEliminar(false);
       toast.exito("Colaborador eliminado");
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -350,12 +391,22 @@ export default function PanelColaboradoresTH({
         </button>
       </div>
 
+      {errorInicial && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
+      )}
+
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
           No tienes ninguna Empresa/Sitio/Área asignada todavía.
         </div>
       )}
 
+      {cargandoInicial ? (
+        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+          <Spinner className="w-4 h-4" /> Cargando...
+        </div>
+      ) : (
+      <>
       {/* Barra de filtros: buscador + switch + Empresa/Sitio/Área */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -479,6 +530,8 @@ export default function PanelColaboradoresTH({
 
         <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
       </div>
+      </>
+      )}
 
       <Modal
         abierto={modalAbierto && !confirmandoResetPin}

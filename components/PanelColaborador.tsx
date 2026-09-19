@@ -5,10 +5,9 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
-import { useRouter } from "next/navigation";
 import CalendarioSelector from "./CalendarioSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Modal from "./Modal";
@@ -54,29 +53,69 @@ const CLASE_CAMPO =
 
 const POR_PAGINA = 8;
 
-export default function PanelColaborador({
-  colaboradorId,
-  nombreCompleto,
-  esSupervisor,
-  equipo,
-  rutasPropias,
-  rutasEquipo,
-  solicitudes,
-}: {
-  colaboradorId: string;
-  nombreCompleto: string;
-  esSupervisor: boolean;
-  equipo: MiembroEquipo[];
-  rutasPropias: RutaSimple[];
-  // Rutas de cada miembro del equipo (uno mismo incluido), ya cargadas
-  // desde el servidor junto con la página — abrir "Nueva solicitud" no
-  // dispara ningún pedido de red, es instantáneo aunque el equipo tenga
-  // cientos de personas.
-  rutasEquipo: Record<string, RutaSimple[]>;
-  solicitudes: Solicitud[];
-}) {
-  const router = useRouter();
+export default function PanelColaborador() {
   const toast = useToast();
+
+  const [colaboradorId, setColaboradorId] = useState("");
+  const [nombreCompleto, setNombreCompleto] = useState("");
+  const [esSupervisor, setEsSupervisor] = useState(false);
+  const [equipo, setEquipo] = useState<MiembroEquipo[]>([]);
+  // Rutas de cada miembro del equipo (uno mismo incluido), ya cargadas
+  // junto con la página — abrir "Nueva solicitud" no dispara ningún pedido
+  // de red, es instantáneo aunque el equipo tenga cientos de personas.
+  const [rutasEquipo, setRutasEquipo] = useState<Record<string, RutaSimple[]>>({});
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+  const rutasPropias = useMemo(() => rutasEquipo[colaboradorId] ?? [], [rutasEquipo, colaboradorId]);
+
+  const cargarDatos = async () => {
+    try {
+      const res = await fetch("/api/mis-pasajes/datos");
+      if (!res.ok) {
+        setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+        return;
+      }
+      const data = await res.json();
+      setColaboradorId(data.colaboradorId);
+      setNombreCompleto(data.nombreCompleto);
+      setEsSupervisor(data.esSupervisor);
+      setEquipo(data.equipo);
+      setRutasEquipo(data.rutasEquipo);
+      setSolicitudes(data.solicitudes);
+      setErrorInicial("");
+    } catch {
+      setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    }
+  };
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/mis-pasajes/datos")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data = await res.json();
+        setColaboradorId(data.colaboradorId);
+        setNombreCompleto(data.nombreCompleto);
+        setEsSupervisor(data.esSupervisor);
+        setEquipo(data.equipo);
+        setRutasEquipo(data.rutasEquipo);
+        setSolicitudes(data.solicitudes);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
@@ -96,7 +135,7 @@ export default function PanelColaborador({
 
   // Al eliminar, la fila se oculta al instante (con opción de deshacer)
   // sin tocar el array que vino del servidor — así "Crear"/"Editar" siguen
-  // funcionando con su router.refresh() de siempre, sin pisarse con esto.
+  // funcionando con su cargarDatos() de siempre, sin pisarse con esto.
   const [idsOcultos, setIdsOcultos] = useState<Set<string>>(new Set());
   const solicitudesVisibles = useMemo(
     () => (idsOcultos.size === 0 ? solicitudes : solicitudes.filter((s) => !idsOcultos.has(s.id))),
@@ -245,7 +284,7 @@ export default function PanelColaborador({
           ? `${data.eliminadas} solicitud(es) eliminada(s); ${data.omitidas} se omitieron`
           : `${data.eliminadas} solicitud(es) eliminada(s)`
       );
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorLote("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -420,7 +459,7 @@ export default function PanelColaborador({
         const n = data.creadas ?? itemsLote.length;
         toast.exito(`${n} solicitud${n === 1 ? "" : "es"} registrada${n === 1 ? "" : "s"}`);
       }
-      router.refresh();
+      await cargarDatos();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -454,7 +493,7 @@ export default function PanelColaborador({
             mostrar(s.id);
             return;
           }
-          router.refresh();
+          await cargarDatos();
         } catch {
           toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
           mostrar(s.id);
@@ -491,6 +530,16 @@ export default function PanelColaborador({
 
         <NotificacionesPush />
 
+        {errorInicial && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
+        )}
+
+        {cargandoInicial ? (
+          <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+            <Spinner className="w-4 h-4" /> Cargando...
+          </div>
+        ) : (
+        <>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="relative max-w-sm flex-1">
             <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
@@ -675,6 +724,8 @@ export default function PanelColaborador({
 
           <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
         </div>
+        )}
+        </>
         )}
       </div>
 

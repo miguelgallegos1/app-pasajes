@@ -1,8 +1,10 @@
 // app/(app)/th/aprobaciones/page.tsx
+// Solo valida sesión/rol acá: la cola de pendientes se pide desde el
+// cliente (ver PanelTH) para que la pantalla se muestre de inmediato en
+// vez de bloquear la navegación esperando esa consulta en el servidor.
+
 import { redirect } from "next/navigation";
-import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
-import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
 import PanelTH from "../../../../components/PanelTH";
 
 export default async function AprobacionesPage() {
@@ -10,48 +12,5 @@ export default async function AprobacionesPage() {
   if (!session) redirect("/login");
   if (!["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) redirect("/login");
 
-  const { sinRestriccion, condicion } = await obtenerCondicionRutaTH(session.id, session.rol);
-  const sinAsignaciones = condicion === null;
-
-  const pendientes = sinAsignaciones
-    ? []
-    : await db.solicitudPasaje.findMany({
-        where: {
-          estado: "PENDIENTE",
-          ...(sinRestriccion ? {} : { ruta: condicion! }),
-        },
-        orderBy: { fecha: "asc" },
-        include: {
-          colaborador: {
-            select: {
-              nombreCompleto: true,
-              supervisorId: true,
-              supervisor: { select: { nombreCompleto: true } },
-            },
-          },
-          ruta: { select: { nombre: true } },
-        },
-      });
-
-  const pendientesSerializadas = pendientes.map((s) => ({
-    id: s.id,
-    codigo: s.codigo,
-    fecha: s.fecha.toISOString(),
-    fechaSolicitud: s.fechaSolicitud.toISOString(),
-    montoTotal: Number(s.montoTotal),
-    observaciones: s.observaciones,
-    colaboradorId: s.colaboradorId,
-    nombreColaborador: s.colaborador.nombreCompleto,
-    supervisorId: s.colaborador.supervisorId,
-    supervisorNombre: s.colaborador.supervisor?.nombreCompleto ?? null,
-    rutaLabel: s.ruta.nombre,
-  }));
-
-  return (
-    <PanelTH
-      esSuperAdmin={session.rol === "SUPER_ADMIN"}
-      sinAsignaciones={sinAsignaciones}
-      pendientes={pendientesSerializadas}
-    />
-  );
+  return <PanelTH />;
 }

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { IconoCheck, IconoLupa, IconoDevolver } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
@@ -55,20 +55,39 @@ function opcionesUnicas<T>(items: T[], idKey: keyof T, labelKey: keyof T) {
   return Array.from(vistos.entries()).map(([id, label]) => ({ id, label }));
 }
 
-export default function PanelCoordinador({
-  esSuperAdmin,
-  sinAsignaciones,
-  aprobadas: aprobadasIniciales,
-}: {
-  esSuperAdmin: boolean;
-  sinAsignaciones: boolean;
-  aprobadas: Aprobada[];
-}) {
+export default function PanelCoordinador() {
   const toast = useToast();
 
   // Copia local editable: al revisar/devolver se quita la fila al instante,
   // sin esperar un router.refresh() ni volver a pedir la lista al servidor.
-  const [aprobadas, setAprobadas] = useState(aprobadasIniciales);
+  const [aprobadas, setAprobadas] = useState<Aprobada[]>([]);
+  const [sinAsignaciones, setSinAsignaciones] = useState(false);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/coordinador/revision/aprobadas")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data = await res.json();
+        setAprobadas(data.aprobadas);
+        setSinAsignaciones(data.sinAsignaciones);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [busqueda, setBusqueda] = useState("");
@@ -361,6 +380,10 @@ export default function PanelCoordinador({
           <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes aprobadas listas para revisar</span>
         </div>
 
+        {errorInicial && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
+        )}
+
         {sinAsignaciones && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
             Todavía no tienes ninguna Empresa/Sitio/Área asignada. Pide al Super Administrador que te
@@ -368,6 +391,12 @@ export default function PanelCoordinador({
           </div>
         )}
 
+        {cargandoInicial ? (
+          <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+            <Spinner className="w-4 h-4" /> Cargando...
+          </div>
+        ) : (
+        <>
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
@@ -570,6 +599,8 @@ export default function PanelCoordinador({
             </div>
             <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
           </div>
+        )}
+        </>
         )}
       </div>
 

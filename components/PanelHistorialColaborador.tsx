@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
@@ -43,13 +43,25 @@ const ESTILOS_ESTADO: Record<string, string> = {
   PAGADA: "bg-orange-100 text-orange-800",
 };
 
-export default function PanelHistorialColaborador({
-  esSupervisor,
-  equipo,
-}: {
-  esSupervisor: boolean;
-  equipo: { id: string; nombreCompleto: string }[];
-}) {
+export default function PanelHistorialColaborador() {
+  const [esSupervisor, setEsSupervisor] = useState(false);
+  const [equipo, setEquipo] = useState<{ id: string; nombreCompleto: string }[]>([]);
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/mis-pasajes/historial/equipo")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { esSupervisor: boolean; equipo: { id: string; nombreCompleto: string }[] } | null) => {
+        if (cancelado || !data) return;
+        setEsSupervisor(data.esSupervisor);
+        setEquipo(data.equipo);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
   const [estado, setEstado] = useState("");

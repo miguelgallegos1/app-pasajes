@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import RangoFechasSelector from "./RangoFechasSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -39,17 +39,40 @@ const TARJETAS_KPI = [
   { clave: "pagadas" as const, label: "Pagadas", color: "#eb6834", fondo: "bg-orange-50 dark:bg-orange-500/10", texto: "text-orange-800 dark:text-orange-400" },
 ];
 
-export default function PanelDashboard({
-  empresas,
-  sitios,
-  areas,
-  alerta,
-}: {
-  empresas: Empresa[];
-  sitios: Sitio[];
-  areas: Area[];
-  alerta: AlertaPendiente | null;
-}) {
+export default function PanelDashboard() {
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [alerta, setAlerta] = useState<AlertaPendiente | null>(null);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/dashboard/filtros")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data = await res.json();
+        setEmpresas(data.empresas);
+        setSitios(data.sitios);
+        setAreas(data.areas);
+        setAlerta(data.alerta);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
   const [empresaId, setEmpresaId] = useState("");
@@ -112,6 +135,16 @@ export default function PanelDashboard({
         <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Resumen del período seleccionado</span>
       </div>
 
+      {errorInicial && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
+      )}
+
+      {cargandoInicial ? (
+        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+          <Spinner className="w-4 h-4" /> Cargando...
+        </div>
+      ) : (
+      <>
       <AlertaPendientes alerta={alerta} />
 
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
@@ -186,6 +219,8 @@ export default function PanelDashboard({
             </div>
           </div>
         </>
+      )}
+      </>
       )}
     </div>
   );

@@ -5,8 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { IconoAlerta } from "./Icons";
 import Spinner from "./Spinner";
@@ -36,12 +35,54 @@ const ETIQUETA_HIJOS: Record<ElementoGestion["tipo"], string> = {
   area: "colaboradores, rutas o asignaciones de TH",
 };
 
-export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
-  const router = useRouter();
+export default function PanelEmpresas() {
   const toast = useToast();
 
-  const [empresaId, setEmpresaId] = useState<string | null>(empresas[0]?.id ?? null);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [sitioId, setSitioId] = useState<string | null>(null);
+
+  const cargarDatos = async () => {
+    try {
+      const res = await fetch("/api/admin/empresas/datos");
+      if (!res.ok) {
+        setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+        return;
+      }
+      const data: Empresa[] = await res.json();
+      setEmpresas(data);
+      setEmpresaId((actual) => (actual && data.some((e) => e.id === actual) ? actual : (data[0]?.id ?? null)));
+      setErrorInicial("");
+    } catch {
+      setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    }
+  };
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/admin/empresas/datos")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data: Empresa[] = await res.json();
+        setEmpresas(data);
+        setEmpresaId(data[0]?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const empresaSeleccionada = empresas.find((e) => e.id === empresaId) ?? null;
   const sitioSeleccionado = empresaSeleccionada?.sitios.find((s) => s.id === sitioId) ?? null;
@@ -104,7 +145,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       const TERMINACION: Record<string, string> = { empresa: "a", sitio: "o", area: "a" };
       toast.exito(`${ETIQUETAS[modal!.tipo]} ${modal!.id ? "actualizad" : "cread"}${TERMINACION[modal!.tipo]}`);
       setModal(null);
-      router.refresh();
+      await cargarDatos();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -137,7 +178,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       }
       toast.exito(nuevoActivo ? "Empresa reactivada" : "Empresa desactivada");
       setGestionando(null);
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -167,7 +208,7 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
       toast.exito(`${ETIQUETAS[gestionando.tipo]} eliminada`);
       setGestionando(null);
       setConfirmandoEliminar(false);
-      router.refresh();
+      await cargarDatos();
     } catch {
       setErrorGestion("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -183,6 +224,16 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
         <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Administra la estructura de empresas, sitios y áreas</span>
       </div>
 
+      {errorInicial && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
+      )}
+
+      {cargandoInicial ? (
+        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+          <Spinner className="w-4 h-4" /> Cargando...
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Columna 1: Empresas */}
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-2">
@@ -330,6 +381,8 @@ export default function PanelEmpresas({ empresas }: { empresas: Empresa[] }) {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* Modal: Crear/Editar */}
       <Modal

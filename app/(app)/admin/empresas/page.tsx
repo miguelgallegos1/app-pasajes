@@ -1,6 +1,10 @@
 // app/(app)/admin/empresas/page.tsx
+// Solo valida sesión/rol acá: el árbol de empresas se pide desde el
+// cliente (ver PanelEmpresas) para que la pantalla se muestre de
+// inmediato en vez de bloquear la navegación esperando esa consulta en el
+// servidor.
+
 import { redirect } from "next/navigation";
-import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import PanelEmpresas from "../../../../components/PanelEmpresas";
 
@@ -9,15 +13,5 @@ export default async function EmpresasPage() {
   if (!session) redirect("/login");
   if (session.rol !== "SUPER_ADMIN") redirect("/login");
 
-  const empresas = await db.empresa.findMany({
-    orderBy: { numero: "asc" },
-    include: {
-      sitios: {
-        orderBy: { nombre: "asc" },
-        include: { areas: { orderBy: { nombre: "asc" } } },
-      },
-    },
-  });
-
-  return <PanelEmpresas empresas={empresas} />;
+  return <PanelEmpresas />;
 }

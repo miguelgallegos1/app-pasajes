@@ -1,8 +1,12 @@
 // app/(app)/dashboard/page.tsx
+// Solo valida sesión/rol acá: es la primera pantalla que se ve después del
+// login, así que es la que más importa que se muestre de inmediato — los
+// datos (empresas/sitios/áreas, alerta) se piden desde el cliente (ver
+// PanelDashboard) en vez de bloquear la navegación esperando esa consulta
+// en el servidor.
+
 import { redirect } from "next/navigation";
-import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
-import { obtenerAlertaPendiente } from "../../../lib/alertasPendientes";
 import PanelDashboard from "../../../components/PanelDashboard";
 
 export default async function DashboardPage() {
@@ -10,19 +14,5 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
   if (!["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"].includes(session.rol)) redirect("/login");
 
-  // Listas completas (no acotadas al alcance del rol): el filtro es
-  // opcional y el backend igual combina lo elegido aquí con el alcance
-  // real del usuario, así que mostrar el árbol completo de la empresa
-  // solo afecta qué opciones ve en el combo, no qué datos puede traer.
-  const [empresas, sitios, areas, alerta] = await Promise.all([
-    db.empresa.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
-    db.sitioProductivo.findMany({
-      select: { id: true, nombre: true, empresaId: true },
-      orderBy: { nombre: "asc" },
-    }),
-    db.area.findMany({ select: { id: true, nombre: true, sitioId: true }, orderBy: { nombre: "asc" } }),
-    obtenerAlertaPendiente(session),
-  ]);
-
-  return <PanelDashboard empresas={empresas} sitios={sitios} areas={areas} alerta={alerta} />;
+  return <PanelDashboard />;
 }

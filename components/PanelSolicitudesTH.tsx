@@ -8,8 +8,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
@@ -43,23 +42,65 @@ type Area = { id: string; nombre: string; sitioId: string; empresaId: string };
 
 const POR_PAGINA = 8;
 
-export default function PanelSolicitudesTH({
-  colaboradores,
-  rutasPorColaborador,
-  empresas,
-  sitios,
-  areas,
-  sinAsignaciones,
-}: {
-  colaboradores: Colaborador[];
-  rutasPorColaborador: Record<string, RutaSimple[]>;
-  empresas: Opcion[];
-  sitios: Sitio[];
-  areas: Area[];
-  sinAsignaciones: boolean;
-}) {
-  const router = useRouter();
+export default function PanelSolicitudesTH() {
   const toast = useToast();
+
+  const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
+  const [rutasPorColaborador, setRutasPorColaborador] = useState<Record<string, RutaSimple[]>>({});
+  const [empresas, setEmpresas] = useState<Opcion[]>([]);
+  const [sitios, setSitios] = useState<Sitio[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [sinAsignaciones, setSinAsignaciones] = useState(false);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
+  const [errorInicial, setErrorInicial] = useState("");
+
+  const cargarDatos = async () => {
+    try {
+      const res = await fetch("/api/th/solicitudes/datos");
+      if (!res.ok) {
+        setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+        return;
+      }
+      const data = await res.json();
+      setColaboradores(data.colaboradores);
+      setRutasPorColaborador(data.rutasPorColaborador);
+      setEmpresas(data.empresas);
+      setSitios(data.sitios);
+      setAreas(data.areas);
+      setSinAsignaciones(data.sinAsignaciones);
+      setErrorInicial("");
+    } catch {
+      setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    }
+  };
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/th/solicitudes/datos")
+      .then(async (res) => {
+        if (cancelado) return;
+        if (!res.ok) {
+          setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
+          return;
+        }
+        const data = await res.json();
+        setColaboradores(data.colaboradores);
+        setRutasPorColaborador(data.rutasPorColaborador);
+        setEmpresas(data.empresas);
+        setSitios(data.sitios);
+        setAreas(data.areas);
+        setSinAsignaciones(data.sinAsignaciones);
+      })
+      .catch(() => {
+        if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoInicial(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const [busqueda, setBusqueda] = useState("");
   const [soloActivos, setSoloActivos] = useState(true);
@@ -185,7 +226,7 @@ export default function PanelSolicitudesTH({
       setRutaIdsElegidas([]);
       setObservacionesPorRuta({});
       setObservacionAbiertaClave(null);
-      router.refresh();
+      await cargarDatos();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -203,6 +244,16 @@ export default function PanelSolicitudesTH({
         </span>
       </div>
 
+      {errorInicial && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
+      )}
+
+      {cargandoInicial ? (
+        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
+          <Spinner className="w-4 h-4" /> Cargando...
+        </div>
+      ) : (
+        <>
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
           No tienes ninguna Empresa/Sitio/Área asignada todavía.
@@ -382,6 +433,8 @@ export default function PanelSolicitudesTH({
           )}
         </div>
       </div>
+        </>
+      )}
 
       <Modal abierto={confirmando} onCerrar={() => setConfirmando(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
         <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoPregunta className="w-6 h-6" /></div>

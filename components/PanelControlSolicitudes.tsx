@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
 import EstadoVacio from "./EstadoVacio";
@@ -48,12 +48,23 @@ const ESTILOS_ESTADO: Record<string, string> = {
   PAGADA: "bg-orange-100 text-orange-800",
 };
 
-export default function PanelControlSolicitudes({
-  colaboradores,
-}: {
-  colaboradores: { id: string; nombreCompleto: string }[];
-}) {
+export default function PanelControlSolicitudes() {
   const toast = useToast();
+
+  const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/admin/solicitudes/colaboradores")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { id: string; nombreCompleto: string }[] | null) => {
+        if (!cancelado && data) setColaboradores(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const [codigo, setCodigo] = useState("");
   const [estado, setEstado] = useState("");
