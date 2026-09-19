@@ -2,8 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "../components/Toast";
 import ThemeProvider from "../components/ThemeProvider";
-import Spinner from "../components/Spinner";
-import { APP_NOMBRE } from "../lib/config";
+import SplashPWA from "../components/SplashPWA";
 import "./globals.css";
 
 // Se ejecuta antes de pintar la página: decide "dark" u "light" (localStorage,
@@ -28,29 +27,6 @@ const SCRIPT_DETECTAR_PWA = `
     var esPWA = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
     if (esPWA) document.documentElement.classList.add("es-pwa");
   } catch (e) {}
-})();
-`;
-
-// El splash nativo del sistema operativo (armado desde manifest.ts) no es
-// confiable: en iOS nunca muestra el nombre de la app, y en Android
-// depende de la versión. Esta pantalla propia sí lo garantiza — se pinta
-// de una (viene en el HTML inicial, sin esperar a React), con el ícono,
-// el nombre y la carga juntos desde el principio (no en etapas), y se
-// oculta sola cuando la página ya cargó, con un mínimo de tiempo visible
-// para que no sea solo un parpadeo en conexiones rápidas.
-const SCRIPT_OCULTAR_SPLASH = `
-(function () {
-  var minimo = new Promise(function (resolve) { setTimeout(resolve, 350); });
-  var cargada = new Promise(function (resolve) {
-    if (document.readyState === "complete") resolve();
-    else window.addEventListener("load", resolve);
-  });
-  Promise.all([minimo, cargada]).then(function () {
-    var el = document.getElementById("app-splash");
-    if (!el) return;
-    el.style.opacity = "0";
-    setTimeout(function () { el.remove(); }, 300);
-  });
 })();
 `;
 
@@ -125,19 +101,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Mismo ícono que muestra el splash nativo del sistema (para que
             se sienta continuo, sin "saltar"), con el nombre y la carga
             debajo desde el principio — nada de etapas ni ícono que
-            reaparece después. */}
-        <div
-          id="app-splash"
-          className="fixed inset-0 z-[9999] flex-col items-center justify-center gap-4 bg-white"
-          style={{ transition: "opacity .3s ease" }}
-        >
-          <img src="/pwa-icon-512.png" alt="" width={88} height={88} />
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-lg font-bold text-neutral-800 tracking-tight">{APP_NOMBRE}</p>
-            <Spinner className="w-5 h-5 text-orange-500" />
-          </div>
-        </div>
-        <script dangerouslySetInnerHTML={{ __html: SCRIPT_OCULTAR_SPLASH }} />
+            reaparece después. El desmontado lo maneja React (ver
+            SplashPWA), no un script que saque el nodo a mano. */}
+        <SplashPWA />
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>
