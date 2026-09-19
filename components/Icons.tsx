@@ -269,6 +269,14 @@ export function IconoRefrescar({ className = "w-4 h-4" }: { className?: string }
   );
 }
 
+export function IconoDevolver({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path d="M9 15 3 9l6-6M3 9h12a6 6 0 0 1 0 12h-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconoCajaVacia({ className = "w-10 h-10" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={1.6}>

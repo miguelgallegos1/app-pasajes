@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
@@ -20,13 +20,12 @@ import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
-import TablaAgrupadaColaborador, { type FilaResumen } from "./TablaAgrupadaColaborador";
+import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import { IconoDescargar } from "./Icons";
 
 type Empresa = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; empresaId: string };
 type Area = { id: string; nombre: string; sitioId: string };
-type Colaborador = { id: string; nombreCompleto: string; areaId: string };
 type Fila = { id: string; codigo: string; fecha: string; montoTotal: number; estado: string; rutaLabel: string; nombreColaborador: string };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
@@ -50,12 +49,10 @@ export default function PanelHistorialJefe({
   empresas,
   sitios,
   areas,
-  colaboradores,
 }: {
   empresas: Empresa[];
   sitios: Sitio[];
   areas: Area[];
-  colaboradores: Colaborador[];
 }) {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [desde, setDesde] = useState(fechaHoyTexto);
@@ -66,6 +63,32 @@ export default function PanelHistorialJefe({
   const [areaId, setAreaId] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
 
+  // Opciones del combo "Colaborador": solo quienes tienen actividad en el
+  // rango y los filtros (Empresa/Sitio/Área/Estado) elegidos, no la lista
+  // completa de la empresa (que puede ser grande y no tiene relación con
+  // la búsqueda).
+  const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
+  useEffect(() => {
+    if (!desde || !hasta) return;
+    const params = new URLSearchParams({ desde, hasta });
+    if (empresaId) params.set("empresaId", empresaId);
+    if (sitioId) params.set("sitioId", sitioId);
+    if (areaId) params.set("areaId", areaId);
+    if (estado) params.set("estado", estado);
+    let cancelado = false;
+    fetch(`/api/jefe/historial/colaboradores-filtro?${params.toString()}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (cancelado) return;
+        setColaboradores(data);
+        setColaboradorId((actual) => (actual && !data.some((c: { id: string }) => c.id === actual) ? "" : actual));
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [desde, hasta, empresaId, sitioId, areaId, estado]);
+
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -73,7 +96,7 @@ export default function PanelHistorialJefe({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
-  const [filasColaborador, setFilasColaborador] = useState<FilaResumen[] | null>(null);
+  const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
   const [paginaColab, setPaginaColab] = useState(1);
   const [totalPaginasColab, setTotalPaginasColab] = useState(1);
 
@@ -95,14 +118,10 @@ export default function PanelHistorialJefe({
     const base = sitioId ? areas.filter((a) => a.sitioId === sitioId) : areas.filter((a) => sitiosPermitidos.has(a.sitioId));
     return base.map((a) => ({ id: a.id, label: a.nombre }));
   }, [areas, sitioId, sitiosPermitidos]);
-  const areasPermitidas = useMemo(() => {
-    const base = sitioId ? areas.filter((a) => a.sitioId === sitioId) : areas.filter((a) => sitiosPermitidos.has(a.sitioId));
-    return new Set(base.map((a) => a.id));
-  }, [areas, sitioId, sitiosPermitidos]);
-  const colaboradoresOpciones = useMemo(() => {
-    const base = areaId ? colaboradores.filter((c) => c.areaId === areaId) : colaboradores.filter((c) => areasPermitidas.has(c.areaId));
-    return base.map((c) => ({ id: c.id, label: c.nombreCompleto }));
-  }, [colaboradores, areaId, areasPermitidas]);
+  const colaboradoresOpciones = useMemo(
+    () => colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
+    [colaboradores]
+  );
 
   const cambiarEmpresa = (v: string) => { setEmpresaId(v); setSitioId(""); setAreaId(""); setColaboradorId(""); };
   const cambiarSitio = (v: string) => { setSitioId(v); setAreaId(""); setColaboradorId(""); };
@@ -165,23 +184,6 @@ export default function PanelHistorialJefe({
     setItems(null);
     setFilasColaborador(null);
     setError("");
-  };
-
-  const cargarSubfilas = async (colaboradorId: string): Promise<FilaResumen[]> => {
-    const params = new URLSearchParams({ desde, hasta });
-    if (estado) params.set("estado", estado);
-    const res = await fetch(`/api/jefe/historial/colaboradores/${colaboradorId}/rutas?${params.toString()}`);
-    if (!res.ok) return [];
-    return res.json();
-  };
-
-  const cargarDetalle = async (colaboradorId: string, rutaId: string): Promise<Fila[]> => {
-    const params = new URLSearchParams({ desde, hasta, colaboradorId, rutaId, pagina: "1" });
-    if (estado) params.set("estado", estado);
-    const res = await fetch(`/api/jefe/historial?${params.toString()}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.items;
   };
 
   const urlExportar = () => `/api/jefe/historial/exportar?${parametrosBase().toString()}`;
@@ -293,26 +295,7 @@ export default function PanelHistorialJefe({
 
       {!cargando && vista === "colaborador" && filasColaborador && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-          <TablaAgrupadaColaborador
-            filas={filasColaborador}
-            cargarSubfilas={cargarSubfilas}
-            cargarDetalle={cargarDetalle}
-            renderDetalle={(s: Fila) => (
-              <div className="flex items-center justify-between gap-2 bg-neutral-50 dark:bg-neutral-800/60 rounded-lg px-3 py-2 text-sm">
-                <div className="min-w-0">
-                  <p className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{s.codigo}</p>
-                  <p className="text-neutral-600">{formatearFecha(s.fecha)}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] font-semibold px-2 py-1 rounded-full ${ESTILOS_ESTADO[s.estado] ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"}`}>
-                    {s.estado}
-                  </span>
-                  <span className="font-semibold">{formatearMoneda(s.montoTotal)}</span>
-                </div>
-              </div>
-            )}
-            vacio="No hay resultados en ese rango"
-          />
+          <TablaColaboradores filas={filasColaborador} vacio="No hay resultados en ese rango" />
           <Paginacion paginaActual={paginaColab} totalPaginas={totalPaginasColab} onCambiarPagina={buscar} deshabilitado={cargando} />
         </div>
       )}

@@ -8,7 +8,7 @@
 
 import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoCheck, IconoLupa } from "./Icons";
+import { IconoCheck, IconoLupa, IconoDevolver } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import SelectorVista from "./SelectorVista";
@@ -18,7 +18,7 @@ import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
-import TablaAgrupadaColaborador, { type FilaResumen } from "./TablaAgrupadaColaborador";
+import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 
 type Aprobada = {
   id: string;
@@ -150,26 +150,36 @@ export default function PanelCoordinador({
     });
   };
 
-  // --- Agrupación por colaborador -> ruta (client-side, cola acotada) ---
+  // Selección en grupo desde la vista "Por colaborador": si ya están
+  // todas seleccionadas las quita, si no las agrega todas — así se puede
+  // marcar un colaborador entero (o "Seleccionar todos") sin expandirlo.
+  const alternarGrupoSeleccion = (ids: string[]) => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      const todas = ids.every((id) => copia.has(id));
+      ids.forEach((id) => (todas ? copia.delete(id) : copia.add(id)));
+      return copia;
+    });
+  };
+
+  // --- Agrupación por colaborador (client-side, cola acotada) ---
   const gruposPorColaborador = useMemo(() => {
-    const mapa = new Map<string, { nombre: string; porRuta: Map<string, { nombre: string; items: Aprobada[] }> }>();
+    const mapa = new Map<string, { nombre: string; items: Aprobada[] }>();
     for (const r of aprobadasFiltradas) {
-      if (!mapa.has(r.colaboradorId)) mapa.set(r.colaboradorId, { nombre: r.nombreColaborador, porRuta: new Map() });
-      const grupo = mapa.get(r.colaboradorId)!;
-      if (!grupo.porRuta.has(r.rutaId)) grupo.porRuta.set(r.rutaId, { nombre: r.rutaLabel, items: [] });
-      grupo.porRuta.get(r.rutaId)!.items.push(r);
+      if (!mapa.has(r.colaboradorId)) mapa.set(r.colaboradorId, { nombre: r.nombreColaborador, items: [] });
+      mapa.get(r.colaboradorId)!.items.push(r);
     }
     return mapa;
   }, [aprobadasFiltradas]);
 
-  const filasColaborador: FilaResumen[] = useMemo(
+  const filasColaborador: FilaColaborador[] = useMemo(
     () =>
       Array.from(gruposPorColaborador.entries())
         .map(([id, g]) => ({
           id,
           nombre: g.nombre,
-          cantidad: g.porRuta.size,
-          total: Array.from(g.porRuta.values()).reduce((acc, r) => acc + r.items.reduce((a, i) => a + i.montoTotal, 0), 0),
+          cantidad: g.items.length,
+          total: g.items.reduce((acc, i) => acc + i.montoTotal, 0),
         }))
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     [gruposPorColaborador]
@@ -183,6 +193,10 @@ export default function PanelCoordinador({
   const [idADiscrepancia, setIdADiscrepancia] = useState<string | null>(null);
   const [motivoDiscrepancia, setMotivoDiscrepancia] = useState("");
   const [enviandoDiscrepancia, setEnviandoDiscrepancia] = useState(false);
+
+  const [confirmandoLoteDiscrepancia, setConfirmandoLoteDiscrepancia] = useState(false);
+  const [motivoLoteDiscrepancia, setMotivoLoteDiscrepancia] = useState("");
+  const [enviandoLoteDiscrepancia, setEnviandoLoteDiscrepancia] = useState(false);
 
   const [error, setError] = useState("");
 
@@ -276,28 +290,37 @@ export default function PanelCoordinador({
     }
   };
 
-  const filaAcciones = (s: Aprobada) => (
-    <div className="flex items-center justify-between gap-2 bg-white dark:bg-neutral-900 rounded-lg px-3 py-2 ring-1 ring-black/5 dark:ring-white/10 text-sm">
-      <div className="min-w-0">
-        <p className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{s.codigo}</p>
-        <p className="text-neutral-600">{formatearFecha(s.fecha)} · {formatearMoneda(s.montoTotal)}</p>
-      </div>
-      <div className="flex gap-1.5 shrink-0">
-        <button
-          onClick={() => setIdARevisar(s.id)}
-          className="text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 px-2.5 py-1.5 rounded-full transition"
-        >
-          Revisar
-        </button>
-        <button
-          onClick={() => abrirDiscrepancia(s.id)}
-          className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-2.5 py-1.5 rounded-full transition"
-        >
-          Discrepancia
-        </button>
-      </div>
-    </div>
-  );
+  const confirmarDiscrepanciaLote = async () => {
+    if (motivoLoteDiscrepancia.trim().length < 3) {
+      setError("Escribe la discrepancia encontrada (mínimo 3 caracteres)");
+      return;
+    }
+    setEnviandoLoteDiscrepancia(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/solicitudes/revertir-lote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(seleccionadas), motivo: motivoLoteDiscrepancia }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo devolver el lote");
+        toast.error(data.error ?? "No se pudo devolver el lote");
+        return;
+      }
+      toast.exito("Solicitudes devueltas a Talento Humano");
+      const idsDevueltos = new Set(seleccionadas);
+      setAprobadas((prev) => prev.filter((s) => !idsDevueltos.has(s.id)));
+      setSeleccionadas(new Set());
+      setConfirmandoLoteDiscrepancia(false);
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setEnviandoLoteDiscrepancia(false);
+    }
+  };
 
   return (
     <div className="flex flex-col">
@@ -370,34 +393,37 @@ export default function PanelCoordinador({
                   {seleccionadas.size} · {formatearMoneda(totalSeleccionado)}
                 </p>
               </div>
-              <button
-                onClick={() => setConfirmandoLote(true)}
-                className="text-xs sm:text-sm font-semibold bg-sky-600 hover:bg-sky-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md shrink-0"
-              >
-                Revisar seleccionadas
-              </button>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => setConfirmandoLoteDiscrepancia(true)}
+                  title="Reportar discrepancia"
+                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
+                >
+                  <IconoDevolver className="w-4 h-4" /> Discrepancia
+                </button>
+                <button
+                  onClick={() => setConfirmandoLote(true)}
+                  className="text-xs sm:text-sm font-semibold bg-sky-600 hover:bg-sky-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+                >
+                  Revisar seleccionadas
+                </button>
+              </div>
             </div>
           )}
         </div>
 
         {vista === "colaborador" ? (
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-            <TablaAgrupadaColaborador
-              filas={filasColaborador}
-              cargarSubfilas={(colaboradorId) => {
-                const g = gruposPorColaborador.get(colaboradorId);
-                if (!g) return [];
-                return Array.from(g.porRuta.entries()).map(([id, r]) => ({
-                  id,
-                  nombre: r.nombre,
-                  cantidad: r.items.length,
-                  total: r.items.reduce((a, i) => a + i.montoTotal, 0),
-                }));
-              }}
-              cargarDetalle={(colaboradorId, rutaId) => gruposPorColaborador.get(colaboradorId)?.porRuta.get(rutaId)?.items ?? []}
-              renderDetalle={filaAcciones}
-              vacio={busqueda ? "Sin resultados para esa búsqueda" : sinAsignaciones ? "Sin áreas asignadas" : "No hay solicitudes aprobadas pendientes de revisión"}
-            />
+          <TablaColaboradores
+            filas={filasColaborador}
+            porPagina={POR_PAGINA}
+            seleccion={{
+              seleccionadas,
+              idsDe: (colaboradorId) => (gruposPorColaborador.get(colaboradorId)?.items ?? []).map((s) => s.id),
+              alternarGrupo: alternarGrupoSeleccion,
+            }}
+            vacio={busqueda ? "Sin resultados para esa búsqueda" : sinAsignaciones ? "Sin áreas asignadas" : "No hay solicitudes aprobadas pendientes de revisión"}
+          />
           </div>
         ) : (
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
@@ -452,9 +478,10 @@ export default function PanelCoordinador({
                           </button>
                           <button
                             onClick={() => abrirDiscrepancia(s.id)}
-                            className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
+                            title="Reportar discrepancia"
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-2.5 py-1.5 rounded-lg transition"
                           >
-                            Discrepancia
+                            <IconoDevolver className="w-3.5 h-3.5" /> Discrepancia
                           </button>
                         </div>
                       </td>
@@ -526,6 +553,41 @@ export default function PanelCoordinador({
               >
                 {revisandoLote && <Spinner className="w-4 h-4" />}
                 {revisandoLote ? "Guardando..." : "Revisar todas"}
+              </button>
+            </div>
+      </Modal>
+
+      <Modal abierto={confirmandoLoteDiscrepancia} onCerrar={() => setConfirmandoLoteDiscrepancia(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+            <div>
+              <h2 className="font-semibold text-neutral-900 dark:text-white">Discrepancia en {seleccionadas.size} solicitudes</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                Todas vuelven a Pendiente para que Talento Humano las corrija.
+              </p>
+            </div>
+            <textarea
+              value={motivoLoteDiscrepancia}
+              onChange={(e) => setMotivoLoteDiscrepancia(e.target.value.toUpperCase())}
+              rows={3}
+              autoFocus
+              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
+              placeholder="Ej: La ruta no corresponde al área del colaborador..."
+            />
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                onClick={() => setConfirmandoLoteDiscrepancia(false)}
+                disabled={enviandoLoteDiscrepancia}
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarDiscrepanciaLote}
+                disabled={enviandoLoteDiscrepancia}
+                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+              >
+                {enviandoLoteDiscrepancia && <Spinner className="w-4 h-4" />}
+                {enviandoLoteDiscrepancia ? "Enviando..." : "Devolver todas"}
               </button>
             </div>
       </Modal>

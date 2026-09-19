@@ -1,6 +1,7 @@
 // lib/auth.ts
 // Funciones para crear y verificar la sesión de login (usando JWT).
 
+import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
@@ -30,7 +31,14 @@ export async function crearToken(payload: SesionUsuario) {
 
 // Lee la sesión actual desde la cookie (null si no hay sesión, expiró, o
 // un Super Admin la revocó explícitamente desde el panel de accesos).
-export async function getSession(): Promise<SesionUsuario | null> {
+//
+// cache() de React memoiza por la duración de UNA sola petición: el layout
+// compartido de las pantallas internas ya llama a getSession(), y casi
+// todas las páginas individuales la vuelven a llamar por su cuenta (para
+// sus propias validaciones de rol) — sin esto, cada navegación disparaba
+// dos consultas idénticas a la base (la del layout y la de la página) más
+// la de proxy.ts, que es un contexto aparte y no se puede memoizar acá.
+export const getSession = cache(async (): Promise<SesionUsuario | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
@@ -42,7 +50,7 @@ export async function getSession(): Promise<SesionUsuario | null> {
   } catch {
     return null;
   }
-}
+});
 
 // Nombre y foto a mostrar en el AppShell (sidebar/header), sin importar
 // el rol. Se usa una sola vez desde el layout compartido de las pantallas

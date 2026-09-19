@@ -3,6 +3,7 @@
 
 export const APP_NOMBRE = "Gestión de Pasajes";
 export const APP_VERSION = "3.0.0";
+export const APP_DESARROLLADOR = "Miguel Gallegos Calderón";
 
 // La sesión dura esto sin actividad; cada visita a una página protegida
 // la renueva (ver proxy.ts). Pasado este tiempo sin actividad, expira.

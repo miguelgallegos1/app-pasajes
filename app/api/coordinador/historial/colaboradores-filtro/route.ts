@@ -1,20 +1,20 @@
-// app/api/coordinador/historial/colaboradores/[id]/rutas/route.ts
-// GET: desglose por ruta de UN colaborador puntual (Revisadas + Pagadas,
-// dentro del alcance del Coordinador), para expandir su fila.
+// app/api/coordinador/historial/colaboradores-filtro/route.ts
+// GET: colaboradores con al menos una solicitud Revisada/Pagada dentro
+// del alcance del Coordinador y el rango de fechas dado — para poblar el
+// combo "Colaborador" del historial sin cargar la lista completa.
 
 import { NextResponse } from "next/server";
-import { getSession } from "../../../../../../../lib/auth";
-import { obtenerCondicionRutaTH } from "../../../../../../../lib/alcanceTH";
-import { fechaValida } from "../../../../../../../lib/fechas";
-import { agregarPorRuta } from "../../../../../../../lib/agregacionColaborador";
+import { getSession } from "../../../../../lib/auth";
+import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
+import { fechaValida } from "../../../../../lib/fechas";
+import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request) {
   const session = await getSession();
   if (!session || !["COORDINADOR", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { id } = await params;
   const { searchParams } = new URL(req.url);
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
@@ -39,13 +39,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       ? { estado: estado as "REVISADO" | "PAGADA" }
       : { estado: { in: ["REVISADO", "PAGADA"] as Array<"REVISADO" | "PAGADA"> } };
 
-  const rutas = await agregarPorRuta(
-    {
-      fecha: { gte: desdeFecha, lte: hastaFecha },
-      ...(sinRestriccion ? {} : { ruta: condicion }),
-      ...filtroEstado,
-    },
-    id
-  );
-  return NextResponse.json(rutas.map((r) => ({ id: r.rutaId, nombre: r.nombreRuta, cantidad: r.cantidad, total: r.total })));
+  const filtro = {
+    fecha: { gte: desdeFecha, lte: hastaFecha },
+    ...(sinRestriccion ? {} : { ruta: condicion }),
+    ...filtroEstado,
+  };
+
+  const colaboradores = await agregarPorColaborador(filtro);
+  return NextResponse.json(colaboradores.map((c) => ({ id: c.colaboradorId, nombreCompleto: c.nombreColaborador })));
 }

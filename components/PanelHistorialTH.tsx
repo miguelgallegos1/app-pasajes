@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
@@ -21,7 +21,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
-import { IconoImprimir, IconoRefrescar } from "./Icons";
+import { IconoImprimir, IconoDevolver } from "./Icons";
 
 type Fila = {
   id: string;
@@ -48,16 +48,36 @@ const ESTILOS_ESTADO: Record<string, string> = {
 };
 
 export default function PanelHistorialTH({
-  colaboradores,
   sinAsignaciones,
 }: {
-  colaboradores: { id: string; nombreCompleto: string }[];
   sinAsignaciones: boolean;
 }) {
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
   const [estado, setEstado] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
+
+  // Opciones del combo "Colaborador": solo quienes tienen actividad en el
+  // rango/estado elegidos, no la lista completa de la empresa (que puede
+  // ser grande y no tiene relación con lo que se está por buscar).
+  const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
+  useEffect(() => {
+    if (sinAsignaciones || !desde || !hasta) return;
+    const params = new URLSearchParams({ desde, hasta });
+    if (estado) params.set("estado", estado);
+    let cancelado = false;
+    fetch(`/api/th/historial/colaboradores-filtro?${params.toString()}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (cancelado) return;
+        setColaboradores(data);
+        setColaboradorId((actual) => (actual && !data.some((c: { id: string }) => c.id === actual) ? "" : actual));
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [desde, hasta, estado, sinAsignaciones]);
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -281,7 +301,7 @@ export default function PanelHistorialTH({
                           title="Revertir a pendiente"
                           className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-2.5 py-1.5 rounded-lg transition"
                         >
-                          <IconoRefrescar className="w-3.5 h-3.5" /> Revertir
+                          <IconoDevolver className="w-3.5 h-3.5" /> Revertir
                         </button>
                       )}
                     </td>

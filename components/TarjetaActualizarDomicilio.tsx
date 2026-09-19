@@ -5,34 +5,40 @@
 // el domicilio del colaborador (solo la dirección del sitio productivo),
 // así que no hay forma de detectar el desfase automáticamente — es un
 // aviso informativo, no una alerta basada en datos reales.
-// Se puede cerrar; una vez cerrada, no vuelve a aparecer en ese navegador.
+// Se puede cerrar; vuelve a aparecer solo pasados RECORDATORIO_DIAS, como
+// recordatorio periódico en vez de desaparecer para siempre.
 
 "use client";
 
 import { useState } from "react";
 import { IconoUbicacion, IconoX } from "./Icons";
 
-const CLAVE_OCULTA = "app-pasajes:aviso-domicilio-oculto";
+const CLAVE_OCULTA = "app-pasajes:aviso-domicilio-oculto-hasta";
+const RECORDATORIO_DIAS = 30;
+
+function vigente(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const guardado = localStorage.getItem(CLAVE_OCULTA);
+    if (!guardado) return false;
+    return Date.now() < Number(guardado);
+  } catch {
+    return false;
+  }
+}
 
 export default function TarjetaActualizarDomicilio() {
-  const [oculta, setOculta] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return localStorage.getItem(CLAVE_OCULTA) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [oculta, setOculta] = useState(vigente);
 
   if (oculta) return null;
 
   const cerrar = () => {
     setOculta(true);
     try {
-      localStorage.setItem(CLAVE_OCULTA, "1");
+      localStorage.setItem(CLAVE_OCULTA, String(Date.now() + RECORDATORIO_DIAS * 24 * 60 * 60 * 1000));
     } catch {
       // Sin localStorage (privado/bloqueado) simplemente no se recuerda
-      // entre sesiones — no rompe nada, solo vuelve a aparecer.
+      // entre sesiones — no rompe nada, solo vuelve a aparecer antes.
     }
   };
 

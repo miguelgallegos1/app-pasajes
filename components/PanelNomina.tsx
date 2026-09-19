@@ -8,7 +8,7 @@
 
 import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoDinero, IconoLupa } from "./Icons";
+import { IconoDinero, IconoLupa, IconoDevolver } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import SelectorVista from "./SelectorVista";
@@ -18,7 +18,7 @@ import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
-import TablaAgrupadaColaborador, { type FilaResumen } from "./TablaAgrupadaColaborador";
+import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 
 type Revisada = {
   id: string;
@@ -149,27 +149,37 @@ export default function PanelNomina({
     });
   };
 
-  // --- Agrupación por colaborador -> ruta (client-side: la cola de
-  // acción es un conjunto acotado, ya está completa en memoria) ---
+  // Selección en grupo desde la vista "Por colaborador": si ya están
+  // todas seleccionadas las quita, si no las agrega todas — así se puede
+  // marcar un colaborador entero (o "Seleccionar todos") sin expandirlo.
+  const alternarGrupoSeleccion = (ids: string[]) => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      const todas = ids.every((id) => copia.has(id));
+      ids.forEach((id) => (todas ? copia.delete(id) : copia.add(id)));
+      return copia;
+    });
+  };
+
+  // --- Agrupación por colaborador (client-side: la cola de acción es un
+  // conjunto acotado, ya está completa en memoria) ---
   const gruposPorColaborador = useMemo(() => {
-    const mapa = new Map<string, { nombre: string; porRuta: Map<string, { nombre: string; items: Revisada[] }> }>();
+    const mapa = new Map<string, { nombre: string; items: Revisada[] }>();
     for (const r of revisadasFiltradas) {
-      if (!mapa.has(r.colaboradorId)) mapa.set(r.colaboradorId, { nombre: r.nombreColaborador, porRuta: new Map() });
-      const grupo = mapa.get(r.colaboradorId)!;
-      if (!grupo.porRuta.has(r.rutaId)) grupo.porRuta.set(r.rutaId, { nombre: r.rutaNombre, items: [] });
-      grupo.porRuta.get(r.rutaId)!.items.push(r);
+      if (!mapa.has(r.colaboradorId)) mapa.set(r.colaboradorId, { nombre: r.nombreColaborador, items: [] });
+      mapa.get(r.colaboradorId)!.items.push(r);
     }
     return mapa;
   }, [revisadasFiltradas]);
 
-  const filasColaborador: FilaResumen[] = useMemo(
+  const filasColaborador: FilaColaborador[] = useMemo(
     () =>
       Array.from(gruposPorColaborador.entries())
         .map(([id, g]) => ({
           id,
           nombre: g.nombre,
-          cantidad: g.porRuta.size,
-          total: Array.from(g.porRuta.values()).reduce((acc, r) => acc + r.items.reduce((a, i) => a + i.montoTotal, 0), 0),
+          cantidad: g.items.length,
+          total: g.items.reduce((acc, i) => acc + i.montoTotal, 0),
         }))
         .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     [gruposPorColaborador]
@@ -182,6 +192,11 @@ export default function PanelNomina({
   const [idANovedad, setIdANovedad] = useState<string | null>(null);
   const [motivoNovedad, setMotivoNovedad] = useState("");
   const [enviandoNovedad, setEnviandoNovedad] = useState(false);
+
+  const [confirmandoLoteNovedad, setConfirmandoLoteNovedad] = useState(false);
+  const [motivoLoteNovedad, setMotivoLoteNovedad] = useState("");
+  const [enviandoLoteNovedad, setEnviandoLoteNovedad] = useState(false);
+
   const [error, setError] = useState("");
 
   const revisadaAPagar = revisadas.find((a) => a.id === idAPagar);
@@ -276,28 +291,37 @@ export default function PanelNomina({
     }
   };
 
-  const filaAcciones = (a: Revisada) => (
-    <div className="flex items-center justify-between gap-2 bg-white dark:bg-neutral-900 rounded-lg px-3 py-2 ring-1 ring-black/5 dark:ring-white/10 text-sm">
-      <div className="min-w-0">
-        <p className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{a.codigo}</p>
-        <p className="text-neutral-600">{formatearFecha(a.fecha)} · {formatearMoneda(a.montoTotal)}</p>
-      </div>
-      <div className="flex gap-1.5 shrink-0">
-        <button
-          onClick={() => setIdAPagar(a.id)}
-          className="text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 px-2.5 py-1.5 rounded-full transition"
-        >
-          Pagar
-        </button>
-        <button
-          onClick={() => abrirNovedad(a.id)}
-          className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-2.5 py-1.5 rounded-full transition"
-        >
-          Novedad
-        </button>
-      </div>
-    </div>
-  );
+  const confirmarNovedadLote = async () => {
+    if (motivoLoteNovedad.trim().length < 3) {
+      setError("Escribe la novedad encontrada (mínimo 3 caracteres)");
+      return;
+    }
+    setEnviandoLoteNovedad(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/solicitudes/devolver-revision-lote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(seleccionadas), motivo: motivoLoteNovedad }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo devolver el lote");
+        toast.error(data.error ?? "No se pudo devolver el lote");
+        return;
+      }
+      toast.exito("Solicitudes devueltas a Aprobada");
+      const idsDevueltos = new Set(seleccionadas);
+      setRevisadas((prev) => prev.filter((a) => !idsDevueltos.has(a.id)));
+      setSeleccionadas(new Set());
+      setConfirmandoLoteNovedad(false);
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setEnviandoLoteNovedad(false);
+    }
+  };
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
@@ -362,33 +386,37 @@ export default function PanelNomina({
                 {seleccionadas.size} · {formatearMoneda(totalSeleccionado)}
               </p>
             </div>
-            <button
-              onClick={() => setConfirmandoLote(true)}
-              className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md shrink-0"
-            >
-              Pagar seleccionadas
-            </button>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => setConfirmandoLoteNovedad(true)}
+                title="Reportar novedad"
+                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
+              >
+                <IconoDevolver className="w-4 h-4" /> Novedad
+              </button>
+              <button
+                onClick={() => setConfirmandoLote(true)}
+                className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+              >
+                Pagar seleccionadas
+              </button>
+            </div>
           </div>
         )}
       </div>
 
       {vista === "colaborador" ? (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-          <TablaAgrupadaColaborador
-            filas={filasColaborador}
-            cargarSubfilas={(colaboradorId) => {
-              const g = gruposPorColaborador.get(colaboradorId);
-              if (!g) return [];
-              return Array.from(g.porRuta.entries()).map(([id, r]) => ({
-                id,
-                nombre: r.nombre,
-                cantidad: r.items.length,
-                total: r.items.reduce((a, i) => a + i.montoTotal, 0),
-              }));
-            }}
-            cargarDetalle={(colaboradorId, rutaId) => gruposPorColaborador.get(colaboradorId)?.porRuta.get(rutaId)?.items ?? []}
-            renderDetalle={filaAcciones}
-          />
+        <TablaColaboradores
+          filas={filasColaborador}
+          porPagina={POR_PAGINA}
+          seleccion={{
+            seleccionadas,
+            idsDe: (colaboradorId) => (gruposPorColaborador.get(colaboradorId)?.items ?? []).map((a) => a.id),
+            alternarGrupo: alternarGrupoSeleccion,
+          }}
+          vacio="Sin resultados con esos filtros"
+        />
         </div>
       ) : (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
@@ -454,9 +482,10 @@ export default function PanelNomina({
                         </button>
                         <button
                           onClick={() => abrirNovedad(a.id)}
-                          className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
+                          title="Reportar novedad"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-2.5 py-1.5 rounded-lg transition"
                         >
-                          Novedad
+                          <IconoDevolver className="w-3.5 h-3.5" /> Novedad
                         </button>
                       </div>
                     </td>
@@ -520,6 +549,41 @@ export default function PanelNomina({
               >
                 {pagandoLote && <Spinner className="w-4 h-4" />}
                 {pagandoLote ? "Guardando..." : "Confirmar todas"}
+              </button>
+            </div>
+      </Modal>
+
+      <Modal abierto={confirmandoLoteNovedad} onCerrar={() => setConfirmandoLoteNovedad(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+            <div>
+              <h2 className="font-semibold text-neutral-900 dark:text-white">Novedad en {seleccionadas.size} solicitudes</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                Todas vuelven a Aprobada para que Coordinación las revise de nuevo.
+              </p>
+            </div>
+            <textarea
+              value={motivoLoteNovedad}
+              onChange={(e) => setMotivoLoteNovedad(e.target.value.toUpperCase())}
+              rows={3}
+              autoFocus
+              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
+              placeholder="Ej: El monto no coincide con la ruta registrada..."
+            />
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                onClick={() => setConfirmandoLoteNovedad(false)}
+                disabled={enviandoLoteNovedad}
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarNovedadLote}
+                disabled={enviandoLoteNovedad}
+                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+              >
+                {enviandoLoteNovedad && <Spinner className="w-4 h-4" />}
+                {enviandoLoteNovedad ? "Enviando..." : "Devolver todas"}
               </button>
             </div>
       </Modal>

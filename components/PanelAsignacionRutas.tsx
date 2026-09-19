@@ -359,10 +359,7 @@ export default function PanelAsignacionRutas({
               </div>
 
               <div className="flex flex-col gap-2">
-                {/* En pantallas chicas el buscador va arriba de los
-                    botones; en pantallas grandes va abajo — mismo
-                    contenido, orden invertido según el ancho. */}
-                <div className="relative order-1 sm:order-2">
+                <div className="relative">
                   <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
                   <input
                     value={busquedaRuta}
@@ -371,7 +368,7 @@ export default function PanelAsignacionRutas({
                     className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                   />
                 </div>
-                <div className="flex gap-1.5 flex-wrap order-2 sm:order-1">
+                <div className="flex gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={marcarTodas}

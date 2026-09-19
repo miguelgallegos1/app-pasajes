@@ -7,7 +7,7 @@
 
 import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoCheck, IconoLupa, IconoChevron } from "./Icons";
+import { IconoCheck, IconoLupa, IconoDevolver } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import Paginacion from "./Paginacion";
@@ -16,6 +16,7 @@ import SelectorVista, { type VistaListado } from "./SelectorVista";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
+import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 
 type Pendiente = {
   id: string;
@@ -50,15 +51,6 @@ export default function PanelTH({
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
   const [vista, setVista] = useState<VistaListado>("lista");
-  const [tarjetasAbiertas, setTarjetasAbiertas] = useState<Set<string>>(new Set());
-  const alternarTarjeta = (id: string) => {
-    setTarjetasAbiertas((prev) => {
-      const copia = new Set(prev);
-      if (copia.has(id)) copia.delete(id);
-      else copia.add(id);
-      return copia;
-    });
-  };
 
   const pendientesFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -87,18 +79,29 @@ export default function PanelTH({
     [pendientesFiltradas]
   );
 
-  // Vista "Por colaborador": una tarjeta por cada colaborador con al menos
-  // una pendiente, derivada en el cliente (misma idea que Mis Pasajes).
-  const tarjetasColaborador = useMemo(() => {
-    const mapa = new Map<string, { id: string; nombre: string; solicitudes: Pendiente[] }>();
+  // Vista "Por colaborador": un grupo por cada colaborador con al menos
+  // una pendiente, derivado en el cliente (misma idea que Mis Pasajes).
+  const gruposColaborador = useMemo(() => {
+    const mapa = new Map<string, { nombre: string; solicitudes: Pendiente[] }>();
     for (const p of pendientesFiltradas) {
-      if (!mapa.has(p.colaboradorId)) {
-        mapa.set(p.colaboradorId, { id: p.colaboradorId, nombre: p.nombreColaborador, solicitudes: [] });
-      }
+      if (!mapa.has(p.colaboradorId)) mapa.set(p.colaboradorId, { nombre: p.nombreColaborador, solicitudes: [] });
       mapa.get(p.colaboradorId)!.solicitudes.push(p);
     }
-    return Array.from(mapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return mapa;
   }, [pendientesFiltradas]);
+
+  const filasColaborador: FilaColaborador[] = useMemo(
+    () =>
+      Array.from(gruposColaborador.entries())
+        .map(([id, g]) => ({
+          id,
+          nombre: g.nombre,
+          cantidad: g.solicitudes.length,
+          total: g.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0),
+        }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    [gruposColaborador]
+  );
 
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const todasEnPaginaSeleccionadas =
@@ -124,6 +127,18 @@ export default function PanelTH({
     });
   };
 
+  // Selección en grupo desde la vista "Por colaborador": si ya están
+  // todas seleccionadas las quita, si no las agrega todas — así se puede
+  // marcar un colaborador entero (o "Seleccionar todos") sin expandirlo.
+  const alternarGrupoSeleccion = (ids: string[]) => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      const todas = ids.every((id) => copia.has(id));
+      ids.forEach((id) => (todas ? copia.delete(id) : copia.add(id)));
+      return copia;
+    });
+  };
+
   const [idAAprobar, setIdAAprobar] = useState<string | null>(null);
   const [aprobandoLote, setAprobandoLote] = useState(false);
   const [confirmandoLote, setConfirmandoLote] = useState(false);
@@ -132,6 +147,10 @@ export default function PanelTH({
   const [idADevolver, setIdADevolver] = useState<string | null>(null);
   const [comentarioDevolucion, setComentarioDevolucion] = useState("");
   const [devolviendo, setDevolviendo] = useState(false);
+
+  const [confirmandoLoteDevolver, setConfirmandoLoteDevolver] = useState(false);
+  const [comentarioLoteDevolver, setComentarioLoteDevolver] = useState("");
+  const [devolviendoLote, setDevolviendoLote] = useState(false);
 
   const [error, setError] = useState("");
 
@@ -227,6 +246,38 @@ export default function PanelTH({
     }
   };
 
+  const confirmarDevolucionLote = async () => {
+    if (comentarioLoteDevolver.trim().length < 3) {
+      setError("Escribe qué se debe corregir (mínimo 3 caracteres)");
+      return;
+    }
+    setDevolviendoLote(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/solicitudes/rechazar-lote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(seleccionadas), comentario: comentarioLoteDevolver }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "No se pudo devolver el lote");
+        toast.error(data.error ?? "No se pudo devolver el lote");
+        return;
+      }
+      toast.exito("Solicitudes devueltas para corrección");
+      const idsDevueltos = new Set(seleccionadas);
+      setPendientes((prev) => prev.filter((p) => !idsDevueltos.has(p.id)));
+      setSeleccionadas(new Set());
+      setConfirmandoLoteDevolver(false);
+    } catch {
+      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setDevolviendoLote(false);
+    }
+  };
+
   return (
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
@@ -236,12 +287,21 @@ export default function PanelTH({
             <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes de colaboradores esperando aprobación</span>
           </div>
           {seleccionadas.size > 0 && (
-            <button
-              onClick={() => setConfirmandoLote(true)}
-              className="text-xs sm:text-sm font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
-            >
-              Aprobar seleccionadas ({seleccionadas.size})
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmandoLoteDevolver(true)}
+                title="Devolver para corrección"
+                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
+              >
+                <IconoDevolver className="w-4 h-4" /> Devolver seleccionadas
+              </button>
+              <button
+                onClick={() => setConfirmandoLote(true)}
+                className="text-xs sm:text-sm font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+              >
+                Aprobar seleccionadas ({seleccionadas.size})
+              </button>
+            </div>
           )}
         </div>
 
@@ -266,86 +326,23 @@ export default function PanelTH({
         </div>
 
         {vista === "colaborador" ? (
-          <div className="space-y-3">
-            {tarjetasColaborador.length === 0 && (
-              <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 px-4 py-10">
-                <EstadoVacio
-                  mensaje={
-                    busqueda
-                      ? "Sin resultados para esa búsqueda"
-                      : sinAsignaciones
-                      ? "Sin áreas asignadas"
-                      : "No hay solicitudes pendientes"
-                  }
-                  icono={
-                    !busqueda && !sinAsignaciones ? (
-                      <IconoCheck className="w-10 h-10 text-emerald-400 dark:text-emerald-500" />
-                    ) : undefined
-                  }
-                />
-              </div>
-            )}
-            {tarjetasColaborador.map((c, i) => {
-              const abierta = tarjetasAbiertas.has(c.id);
-              const total = c.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0);
-              return (
-                <div key={c.id} className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => alternarTarjeta(c.id)}
-                    className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${abierta ? "rotate-90" : ""}`} />
-                      <Avatar nombre={c.nombre} indice={i} className="w-9 h-9 text-xs" />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-neutral-900 dark:text-white truncate">{c.nombre}</p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {c.solicitudes.length} {c.solicitudes.length === 1 ? "solicitud" : "solicitudes"}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">{formatearMoneda(total)}</span>
-                  </button>
-
-                  {abierta && (
-                    <div className="border-t border-neutral-200/70 dark:border-neutral-800/70 divide-y divide-neutral-200/70 dark:divide-neutral-800/70">
-                      {c.solicitudes.map((s) => (
-                        <div key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={seleccionadas.has(s.id)}
-                            onChange={() => alternarSeleccion(s.id)}
-                            className="w-4 h-4 accent-orange-500 rounded shrink-0"
-                          />
-                          <span className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{s.codigo}</span>
-                          <span className="font-medium">{formatearFecha(s.fecha)}</span>
-                          <span className="text-neutral-600 dark:text-neutral-300">{s.rutaLabel}</span>
-                          <span className="text-neutral-500 dark:text-neutral-400">{formatearMoneda(s.montoTotal)}</span>
-                          {s.observaciones && (
-                            <span className="text-neutral-500 dark:text-neutral-400 max-w-[220px] truncate" title={s.observaciones}>{s.observaciones}</span>
-                          )}
-                          <span className="ml-auto flex gap-1.5">
-                            <button
-                              onClick={() => setIdAAprobar(s.id)}
-                              className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-full transition"
-                            >
-                              Aprobar
-                            </button>
-                            <button
-                              onClick={() => abrirModalDevolucion(s.id)}
-                              className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
-                            >
-                              Devolver
-                            </button>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+          <TablaColaboradores
+            filas={filasColaborador}
+            porPagina={POR_PAGINA}
+            seleccion={{
+              seleccionadas,
+              idsDe: (colaboradorId) => (gruposColaborador.get(colaboradorId)?.solicitudes ?? []).map((s) => s.id),
+              alternarGrupo: alternarGrupoSeleccion,
+            }}
+            vacio={
+              busqueda
+                ? "Sin resultados para esa búsqueda"
+                : sinAsignaciones
+                ? "Sin áreas asignadas"
+                : "No hay solicitudes pendientes"
+            }
+          />
           </div>
         ) : (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
@@ -409,9 +406,10 @@ export default function PanelTH({
                         </button>
                         <button
                           onClick={() => abrirModalDevolucion(s.id)}
-                          className="text-xs font-medium text-white bg-neutral-700 hover:bg-neutral-800 px-3 py-1.5 rounded-full transition"
+                          title="Devolver para corrección"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-2.5 py-1.5 rounded-lg transition"
                         >
-                          Devolver
+                          <IconoDevolver className="w-3.5 h-3.5" /> Devolver
                         </button>
                       </div>
                     </td>
@@ -500,6 +498,41 @@ export default function PanelTH({
               >
                 {aprobandoLote && <Spinner className="w-4 h-4" />}
                 {aprobandoLote ? "Aprobando..." : "Aprobar todas"}
+              </button>
+            </div>
+      </Modal>
+
+      <Modal abierto={confirmandoLoteDevolver} onCerrar={() => setConfirmandoLoteDevolver(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+            <div>
+              <h2 className="font-semibold text-neutral-900 dark:text-white">Devolver {seleccionadas.size} solicitudes</h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                Todas siguen pendientes; cada colaborador verá esta misma nota y podrá corregir.
+              </p>
+            </div>
+            <textarea
+              value={comentarioLoteDevolver}
+              onChange={(e) => setComentarioLoteDevolver(e.target.value.toUpperCase())}
+              rows={3}
+              autoFocus
+              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
+              placeholder="Ej: Ruta incorrecta para tu área, favor corregir..."
+            />
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                onClick={() => setConfirmandoLoteDevolver(false)}
+                disabled={devolviendoLote}
+                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarDevolucionLote}
+                disabled={devolviendoLote}
+                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+              >
+                {devolviendoLote && <Spinner className="w-4 h-4" />}
+                {devolviendoLote ? "Enviando..." : "Devolver todas"}
               </button>
             </div>
       </Modal>
