@@ -7,6 +7,7 @@
 
 import webpush from "web-push";
 import { db } from "./db";
+import { acortarNombreLibre } from "./auth";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -61,10 +62,13 @@ async function enviarATodasLasSuscripciones(usuarioId: string, payload: string) 
 // ("Por Juan Pérez"). Se resuelve acá (a partir del id de quien está
 // logueado, session.id de la ruta que llama) en vez de exigirle a cada
 // endpoint que arme el texto — un solo lugar sabe cómo mostrarlo.
+// Acortado igual que en el header (acortarNombreLibre de lib/auth.ts):
+// quien aprueba/rechaza/revisa/paga siempre es TH/Coordinación/Nómina/
+// Super Admin, nunca un colaborador, así que es el mismo texto libre.
 async function nombreDeUsuario(usuarioId: string | undefined): Promise<string | null> {
   if (!usuarioId) return null;
   const usuario = await db.usuario.findUnique({ where: { id: usuarioId }, select: { nombre: true } });
-  return usuario?.nombre ?? null;
+  return usuario?.nombre ? acortarNombreLibre(usuario.nombre) : null;
 }
 
 // Una solicitud puntual cambió de estado — usado por los endpoints

@@ -71,7 +71,7 @@ function acortarNombre(nombres: string, apellidos: string): string {
 // (puede haber 1 o 2 nombres después), y con exactamente 2, un apellido y
 // un nombre. El primer nombre es siempre la primera palabra DESPUÉS de
 // los apellidos, nunca la última palabra del texto completo.
-function acortarNombreLibre(nombreCompleto: string): string {
+export function acortarNombreLibre(nombreCompleto: string): string {
   const palabras = nombreCompleto.trim().split(/\s+/).filter(Boolean);
   if (palabras.length <= 1) return palabras[0] ?? "";
   const primerApellido = palabras[0];

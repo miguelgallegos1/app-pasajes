@@ -6,7 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
-import { getSession } from "../../../../lib/auth";
+import { getSession, acortarNombreLibre } from "../../../../lib/auth";
 import { obtenerColaboradorPorUsuarioId } from "../../../../lib/colaboradorSesion";
 
 export async function GET() {
@@ -32,7 +32,7 @@ export async function GET() {
   const actores = idsActores.length
     ? await db.usuario.findMany({ where: { id: { in: idsActores } }, select: { id: true, nombre: true } })
     : [];
-  const nombrePorActorId = new Map(actores.map((u) => [u.id, u.nombre]));
+  const nombrePorActorId = new Map(actores.map((u) => [u.id, acortarNombreLibre(u.nombre)]));
 
   const items = solicitudes.map((s) => {
     const actorId = s.aprobadoPorId ?? s.rechazadoPorId;
