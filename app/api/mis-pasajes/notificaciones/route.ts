@@ -76,6 +76,12 @@ export async function GET() {
       // Solo interesa mostrarlo cuando es de un miembro del equipo, no la
       // propia — el front lo omite si coincide con el colaborador logueado.
       nombreColaborador: s.colaboradorId !== colaborador.id ? s.colaborador.nombreCompleto : null,
+      // Momento real de ESTA resolución — el front lo combina con el id
+      // para saber si ya se vio. Una misma solicitud puede resolverse más
+      // de una vez (rechazada, corregida, aprobada más tarde): el id solo
+      // no alcanza para distinguir "ya la vi rechazada" de "recién la
+      // aprobaron", porque es la misma fila.
+      resueltoEn: (s.fechaAprobacion ?? s.fechaRechazo ?? s.fechaSolicitud).toISOString(),
     };
   });
 

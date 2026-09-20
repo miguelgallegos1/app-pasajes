@@ -2,9 +2,15 @@
 // Campanita del header para el colaborador: avisa cuando alguna de SUS
 // solicitudes quedó Aprobada o Rechazada. No hay una única "alerta" como
 // en TH/Coordinación/Nómina (NotificacionesMenu) — acá es una lista corta
-// de resueltas recientes, y lo "nuevo" se calcula comparando contra los
-// ids ya vistos (guardados en localStorage: no hace falta tocar la base
-// para esto, y alcanza con que funcione por dispositivo).
+// de resueltas recientes, y lo "nuevo" se calcula comparando contra las
+// claves ya vistas (guardadas en localStorage: no hace falta tocar la
+// base para esto, y alcanza con que funcione por dispositivo).
+//
+// La clave de "visto" es id+resueltoEn, NO solo el id: una misma
+// solicitud puede resolverse más de una vez con el tiempo (la rechazan,
+// el colaborador la corrige, la vuelven a aprobar — sigue siendo la
+// MISMA fila/id). Si se marcara como vista solo por id, la próxima
+// resolución de esa misma solicitud nunca volvería a avisar.
 
 "use client";
 
@@ -21,7 +27,10 @@ type ItemResuelto = {
   fecha: string;
   quien: string | null;
   nombreColaborador: string | null;
+  resueltoEn: string;
 };
+
+const claveDeItem = (it: ItemResuelto) => `${it.id}:${it.resueltoEn}`;
 
 const CLAVE_VISTOS = "app-pasajes:notificaciones-vistas";
 
@@ -100,16 +109,17 @@ export default function NotificacionesColaborador() {
     };
   }, []);
 
-  const nuevos = items.filter((it) => !vistos.has(it.id));
+  const nuevos = items.filter((it) => !vistos.has(claveDeItem(it)));
   const hayNuevos = nuevos.length > 0;
 
   const alternar = () => {
     setAbierto((a) => !a);
     // Al abrir, todo lo que se está mostrando ahora queda marcado como
-    // visto — la próxima resuelta que llegue sí va a volver a avisar.
+    // visto — la próxima resolución (de esta misma solicitud o de otra)
+    // sí va a volver a avisar.
     if (!abierto && items.length > 0) {
       const todos = new Set(vistos);
-      items.forEach((it) => todos.add(it.id));
+      items.forEach((it) => todos.add(claveDeItem(it)));
       setVistos(todos);
       guardarVistos(todos);
     }
