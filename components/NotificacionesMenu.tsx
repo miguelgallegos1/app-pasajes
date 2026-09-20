@@ -38,13 +38,21 @@ export default function NotificacionesMenu({ rol }: { rol: string }) {
     // Sondeo liviano (no en cada clic/navegación) para reflejar cambios
     // que hace OTRA persona — ej. Nómina devuelve un pago con novedad y
     // Coordinación necesita verlo sin recargar toda la app. Se salta el
-    // pedido si la pestaña está en segundo plano.
+    // pedido si la pestaña está en segundo plano. Al volver a primer
+    // plano se pide de una — en el celular, con la app en segundo plano
+    // un buen rato, el intervalo se pausa solo y si no, se tarda hasta
+    // INTERVALO_SONDEO_MS en ponerse al día.
     const intervalo = setInterval(() => {
       if (document.visibilityState === "visible") cargar();
     }, INTERVALO_SONDEO_MS);
+    function manejarVisibilidad() {
+      if (document.visibilityState === "visible") cargar();
+    }
+    document.addEventListener("visibilitychange", manejarVisibilidad);
     return () => {
       cancelado = true;
       clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", manejarVisibilidad);
     };
   }, [rol]);
 

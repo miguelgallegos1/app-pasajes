@@ -62,16 +62,26 @@ export default function NotificacionesColaborador() {
     };
     cargar();
 
-    // Solo se vuelve a pedir cuando el service worker avisa que llegó un
-    // push (un cambio de estado real) — nunca por foco/clics, para no
-    // gastar consultas a la base sin necesidad.
+    // Se vuelve a pedir cuando el service worker avisa que llegó un push
+    // (un cambio de estado real) — nunca por foco/clics, para no gastar
+    // consultas a la base sin necesidad. Como respaldo, también se vuelve
+    // a pedir al volver a primer plano: en el celular, con la app en
+    // segundo plano (o recién retomada tras estar suspendida por el
+    // sistema para ahorrar batería), el aviso del service worker puede no
+    // llegar a tiempo — así, apenas se vuelve a abrir la app, se pone al
+    // día de una sola vez, sin esperar otro push.
     function manejarMensaje(e: MessageEvent) {
       if (e.data?.type === "push-recibido") cargar();
     }
+    function manejarVisibilidad() {
+      if (document.visibilityState === "visible") cargar();
+    }
     navigator.serviceWorker?.addEventListener("message", manejarMensaje);
+    document.addEventListener("visibilitychange", manejarVisibilidad);
     return () => {
       cancelado = true;
       navigator.serviceWorker?.removeEventListener("message", manejarMensaje);
+      document.removeEventListener("visibilitychange", manejarVisibilidad);
     };
   }, []);
 
