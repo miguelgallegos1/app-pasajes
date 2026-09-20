@@ -64,6 +64,22 @@ function acortarNombre(nombres: string, apellidos: string): string {
   return [primerNombre, primerApellido].filter(Boolean).join(" ");
 }
 
+// Para Usuario.nombre (texto libre, sin nombres/apellidos separados):
+// misma convención que usa el resto de la app para nombre completo
+// (Colaborador.nombreCompleto = apellidos + nombres, apellidos primero,
+// como en la cédula) — así que con 3+ palabras se asumen 2 apellidos
+// (puede haber 1 o 2 nombres después), y con exactamente 2, un apellido y
+// un nombre. El primer nombre es siempre la primera palabra DESPUÉS de
+// los apellidos, nunca la última palabra del texto completo.
+function acortarNombreLibre(nombreCompleto: string): string {
+  const palabras = nombreCompleto.trim().split(/\s+/).filter(Boolean);
+  if (palabras.length <= 1) return palabras[0] ?? "";
+  const primerApellido = palabras[0];
+  const indiceNombre = palabras.length >= 3 ? 2 : 1;
+  const primerNombre = palabras[indiceNombre];
+  return `${primerNombre} ${primerApellido}`;
+}
+
 // Nombre y foto a mostrar en el AppShell (sidebar/header), sin importar
 // el rol. Se usa una sola vez desde el layout compartido de las pantallas
 // internas, en vez de que cada página vuelva a consultarlo por su cuenta.
@@ -80,16 +96,9 @@ export async function obtenerPerfilSesion(
     };
   }
   const usuario = await db.usuario.findUnique({ where: { id: session.id }, select: { nombre: true } });
-  // Sin campos separados, "primera palabra + última palabra" acierta más
-  // seguido que "las 2 primeras" — con nombre compuesto (ej. "JUAN CARLOS
-  // PÉREZ GARCÍA") las 2 primeras son ambas del nombre de pila, ninguna
-  // del apellido.
-  const palabras = (usuario?.nombre ?? "").trim().split(/\s+/).filter(Boolean);
-  const nombreCorto =
-    palabras.length <= 1 ? (palabras[0] ?? "") : `${palabras[0]} ${palabras[palabras.length - 1]}`;
   return {
     nombre: usuario?.nombre ?? "",
-    nombreCorto,
+    nombreCorto: acortarNombreLibre(usuario?.nombre ?? ""),
     fotoUrl: null,
     esSupervisor: false,
   };
