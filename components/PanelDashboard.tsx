@@ -14,8 +14,6 @@ import Spinner from "./Spinner";
 import { fechaHoyTexto } from "../lib/fechas";
 import GraficoBarrasMensual, { type FilaMes } from "./GraficoBarrasMensual";
 import GraficoPastelAreas from "./GraficoPastelAreas";
-import AlertaPendientes from "./AlertaPendientes";
-import type { AlertaPendiente } from "../lib/alertasPendientes";
 
 type KPI = { cantidad: number; total: number };
 type Datos = {
@@ -43,7 +41,6 @@ export default function PanelDashboard() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [sitios, setSitios] = useState<Sitio[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
-  const [alerta, setAlerta] = useState<AlertaPendiente | null>(null);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
 
@@ -60,7 +57,6 @@ export default function PanelDashboard() {
         setEmpresas(data.empresas);
         setSitios(data.sitios);
         setAreas(data.areas);
-        setAlerta(data.alerta);
       })
       .catch(() => {
         if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -140,8 +136,6 @@ export default function PanelDashboard() {
         </div>
       ) : (
       <>
-      <AlertaPendientes alerta={alerta} />
-
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
         <div className="max-w-xs">
           <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
