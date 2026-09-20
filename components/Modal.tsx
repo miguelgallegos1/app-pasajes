@@ -75,12 +75,23 @@ export default function Modal({
     if (!abierto) return;
     elementoPrevioRef.current = document.activeElement as HTMLElement | null;
     const id = setTimeout(() => panelRef.current?.focus(), 10);
+    // "Armado" de Enter con demora: si el modal se abrió con un Enter (p.
+    // ej. desde la navegación con flechas de una tabla) y esa tecla queda
+    // apretada un instante de más, el repetido automático del sistema
+    // operativo podía llegar a este listener recién puesto y confirmar la
+    // acción sin que el usuario llegara a ver el modal. Con esta demora,
+    // ESE mismo toque de tecla ya no cuenta — hace falta un Enter aparte,
+    // ya con el modal abierto.
+    let armado = false;
+    const idArmado = setTimeout(() => {
+      armado = true;
+    }, 400);
     const alPresionar = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onCerrarRef.current?.();
         return;
       }
-      if (e.key !== "Enter" || !onConfirmarRef.current) return;
+      if (e.key !== "Enter" || e.repeat || !armado || !onConfirmarRef.current) return;
       const objetivo = e.target as HTMLElement;
       // Un <textarea> usa Enter para salto de línea, y un <button> ya
       // reacciona por sí solo — en ninguno de los dos casos hace falta (ni
@@ -92,6 +103,7 @@ export default function Modal({
     window.addEventListener("keydown", alPresionar);
     return () => {
       clearTimeout(id);
+      clearTimeout(idArmado);
       window.removeEventListener("keydown", alPresionar);
       elementoPrevioRef.current?.focus?.();
     };

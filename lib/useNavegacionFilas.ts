@@ -22,7 +22,7 @@ export function useNavegacionFilas<T>(items: T[], onEnter?: (item: T, indice: nu
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setFilaActiva((i) => (i === null ? items.length - 1 : Math.max(i - 1, 0)));
-      } else if (e.key === "Enter" && filaActiva !== null && items[filaActiva]) {
+      } else if (e.key === "Enter" && !e.repeat && filaActiva !== null && items[filaActiva]) {
         e.preventDefault();
         onEnter?.(items[filaActiva], filaActiva);
       } else if (e.key === "Escape") {
