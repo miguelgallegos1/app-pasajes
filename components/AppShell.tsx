@@ -22,6 +22,7 @@ import Footer from "./Footer";
 import CommandPalette, { type ItemPaleta } from "./CommandPalette";
 import Breadcrumbs from "./Breadcrumbs";
 import TarjetaActualizarDomicilio from "./TarjetaActualizarDomicilio";
+import BotonWhatsApp from "./BotonWhatsApp";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -374,7 +375,11 @@ export default function AppShell({
             <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} />
           </nav>
           <div className="p-3 border-t border-neutral-200 dark:border-neutral-800/70 flex items-center justify-between gap-2">
-            <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
+            {rol === "COLABORADOR" ? (
+              <BotonWhatsApp />
+            ) : (
+              <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
+            )}
             <div className="flex items-center gap-1">
             <button
               onClick={abrirBiometria}
@@ -445,7 +450,7 @@ export default function AppShell({
         <main className="flex-1 min-w-0 flex flex-col">
           <Breadcrumbs items={itemsPaleta} />
           <div className="flex-1">{children}</div>
-          <Footer mostrarWhatsapp={rol === "COLABORADOR"} />
+          <Footer />
         </main>
         </div>
       </div>

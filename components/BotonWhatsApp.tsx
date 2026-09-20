@@ -1,9 +1,11 @@
 // components/BotonWhatsApp.tsx
 // Botón para que el colaborador contacte a Talento Humano por WhatsApp
 // directo (no es un chat dentro de la app: abre WhatsApp con el número de
-// su Área/Sitio/Empresa ya cargado y un mensaje precargado). Vive en el
-// Footer (ver Footer.tsx). Se oculta solo si nadie configuró ningún
-// número en toda esa cadena, para no mostrar un botón muerto.
+// su Área/Sitio/Empresa ya cargado y un mensaje precargado). Ocupa el
+// lugar del Avatar en la esquina inferior izquierda del menú de escritorio
+// (mismo tamaño, w-8 h-8 — ver AppShell.tsx), así que ese colaborador ya
+// no ve su avatar ahí, solo este botón. Se oculta solo si nadie configuró
+// ningún número en toda esa cadena, para no mostrar un botón muerto.
 
 "use client";
 
@@ -36,9 +38,9 @@ export default function BotonWhatsApp() {
       target="_blank"
       rel="noopener noreferrer"
       title="Contactar a Talento Humano por WhatsApp"
-      className="w-11 h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shadow-md shadow-black/15 opacity-80 hover:opacity-100 active:opacity-100 transition hover:-translate-y-0.5 hover:shadow-xl"
+      className="w-8 h-8 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shrink-0 transition"
     >
-      <IconoWhatsApp className="w-5 h-5" />
+      <IconoWhatsApp className="w-4 h-4" />
     </a>
   );
 }
