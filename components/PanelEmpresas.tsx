@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { IconoAlerta } from "./Icons";
 import Spinner from "./Spinner";
+import BarraCarga from "./BarraCarga";
 import { useToast } from "./Toast";
 
 type Area = { id: string; nombre: string; whatsapp: string | null };
@@ -233,9 +234,7 @@ export default function PanelEmpresas() {
       )}
 
       {cargandoInicial ? (
-        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
-          <Spinner className="w-4 h-4" /> Cargando...
-        </div>
+        <BarraCarga />
       ) : (
       <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

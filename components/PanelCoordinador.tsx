@@ -17,6 +17,7 @@ import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
+import BarraCarga from "./BarraCarga";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
@@ -429,9 +430,7 @@ export default function PanelCoordinador() {
         )}
 
         {cargandoInicial ? (
-          <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
-            <Spinner className="w-4 h-4" /> Cargando...
-          </div>
+          <BarraCarga />
         ) : (
         <>
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">

@@ -14,6 +14,7 @@ import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
+import BarraCarga from "./BarraCarga";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
@@ -340,9 +341,7 @@ export default function PanelAsignacionEquipo() {
       )}
 
       {cargandoInicial ? (
-        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
-          <Spinner className="w-4 h-4" /> Cargando...
-        </div>
+        <BarraCarga />
       ) : (
         <>
           {sinAsignaciones && (

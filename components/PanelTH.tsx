@@ -16,6 +16,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
+import BarraCarga from "./BarraCarga";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
@@ -408,9 +409,7 @@ export default function PanelTH() {
         )}
 
         {cargandoInicial ? (
-          <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
-            <Spinner className="w-4 h-4" /> Cargando...
-          </div>
+          <BarraCarga />
         ) : (
         <>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">

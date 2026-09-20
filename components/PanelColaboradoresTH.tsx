@@ -12,6 +12,7 @@ import Paginacion from "./Paginacion";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
+import BarraCarga from "./BarraCarga";
 import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar, IconoLupa } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
@@ -399,9 +400,7 @@ export default function PanelColaboradoresTH() {
       )}
 
       {cargandoInicial ? (
-        <div className="flex items-center justify-center gap-2.5 py-24 text-sm text-neutral-400 dark:text-neutral-500">
-          <Spinner className="w-4 h-4" /> Cargando...
-        </div>
+        <BarraCarga />
       ) : (
       <>
       {/* Barra de filtros: buscador + switch + Empresa/Sitio/Área */}
