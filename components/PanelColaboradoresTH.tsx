@@ -19,6 +19,7 @@ import MenuAcciones from "./MenuAcciones";
 import { useToast } from "./Toast";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
+import { useAccionesHeader } from "../lib/accionesHeader";
 
 type Colaborador = {
   id: string;
@@ -375,18 +376,18 @@ export default function PanelColaboradoresTH() {
     }
   };
 
-  return (
-    <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex items-center justify-end gap-2">
-        <button
-          onClick={abrirCrear}
-          disabled={sinAsignaciones}
-          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
-        >
-          + Nuevo colaborador
-        </button>
-      </div>
+  useAccionesHeader(
+    <button
+      onClick={abrirCrear}
+      disabled={sinAsignaciones}
+      className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+    >
+      + Nuevo colaborador
+    </button>
+  );
 
+  return (
+    <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
       {errorInicial && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
       )}

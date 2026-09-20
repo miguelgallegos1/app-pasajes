@@ -171,7 +171,7 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
   };
 
   return (
-    <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
+    <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
 
       {/* Queda fija en pantalla (no es un toast que desaparece solo) para
           que quede clarísimo que ya se copió, aunque la lista de "Mis

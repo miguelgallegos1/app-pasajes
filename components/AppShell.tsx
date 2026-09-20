@@ -23,6 +23,7 @@ import CommandPalette, { type ItemPaleta } from "./CommandPalette";
 import Breadcrumbs from "./Breadcrumbs";
 import TarjetaActualizarDomicilio from "./TarjetaActualizarDomicilio";
 import BotonWhatsApp from "./BotonWhatsApp";
+import { AccionesHeaderContext } from "../lib/accionesHeader";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -255,6 +256,10 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // Botón principal de la pantalla actual (ej. "+ Nueva ruta"), publicado
+  // por el propio Panel vía useAccionesHeader — se muestra en la misma
+  // fila que el breadcrumb, a la derecha (ver lib/accionesHeader.tsx).
+  const [accionesHeader, setAccionesHeader] = useState<React.ReactNode>(null);
   const [confirmandoSalir, setConfirmandoSalir] = useState(false);
   const [paletaAbierta, setPaletaAbierta] = useState(false);
   const [biometriaAbierta, setBiometriaAbierta] = useState(false);
@@ -321,6 +326,7 @@ export default function AppShell({
   };
 
   return (
+    <AccionesHeaderContext.Provider value={setAccionesHeader}>
     <div className="min-h-screen bg-neutral-100 text-neutral-900 dark:bg-neutral-950 dark:text-white flex flex-col">
       {/* ---------- Header (todo el ancho, todas las pantallas): logo+nombre+rol a la izquierda, usuario a la derecha ---------- */}
       {/* Alto fijo (h-14/h-16), no por padding+contenido: así el offset
@@ -445,7 +451,7 @@ export default function AppShell({
         </div>
 
         <main className="flex-1 min-w-0 flex flex-col">
-          <Breadcrumbs items={itemsPaleta} />
+          <Breadcrumbs items={itemsPaleta} acciones={accionesHeader} />
           <div className="flex-1">{children}</div>
           <Footer />
         </main>
@@ -482,5 +488,6 @@ export default function AppShell({
         </div>
       </Modal>
     </div>
+    </AccionesHeaderContext.Provider>
   );
 }

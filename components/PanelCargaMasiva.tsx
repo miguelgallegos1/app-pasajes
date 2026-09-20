@@ -199,7 +199,7 @@ function BloqueCarga({
 
 export default function PanelCargaMasiva() {
   return (
-    <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
+    <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
 
       <BloqueCarga
         titulo="Colaboradores"

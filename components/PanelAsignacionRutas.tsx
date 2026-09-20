@@ -20,6 +20,7 @@ import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import { IconoLupa, IconoChevron, IconoDescargar, IconoCheck, IconoX, IconoRuta } from "./Icons";
+import { useAccionesHeader } from "../lib/accionesHeader";
 
 type Colaborador = {
   id: string;
@@ -201,25 +202,25 @@ export default function PanelAsignacionRutas({
     return `/api/th/rutas/asignaciones/exportar?${params.toString()}`;
   };
 
-  return (
-    <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex items-center justify-end gap-2">
-        <div className="flex gap-2 shrink-0">
-          <a
-            href={urlExportar()}
-            className="inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-lg transition"
-          >
-            <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-          </a>
-          <button
-            onClick={() => router.push("/th/rutas?nueva=1")}
-            className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
-          >
-            + Nueva ruta
-          </button>
-        </div>
-      </div>
+  useAccionesHeader(
+    <>
+      <a
+        href={urlExportar()}
+        className="inline-flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-lg transition"
+      >
+        <IconoDescargar className="w-4 h-4" /> Exportar a Excel
+      </a>
+      <button
+        onClick={() => router.push("/th/rutas?nueva=1")}
+        className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
+      >
+        + Nueva ruta
+      </button>
+    </>
+  );
 
+  return (
+    <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
           No tienes ninguna Empresa/Sitio/Área asignada todavía.

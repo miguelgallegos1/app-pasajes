@@ -22,6 +22,7 @@ import SelectorVista, { type VistaListado } from "./SelectorVista";
 import FilaRutasSeleccionables, { type RutaSimple } from "./FilaRutasSeleccionables";
 import NotificacionesPush from "./NotificacionesPush";
 import { IconoPregunta, IconoLupa, IconoAlerta, IconoChevron } from "./Icons";
+import { useAccionesHeader } from "../lib/accionesHeader";
 
 type Solicitud = {
   id: string;
@@ -502,28 +503,28 @@ export default function PanelColaborador() {
     );
   };
 
+  useAccionesHeader(
+    <>
+      {seleccionadas.size > 0 && (
+        <button
+          onClick={() => { setConfirmandoLote(true); setErrorLote(""); }}
+          className="text-xs sm:text-sm font-semibold bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+        >
+          Eliminar seleccionadas ({seleccionadas.size})
+        </button>
+      )}
+      <button
+        onClick={abrirModal}
+        className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
+      >
+        + Nueva solicitud
+      </button>
+    </>
+  );
+
   return (
     <div className="flex flex-col">
-      <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
-          <div className="flex flex-wrap gap-2">
-            {seleccionadas.size > 0 && (
-              <button
-                onClick={() => { setConfirmandoLote(true); setErrorLote(""); }}
-                className="text-xs sm:text-sm font-semibold bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
-              >
-                Eliminar seleccionadas ({seleccionadas.size})
-              </button>
-            )}
-            <button
-              onClick={abrirModal}
-              className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
-            >
-              + Nueva solicitud
-            </button>
-          </div>
-        </div>
-
+      <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
         <NotificacionesPush />
 
         {errorInicial && (

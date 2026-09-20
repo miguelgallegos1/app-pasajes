@@ -199,7 +199,7 @@ export default function PanelHistorialNomina() {
   const puedeExportar = !!desde && !!hasta && hayDatos;
 
   return (
-    <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
+    <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
 
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
         <div className="max-w-xs">

@@ -16,6 +16,7 @@ import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar } from "./Icons";
 import { useToast } from "./Toast";
 import { ETIQUETAS_ROL } from "../lib/roles";
 import MenuAcciones from "./MenuAcciones";
+import { useAccionesHeader } from "../lib/accionesHeader";
 
 type Asignacion = { id: string; etiqueta: string };
 type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; asignaciones: Asignacion[] };
@@ -211,17 +212,17 @@ export default function PanelUsuariosAdmin({
 
   const usuarioAreas = usuarios.find((u) => u.id === idAreas);
 
-  return (
-    <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex items-center justify-end gap-2">
-        <button
-          onClick={abrirCrear}
-          className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
-        >
-          + Nuevo usuario
-        </button>
-      </div>
+  useAccionesHeader(
+    <button
+      onClick={abrirCrear}
+      className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
+    >
+      + Nuevo usuario
+    </button>
+  );
 
+  return (
+    <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[640px]">

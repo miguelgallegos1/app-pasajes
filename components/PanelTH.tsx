@@ -354,9 +354,9 @@ export default function PanelTH() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {seleccionadas.size > 0 && (
+      <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
+        {seleccionadas.size > 0 && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="flex gap-2 shrink-0">
               <button
                 onClick={() => setConfirmandoLoteDevolver(true)}
@@ -372,8 +372,8 @@ export default function PanelTH() {
                 Aprobar ({seleccionadas.size})
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {errorInicial && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>

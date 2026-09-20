@@ -396,7 +396,7 @@ export default function PanelCoordinador() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
+      <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
         {errorInicial && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
         )}
