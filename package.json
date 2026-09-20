@@ -42,5 +42,12 @@
     "@prisma/engines@7.10.0": true,
     "prisma@7.10.0": true,
     "unrs-resolver@1.12.2": true
-  }
+  },
+  "browserslist": [
+    "chrome >= 100",
+    "edge >= 100",
+    "firefox >= 100",
+    "safari >= 15.4",
+    "ios_saf >= 15.4"
+  ]
 }

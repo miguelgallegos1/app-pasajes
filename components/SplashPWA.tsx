@@ -41,13 +41,16 @@ export default function SplashPWA() {
       className="fixed inset-0 z-[9999] flex-col items-center justify-center gap-4 bg-white"
       style={{ transition: "opacity .3s ease", opacity: visible ? 1 : 0 }}
     >
-      {/* <img>, no <Image>: /pwa-icon-512.png tiene su propio Cache-Control
-          largo en next.config.ts — next/image la serviría por su propio
-          optimizador, sin ese header. También se pinta antes de que React
-          termine de hidratar (ver comentario arriba), momento en que
-          next/image todavía no puede intervenir igual. */}
+      {/* pwa-icon-192.png, no el de 512: acá se muestra a 88px, y el de
+          512 es 4.4 veces más pesado (102 KB vs 24 KB) sin aportar nada
+          más nítido a ese tamaño — el de 512 sigue intacto para el
+          manifest, que sí lo necesita grande para el ícono del sistema.
+          <img>, no <Image>: tiene su propio Cache-Control largo en
+          next.config.ts, y se pinta antes de que React termine de
+          hidratar (ver comentario arriba), momento en que next/image
+          todavía no puede intervenir igual. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/pwa-icon-512.png" alt="" width={88} height={88} />
+      <img src="/pwa-icon-192.png" alt="" width={88} height={88} />
       <div className="flex flex-col items-center gap-3">
         <p className="text-lg font-bold text-neutral-800 tracking-tight">{APP_NOMBRE}</p>
         <Spinner className="w-5 h-5 text-orange-500" />

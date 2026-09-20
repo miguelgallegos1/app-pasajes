@@ -253,7 +253,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-100 dark:bg-black px-4 relative text-neutral-900 dark:text-white">
+    <main className="min-h-screen flex items-center justify-center bg-neutral-100 dark:bg-black px-4 relative text-neutral-900 dark:text-white">
       <div className="absolute top-4 right-4">
         <BotonTema />
       </div>
@@ -267,6 +267,11 @@ export default function LoginPage() {
           <img
             src="/logo.png"
             alt={APP_NOMBRE}
+            // Es la imagen LCP de esta pantalla (la más grande del primer
+            // pantallazo) — sin esto, el navegador no sabe priorizarla
+            // sobre el resto de los recursos hasta que termina de
+            // parsear el HTML que sigue.
+            fetchPriority="high"
             className="w-[100px] h-[100px] mx-auto mb-2 object-contain drop-shadow-[0_12px_20px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_0_20px_rgba(249,115,22,0.35)]"
           />
           <h1 className="text-2xl font-bold">{APP_NOMBRE}</h1>
@@ -286,6 +291,7 @@ export default function LoginPage() {
               maxLength={1}
               value={digito}
               disabled={loading}
+              aria-label={`Dígito ${index + 1} del PIN`}
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={(e) => handlePaste(index, e)}
@@ -341,6 +347,6 @@ export default function LoginPage() {
           {mensajeCarga}
         </p>
       </div>
-    </div>
+    </main>
   );
 }
