@@ -46,8 +46,15 @@ export async function GET(req: Request) {
   const solicitudes = await db.solicitudPasaje.findMany({
     where: filtro,
     include: {
-      colaborador: { select: { nombreCompleto: true } },
-      ruta: { select: { nombre: true } },
+      colaborador: { select: { nombreCompleto: true, codigoNomina: true } },
+      ruta: {
+        select: {
+          nombre: true,
+          empresa: { select: { nombre: true } },
+          sitio: { select: { nombre: true } },
+          area: { select: { nombre: true } },
+        },
+      },
     },
     orderBy: { fecha: "desc" },
   });
@@ -56,6 +63,10 @@ export async function GET(req: Request) {
     solicitudes.map((s) => ({
       Código: s.codigo,
       Colaborador: s.colaborador.nombreCompleto,
+      "Código colaborador": s.colaborador.codigoNomina ?? "",
+      Empresa: s.ruta.empresa.nombre,
+      Sitio: s.ruta.sitio.nombre,
+      Área: s.ruta.area.nombre,
       Ruta: s.ruta.nombre,
       Estado: s.estado as string,
       "Fecha del pasaje": formatearFecha(s.fecha),
@@ -69,6 +80,10 @@ export async function GET(req: Request) {
     filas.push({
       Código: "Exportación limitada a 5000 filas. Acorta el rango de fechas para ver el resto.",
       Colaborador: "",
+      "Código colaborador": "",
+      Empresa: "",
+      Sitio: "",
+      Área: "",
       Ruta: "",
       Estado: "",
       "Fecha del pasaje": "",
