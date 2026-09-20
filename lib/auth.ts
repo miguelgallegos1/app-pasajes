@@ -52,22 +52,41 @@ export const getSession = cache(async (): Promise<SesionUsuario | null> => {
   }
 });
 
+// "Primer nombre + primer apellido" para el saludo del header, que no
+// necesita el nombre completo y ocupaba demasiado espacio. Para
+// colaboradores se arma bien (con los campos nombres/apellidos, ya
+// separados); para el resto de roles (Usuario.nombre es un solo texto
+// libre, sin esa separación) es un best-effort con las 2 primeras
+// palabras — no hay forma de saber cuál es cuál sin esos campos.
+function acortarNombre(nombres: string, apellidos: string): string {
+  const primerNombre = nombres.trim().split(/\s+/)[0] ?? "";
+  const primerApellido = apellidos.trim().split(/\s+/)[0] ?? "";
+  return [primerNombre, primerApellido].filter(Boolean).join(" ");
+}
+
 // Nombre y foto a mostrar en el AppShell (sidebar/header), sin importar
 // el rol. Se usa una sola vez desde el layout compartido de las pantallas
 // internas, en vez de que cada página vuelva a consultarlo por su cuenta.
 export async function obtenerPerfilSesion(
   session: SesionUsuario
-): Promise<{ nombre: string; fotoUrl: string | null; esSupervisor: boolean }> {
+): Promise<{ nombre: string; nombreCorto: string; fotoUrl: string | null; esSupervisor: boolean }> {
   if (session.rol === "COLABORADOR") {
     const colaborador = await obtenerColaboradorPorUsuarioId(session.id);
     return {
       nombre: colaborador?.nombreCompleto ?? "",
+      nombreCorto: colaborador ? acortarNombre(colaborador.nombres, colaborador.apellidos) : "",
       fotoUrl: colaborador?.fotoUrl ?? null,
       esSupervisor: colaborador?.esSupervisor ?? false,
     };
   }
   const usuario = await db.usuario.findUnique({ where: { id: session.id }, select: { nombre: true } });
-  return { nombre: usuario?.nombre ?? "", fotoUrl: null, esSupervisor: false };
+  const [primero = "", segundo = ""] = (usuario?.nombre ?? "").trim().split(/\s+/);
+  return {
+    nombre: usuario?.nombre ?? "",
+    nombreCorto: [primero, segundo].filter(Boolean).join(" "),
+    fotoUrl: null,
+    esSupervisor: false,
+  };
 }
 
 // Firma el token de la sesión y lo deja puesto en la cookie de la respuesta.

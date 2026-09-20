@@ -250,12 +250,16 @@ function ItemsMenu({
 export default function AppShell({
   rol,
   nombreCompleto,
+  nombreCorto,
   fotoUrl,
   esSupervisor = false,
   children,
 }: {
   rol: string;
   nombreCompleto: string;
+  // Primer nombre + primer apellido, para el saludo del header — el
+  // completo ocupaba demasiado espacio (ver lib/auth.ts).
+  nombreCorto: string;
   fotoUrl?: string | null;
   esSupervisor?: boolean;
   children: React.ReactNode;
@@ -360,7 +364,7 @@ export default function AppShell({
             <span className="text-xs font-medium">Buscar</span>
             <kbd className="text-[10px] font-semibold border border-neutral-300 dark:border-neutral-700 rounded px-1 py-0.5 ml-0.5">Ctrl K</kbd>
           </button>
-          <span className="hidden md:block text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap mr-1">{nombreCompleto}</span>
+          <span title={nombreCompleto} className="hidden md:block text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap mr-1">{nombreCorto}</span>
           <NotificacionesMenu rol={rol} />
           <BotonTema />
           <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
