@@ -200,12 +200,6 @@ function BloqueCarga({
 export default function PanelCargaMasiva() {
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Carga masiva</h1>
-        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-          · Cargá muchos colaboradores o rutas de una sola vez desde un Excel
-        </span>
-      </div>
 
       <BloqueCarga
         titulo="Colaboradores"

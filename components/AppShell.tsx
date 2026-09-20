@@ -29,7 +29,9 @@ import BotonWhatsApp from "./BotonWhatsApp";
 const ModalBiometria = dynamic(() => import("./ModalBiometria"), { ssr: false });
 
 type IconoComponente = (props: { className?: string }) => React.ReactElement;
-type ItemMenu = { label: string; href: string; icono: IconoComponente };
+// descripcion: subtítulo de la pantalla, para el breadcrumb (Breadcrumbs.tsx)
+// — antes vivía repetido dentro de cada Panel, debajo de su propio <h1>.
+type ItemMenu = { label: string; href: string; descripcion: string; icono: IconoComponente };
 type GrupoMenu = { grupo: string; items: ItemMenu[] };
 type EntradaMenu = ItemMenu | GrupoMenu;
 
@@ -43,86 +45,74 @@ function esGrupo(entrada: EntradaMenu): entrada is GrupoMenu {
 // tocar el componente.
 // El menú del colaborador se arma aparte (ver construirMenuColaborador) porque
 // depende de esSupervisor, no solo del rol.
+const DASHBOARD: ItemMenu = {
+  label: "Dashboard",
+  href: "/dashboard",
+  descripcion: "Resumen del período seleccionado",
+  icono: IconoGrafico,
+};
+
+const MENU_TALENTO_HUMANO: GrupoMenu = {
+  grupo: "Talento Humano",
+  items: [
+    { label: "Aprobaciones", href: "/th/aprobaciones", descripcion: "Solicitudes de colaboradores esperando aprobación", icono: IconoCheck },
+    { label: "Historial", href: "/th/historial", descripcion: "Solicitudes aprobadas y pagadas", icono: IconoReloj },
+    { label: "Crear solicitud", href: "/th/solicitudes", descripcion: "Elegir un colaborador de tu alcance y registrale una o más rutas", icono: IconoBuseta },
+    { label: "Colaboradores", href: "/th/colaboradores", descripcion: "Crea y administra los colaboradores de tu Empresa/Sitio/Área", icono: IconoPersonas },
+    { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", descripcion: "Elegir un supervisor y marca quiénes de su área le reportan", icono: IconoPersonas },
+    { label: "Rutas", href: "/th/rutas", descripcion: "Cada Área puede tener varias rutas (una por cada trayecto)", icono: IconoRuta },
+    { label: "Asignar rutas", href: "/th/rutas/asignaciones", descripcion: "Elegir un colaborador y marcar qué rutas le quedan exclusivas a él", icono: IconoRuta },
+  ],
+};
+
+const MENU_COORDINACION: GrupoMenu = {
+  grupo: "Coordinación",
+  items: [
+    { label: "Revisión", href: "/coordinador/revision", descripcion: "Solicitudes aprobadas listas para revisar", icono: IconoCheck },
+    { label: "Historial", href: "/coordinador/historial", descripcion: "Solicitudes revisadas y pagadas", icono: IconoReloj },
+  ],
+};
+
+const MENU_NOMINA: GrupoMenu = {
+  grupo: "Nómina",
+  items: [
+    { label: "Pagos", href: "/nomina/pagos", descripcion: "Solicitudes revisadas listas para pagar", icono: IconoDinero },
+    { label: "Historial", href: "/nomina/historial", descripcion: "Solicitudes ya pagadas", icono: IconoReloj },
+  ],
+};
+
+const HISTORIAL_GENERAL: ItemMenu = {
+  label: "Historial General",
+  href: "/jefe/historial",
+  descripcion: "Todas las solicitudes, cualquier estado",
+  icono: IconoReloj,
+};
+
+// Cada rol es una lista de ítems sueltos (ej. "Dashboard") y/o grupos
+// colapsables. Agregar una función nueva a futuro es sumar un ítem dentro
+// del grupo que corresponda (o crear un grupo nuevo) — no hace falta
+// tocar el componente.
+// El menú del colaborador se arma aparte (ver construirMenuColaborador) porque
+// depende de esSupervisor, no solo del rol.
 const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
-  ADMIN_TH: [
-    { label: "Dashboard", href: "/dashboard", icono: IconoGrafico },
-    {
-      grupo: "Talento Humano",
-      items: [
-        { label: "Aprobaciones", href: "/th/aprobaciones", icono: IconoCheck },
-        { label: "Historial", href: "/th/historial", icono: IconoReloj },
-        { label: "Crear solicitud", href: "/th/solicitudes", icono: IconoBuseta },
-        { label: "Colaboradores", href: "/th/colaboradores", icono: IconoPersonas },
-        { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", icono: IconoPersonas },
-        { label: "Rutas", href: "/th/rutas", icono: IconoRuta },
-        { label: "Asignar rutas", href: "/th/rutas/asignaciones", icono: IconoRuta },
-      ],
-    },
-  ],
-  COORDINADOR: [
-    { label: "Dashboard", href: "/dashboard", icono: IconoGrafico },
-    {
-      grupo: "Coordinación",
-      items: [
-        { label: "Revisión", href: "/coordinador/revision", icono: IconoCheck },
-        { label: "Historial", href: "/coordinador/historial", icono: IconoReloj },
-      ],
-    },
-  ],
-  NOMINA: [
-    { label: "Dashboard", href: "/dashboard", icono: IconoGrafico },
-    {
-      grupo: "Nómina",
-      items: [
-        { label: "Pagos", href: "/nomina/pagos", icono: IconoDinero },
-        { label: "Historial", href: "/nomina/historial", icono: IconoReloj },
-      ],
-    },
-  ],
-  JEFE: [
-    { label: "Dashboard", href: "/dashboard", icono: IconoGrafico },
-    { label: "Historial General", href: "/jefe/historial", icono: IconoReloj },
-  ],
+  ADMIN_TH: [DASHBOARD, MENU_TALENTO_HUMANO],
+  COORDINADOR: [DASHBOARD, MENU_COORDINACION],
+  NOMINA: [DASHBOARD, MENU_NOMINA],
+  JEFE: [DASHBOARD, HISTORIAL_GENERAL],
   SUPER_ADMIN: [
-    { label: "Dashboard", href: "/dashboard", icono: IconoGrafico },
-    {
-      grupo: "Talento Humano",
-      items: [
-        { label: "Aprobaciones", href: "/th/aprobaciones", icono: IconoCheck },
-        { label: "Historial", href: "/th/historial", icono: IconoReloj },
-        { label: "Crear solicitud", href: "/th/solicitudes", icono: IconoBuseta },
-        { label: "Colaboradores", href: "/th/colaboradores", icono: IconoPersonas },
-        { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", icono: IconoPersonas },
-        { label: "Rutas", href: "/th/rutas", icono: IconoRuta },
-        { label: "Asignar rutas", href: "/th/rutas/asignaciones", icono: IconoRuta },
-      ],
-    },
-    {
-      grupo: "Coordinación",
-      items: [
-        { label: "Revisión", href: "/coordinador/revision", icono: IconoCheck },
-        { label: "Historial", href: "/coordinador/historial", icono: IconoReloj },
-      ],
-    },
-    {
-      grupo: "Nómina",
-      items: [
-        { label: "Pagos", href: "/nomina/pagos", icono: IconoDinero },
-        { label: "Historial", href: "/nomina/historial", icono: IconoReloj },
-      ],
-    },
-    {
-      grupo: "Informes",
-      items: [{ label: "Historial General", href: "/jefe/historial", icono: IconoReloj }],
-    },
+    DASHBOARD,
+    MENU_TALENTO_HUMANO,
+    MENU_COORDINACION,
+    MENU_NOMINA,
+    { grupo: "Informes", items: [HISTORIAL_GENERAL] },
     {
       grupo: "Administración",
       items: [
-        { label: "Empresas", href: "/admin/empresas", icono: IconoEdificio },
-        { label: "Usuarios", href: "/admin/usuarios", icono: IconoUsuario },
-        { label: "Control de Solicitudes", href: "/admin/solicitudes", icono: IconoControl },
-        { label: "Carga masiva", href: "/admin/carga-masiva", icono: IconoDescargar },
-        { label: "Accesos", href: "/admin/accesos", icono: IconoEscudo },
+        { label: "Empresas", href: "/admin/empresas", descripcion: "Administra la estructura de empresas, sitios y áreas", icono: IconoEdificio },
+        { label: "Usuarios", href: "/admin/usuarios", descripcion: "Talento Humano, Coordinadores, Nómina, Jefes y Super Administradores", icono: IconoUsuario },
+        { label: "Control de Solicitudes", href: "/admin/solicitudes", descripcion: "Buscá por código o filtrá, y puedes eliminar cualquier solicitud sin importar su estado", icono: IconoControl },
+        { label: "Carga masiva", href: "/admin/carga-masiva", descripcion: "Cargá muchos colaboradores o rutas de una sola vez desde un Excel", icono: IconoDescargar },
+        { label: "Accesos", href: "/admin/accesos", descripcion: "Bitácora de logins (PIN y biometría) y cierre de sesión forzado", icono: IconoEscudo },
       ],
     },
   ],
@@ -136,9 +126,9 @@ function construirMenuColaborador(esSupervisor: boolean): EntradaMenu[] {
     {
       grupo: esSupervisor ? "Mi equipo" : "Mis Pasajes",
       items: [
-        { label: "Registrar", href: "/mis-pasajes", icono: IconoBuseta },
-        { label: "Historial", href: "/mis-pasajes/historial", icono: IconoReloj },
-        { label: "Copiar rutas", href: "/mis-pasajes/copiar", icono: IconoRuta },
+        { label: "Registrar", href: "/mis-pasajes", descripcion: "Registra y da seguimiento a tus solicitudes de pasajes", icono: IconoBuseta },
+        { label: "Historial", href: "/mis-pasajes/historial", descripcion: "Solicitudes aprobadas y pagadas, filtradas por fecha", icono: IconoReloj },
+        { label: "Copiar rutas", href: "/mis-pasajes/copiar", descripcion: "Elige el día del que quieres copiar, marca las rutas y a qué día se repiten", icono: IconoRuta },
       ],
     },
   ];

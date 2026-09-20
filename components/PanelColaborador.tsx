@@ -505,11 +505,7 @@ export default function PanelColaborador() {
   return (
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <h1 className="text-lg sm:text-xl font-bold">Mis Pasajes</h1>
-            <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Registra y da seguimiento a tus solicitudes de pasajes</span>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
           <div className="flex flex-wrap gap-2">
             {seleccionadas.size > 0 && (
               <button

@@ -228,11 +228,6 @@ export default function PanelEmpresas() {
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Empresas · Sitios · Áreas</h1>
-        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Administra la estructura de empresas, sitios y áreas</span>
-      </div>
-
       {errorInicial && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
       )}

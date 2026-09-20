@@ -172,12 +172,6 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Copiar rutas</h1>
-        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-          · Elige el día del que quieres copiar, marca las rutas y a qué día se repiten
-        </span>
-      </div>
 
       {/* Queda fija en pantalla (no es un toast que desaparece solo) para
           que quede clarísimo que ya se copió, aunque la lista de "Mis

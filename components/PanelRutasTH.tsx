@@ -401,11 +401,7 @@ export default function PanelRutasTH() {
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 className="text-lg sm:text-xl font-bold">Rutas</h1>
-          <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Cada Área puede tener varias rutas (una por cada trayecto)</span>
-        </div>
+      <div className="flex items-center justify-end gap-2">
         <div className="flex items-center gap-2">
           {esSuperAdmin && seleccionadas.size > 0 && (
             <button

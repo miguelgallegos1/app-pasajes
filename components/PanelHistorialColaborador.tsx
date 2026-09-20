@@ -116,12 +116,6 @@ export default function PanelHistorialColaborador() {
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Historial</h1>
-        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-          · Solicitudes aprobadas y pagadas, filtradas por fecha
-        </span>
-      </div>
 
       <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
         <div className={`grid grid-cols-1 sm:grid-cols-2 ${esSupervisor ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-3`}>

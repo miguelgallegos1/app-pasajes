@@ -80,10 +80,16 @@ export async function obtenerPerfilSesion(
     };
   }
   const usuario = await db.usuario.findUnique({ where: { id: session.id }, select: { nombre: true } });
-  const [primero = "", segundo = ""] = (usuario?.nombre ?? "").trim().split(/\s+/);
+  // Sin campos separados, "primera palabra + última palabra" acierta más
+  // seguido que "las 2 primeras" — con nombre compuesto (ej. "JUAN CARLOS
+  // PÉREZ GARCÍA") las 2 primeras son ambas del nombre de pila, ninguna
+  // del apellido.
+  const palabras = (usuario?.nombre ?? "").trim().split(/\s+/).filter(Boolean);
+  const nombreCorto =
+    palabras.length <= 1 ? (palabras[0] ?? "") : `${palabras[0]} ${palabras[palabras.length - 1]}`;
   return {
     nombre: usuario?.nombre ?? "",
-    nombreCorto: [primero, segundo].filter(Boolean).join(" "),
+    nombreCorto,
     fotoUrl: null,
     esSupervisor: false,
   };

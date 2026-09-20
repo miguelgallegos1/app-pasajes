@@ -355,11 +355,7 @@ export default function PanelTH() {
   return (
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <h1 className="text-lg sm:text-xl font-bold">Aprobaciones Pendientes</h1>
-            <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes de colaboradores esperando aprobación</span>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {seleccionadas.size > 0 && (
             <div className="flex gap-2 shrink-0">
               <button

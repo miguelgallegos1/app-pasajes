@@ -224,10 +224,6 @@ export default function PanelHistorialTH() {
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Historial</h1>
-        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes aprobadas y pagadas</span>
-      </div>
 
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">

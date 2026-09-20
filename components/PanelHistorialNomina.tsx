@@ -200,10 +200,6 @@ export default function PanelHistorialNomina() {
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="text-lg sm:text-xl font-bold">Historial de Pagos</h1>
-        <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">· Solicitudes ya pagadas</span>
-      </div>
 
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
         <div className="max-w-xs">

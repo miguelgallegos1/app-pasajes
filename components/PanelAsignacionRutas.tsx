@@ -203,13 +203,7 @@ export default function PanelAsignacionRutas({
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 className="text-lg sm:text-xl font-bold">Asignar rutas</h1>
-          <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-            · Elegir un colaborador y marcar qué rutas le quedan exclusivas a él
-          </span>
-        </div>
+      <div className="flex items-center justify-end gap-2">
         <div className="flex gap-2 shrink-0">
           <a
             href={urlExportar()}

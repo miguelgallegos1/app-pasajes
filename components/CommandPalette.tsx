@@ -11,7 +11,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconoLupa, IconoPersonas } from "./Icons";
 
-export type ItemPaleta = { label: string; href: string; grupo?: string; icono: (props: { className?: string }) => React.ReactElement };
+export type ItemPaleta = {
+  label: string;
+  href: string;
+  grupo?: string;
+  // Subtítulo de la pantalla (lo que antes vivía repetido en cada Panel,
+  // debajo de su propio <h1>) — ahora lo usa el breadcrumb (Breadcrumbs.tsx).
+  descripcion?: string;
+  icono: (props: { className?: string }) => React.ReactElement;
+};
 type ResultadoColaborador = { id: string; label: string; sublabel: string };
 
 const ROLES_CON_BUSQUEDA_COLABORADORES = new Set(["ADMIN_TH", "SUPER_ADMIN"]);

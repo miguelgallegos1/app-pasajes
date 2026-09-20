@@ -325,13 +325,7 @@ export default function PanelAsignacionEquipo() {
 
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 className="text-lg sm:text-xl font-bold">Asignar equipo</h1>
-          <span className="hidden sm:inline text-xs text-neutral-500 dark:text-neutral-400">
-            · Elegir un supervisor y marca quiénes de su área le reportan
-          </span>
-        </div>
+      <div className="flex items-center justify-end gap-2">
         <button
           onClick={() => router.push("/th/colaboradores?nuevo=1")}
           className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 shrink-0"
