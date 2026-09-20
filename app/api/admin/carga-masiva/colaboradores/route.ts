@@ -167,8 +167,9 @@ export async function POST(req: Request) {
       codigosUsados.add(codigoNomina);
       pinLookupsUsados.add(pinLookup);
       resultados.push({ fila: numeroFila, estado: "OK", mensaje: "Creado", pin, nombreCompleto, codigoNomina });
-    } catch (e: any) {
-      const mensaje = e?.code === "P2002" ? "El código de nómina o el PIN ya están en uso" : "No se pudo crear";
+    } catch (e) {
+      const esConflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";
+      const mensaje = esConflicto ? "El código de nómina o el PIN ya están en uso" : "No se pudo crear";
       resultados.push({ fila: numeroFila, estado: "ERROR", mensaje });
     }
   }

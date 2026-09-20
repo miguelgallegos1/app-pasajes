@@ -75,8 +75,9 @@ export async function POST(req: Request) {
         data: { nombre, empresaId: area.empresaId, sitioId: area.sitioId, areaId: area.id, valor },
       });
       resultados.push({ fila: numeroFila, estado: "OK", mensaje: "Creada" });
-    } catch (e: any) {
-      const mensaje = e?.code === "P2002" ? "Ya existe una ruta con ese nombre en esa área" : "No se pudo crear";
+    } catch (e) {
+      const esConflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";
+      const mensaje = esConflicto ? "Ya existe una ruta con ese nombre en esa área" : "No se pudo crear";
       resultados.push({ fila: numeroFila, estado: "ERROR", mensaje });
     }
   }

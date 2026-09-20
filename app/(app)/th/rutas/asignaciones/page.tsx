@@ -3,6 +3,7 @@
 // (reemplaza el combobox limitado que vivía dentro del modal de Colaboradores).
 
 import { redirect } from "next/navigation";
+import type { Prisma } from "../../../../../app/generated/prisma/client";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionColaboradorTH, obtenerAreasPermitidasTH } from "../../../../../lib/alcanceTH";
@@ -25,7 +26,7 @@ export default async function AsignacionRutasPage() {
     sinAsignaciones
       ? Promise.resolve([])
       : db.colaborador.findMany({
-          where: sinRestriccion ? {} : (condicion as any),
+          where: sinRestriccion ? {} : (condicion as Prisma.ColaboradorWhereInput),
           include: {
             area: { select: { nombre: true, sitioId: true } },
             rutasExclusivas: { select: { id: true } },

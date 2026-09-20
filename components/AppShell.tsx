@@ -156,6 +156,10 @@ function aplanarMenu(entradas: EntradaMenu[]): ItemPaleta[] {
 
 function Avatar({ fotoUrl, nombreCompleto, iniciales }: { fotoUrl?: string | null; nombreCompleto: string; iniciales: string }) {
   return fotoUrl ? (
+    // <img>, no <Image>: fotoUrl es de origen libre (foto del colaborador,
+    // sin dominio fijo conocido) — next/image exige declarar ese dominio
+    // en remotePatterns, y no hay uno solo para cubrir todos los casos.
+    // eslint-disable-next-line @next/next/no-img-element
     <img src={fotoUrl} alt={nombreCompleto} className="w-8 h-8 rounded-full object-cover" />
   ) : (
     <div className="w-8 h-8 rounded-full bg-orange-500 text-black text-xs font-bold flex items-center justify-center shrink-0">
@@ -170,6 +174,14 @@ function ItemLink({ item, activo, onClick }: { item: ItemMenu; activo: boolean; 
     <Link
       href={item.href}
       onClick={onClick}
+      // Sin esto, Next precarga el RSC de CADA ítem del menú apenas queda
+      // visible (sidebar entero a la vista = todas las rutas a la vez) —
+      // cada página hace su propia verificación de sesión en el servidor,
+      // así que solo con abrir el menú se disparaban consultas reales sin
+      // que el usuario tocara nada. El contenido real de cada pantalla ya
+      // se pide por su cuenta al montar (fetch en el cliente), así que no
+      // se pierde nada por no precargar el RSC.
+      prefetch={false}
       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
         activo
           ? "bg-orange-500/10 text-orange-700 font-semibold dark:bg-orange-500/15 dark:text-orange-400"
@@ -327,6 +339,7 @@ export default function AppShell({
     // Navegación dura (no router.push): así el próximo login arranca
     // desde cero, sin arrastrar caché del cliente de esta sesión que
     // ya cerró — eso era lo que a veces dejaba colgado el login siguiente.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/login";
   };
 
@@ -349,6 +362,9 @@ export default function AppShell({
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
             </svg>
           </button>
+          {/* <img>, no <Image>: mismo motivo que en el Avatar de más abajo
+              — /logo.png tiene su propio Cache-Control en next.config.ts. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt={APP_NOMBRE} className="w-8 h-8 md:w-9 md:h-9 object-contain shrink-0" />
           <div className="min-w-0">
             <p className="font-bold text-base leading-tight truncate">{APP_NOMBRE}</p>

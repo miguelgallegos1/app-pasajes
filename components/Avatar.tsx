@@ -55,6 +55,9 @@ export default function Avatar({
   className?: string;
 }) {
   if (fotoUrl) {
+    // <img>, no <Image>: fotoUrl es de origen libre (sin dominio fijo
+    // conocido), next/image exige declararlo en remotePatterns.
+    // eslint-disable-next-line @next/next/no-img-element
     return <img src={fotoUrl} alt={nombre} className={`rounded-full object-cover shrink-0 ${className}`} />;
   }
   const color = indice !== undefined ? colorPorIndice(indice) : colorDeNombre(nombre);

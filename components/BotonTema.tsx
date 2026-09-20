@@ -15,6 +15,11 @@ export default function BotonTema({ className = "" }: { className?: string }) {
   // componente se monta (y React ya reconcilió con el DOM real) mostramos
   // un ícono neutro para no arriesgar un parpadeo entre sol y luna.
   const [montado, setMontado] = useState(false);
+  // No puede resolverse en el initializer: el servidor siempre arranca en
+  // "false" (no conoce el tema real) y el cliente debe hidratar igual,
+  // recién después corrige — si arrancara ya en "true" en el cliente,
+  // el ícono no coincidiría con lo que pintó el servidor.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMontado(true), []);
 
   return (

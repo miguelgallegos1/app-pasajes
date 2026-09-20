@@ -53,6 +53,10 @@ export default function Modal({
   }, [onConfirmar]);
 
   useEffect(() => {
+    // Sincroniza el montaje/animación con el prop "abierto" cambiando con
+    // el tiempo (no es un valor derivable del render: al cerrar, sigue
+    // montado un rato más a propósito, para la animación de salida).
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (abierto) {
       setMontado(true);
       setCerrando(false);
@@ -60,6 +64,7 @@ export default function Modal({
     }
     if (!montado) return;
     setCerrando(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
     const temporizador = setTimeout(() => {
       setMontado(false);
       setCerrando(false);

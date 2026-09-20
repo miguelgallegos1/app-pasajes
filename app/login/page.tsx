@@ -69,6 +69,11 @@ export default function LoginPage() {
       typeof CSS !== "undefined" &&
       typeof CSS.supports === "function" &&
       (CSS.supports("-webkit-text-security", "disc") || CSS.supports("text-security", "disc"));
+    // No puede resolverse en el initializer de useState: el servidor no
+    // tiene CSS.supports, así que arrancar ya con el valor real (distinto
+    // entre servidor y cliente) rompería la hidratación. Por eso arranca
+    // en "true" (el default) y se corrige acá recién después de montar.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSoportaMascaraCss(soportado);
   }, []);
 
@@ -186,15 +191,16 @@ export default function LoginPage() {
 
       const { rol } = await verRes.json();
       irADestino(rol);
-    } catch (e: any) {
-      if (e?.name === "AbortError") {
+    } catch (e) {
+      const errorInfo = e as { name?: string; message?: string };
+      if (errorInfo?.name === "AbortError") {
         setError(
           sinConexionDetectada()
             ? "No hay conexión a internet. Revisa tu señal e intenta de nuevo."
             : "La conexión está lenta. Intenta de nuevo."
         );
-      } else if (e?.name !== "NotAllowedError") {
-        setError(e?.message || "No se pudo verificar tu identidad");
+      } else if (errorInfo?.name !== "NotAllowedError") {
+        setError(errorInfo?.message || "No se pudo verificar tu identidad");
       }
       setLoading(false);
     }
@@ -254,6 +260,10 @@ export default function LoginPage() {
       <div className={`w-full max-w-md transition-opacity ${loading ? "opacity-40 pointer-events-none" : ""}`}>
         <div className="border-x border-b border-x-neutral-200 border-b-neutral-200 dark:border-x-neutral-800 dark:border-b-neutral-800 border-t-4 border-t-orange-500 rounded-3xl shadow-xl shadow-neutral-300/50 dark:shadow-black/50 bg-white dark:bg-neutral-950 p-5 sm:p-8">
         <div className="text-center mb-8">
+          {/* <img>, no <Image>: /logo.png tiene su propio Cache-Control
+              largo en next.config.ts para esa ruta exacta — el optimizador
+              de next/image la serviría por /_next/image, sin ese header. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
             alt={APP_NOMBRE}

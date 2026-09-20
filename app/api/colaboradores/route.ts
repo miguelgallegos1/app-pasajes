@@ -113,8 +113,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(nuevo, { status: 201 });
-  } catch (e: any) {
-    if (e.code === "P2002") {
+  } catch (e) {
+    if (e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002") {
       return NextResponse.json({ error: "Ese código de nómina ya está en uso por otro colaborador" }, { status: 400 });
     }
     throw e;

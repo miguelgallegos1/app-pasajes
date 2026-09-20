@@ -180,7 +180,8 @@ export default function PanelTH() {
   const alternarSeleccion = (id: string) => {
     setSeleccionadas((prev) => {
       const copia = new Set(prev);
-      copia.has(id) ? copia.delete(id) : copia.add(id);
+      if (copia.has(id)) copia.delete(id);
+      else copia.add(id);
       return copia;
     });
   };

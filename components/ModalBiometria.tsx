@@ -48,6 +48,10 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
 
   useEffect(() => {
     if (!abierto) return;
+    // Reinicia el error de la vez anterior cada vez que se vuelve a abrir
+    // el modal — sincronizado con el prop "abierto", no derivable del
+    // render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError("");
     cargar();
     (async () => {
@@ -80,9 +84,12 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
 
       toast.exito("Acceso biométrico activado en este dispositivo");
       await cargar();
-    } catch (e: any) {
+    } catch (e) {
+      const errorInfo = e as { name?: string; message?: string };
       const mensaje =
-        e?.name === "NotAllowedError" ? "Cancelaste la verificación" : e?.message || "No se pudo activar el acceso biométrico";
+        errorInfo?.name === "NotAllowedError"
+          ? "Cancelaste la verificación"
+          : errorInfo?.message || "No se pudo activar el acceso biométrico";
       setError(mensaje);
       toast.error(mensaje);
     } finally {

@@ -38,8 +38,8 @@ export async function PATCH(
   try {
     const actualizada = await db.ruta.update({ where: { id }, data });
     return NextResponse.json(actualizada);
-  } catch (e: any) {
-    if (e.code === "P2002") {
+  } catch (e) {
+    if (e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002") {
       return NextResponse.json({ error: "Ya existe una ruta con ese nombre en esa área" }, { status: 400 });
     }
     throw e;
