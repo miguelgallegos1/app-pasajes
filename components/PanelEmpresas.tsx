@@ -256,12 +256,14 @@ export default function PanelEmpresas() {
                 key={e.id}
                 onClick={() => elegirEmpresa(e.id)}
                 className={`px-3 py-2.5 rounded-xl cursor-pointer transition shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
-                  e.id === empresaId ? "bg-orange-500 text-black" : "bg-white hover:bg-neutral-100"
+                  e.id === empresaId
+                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-800 dark:text-orange-300"
+                    : "bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium truncate">
-                    <span className={e.id === empresaId ? "text-black/60" : "text-neutral-400 dark:text-neutral-500"}>{e.numero}.</span>{" "}
+                    <span className={e.id === empresaId ? "text-orange-800/60 dark:text-orange-300/60" : "text-neutral-400 dark:text-neutral-500"}>{e.numero}.</span>{" "}
                     {e.nombre}
                   </span>
                   {!e.activo && (
@@ -273,7 +275,7 @@ export default function PanelEmpresas() {
                 <div className="flex gap-2 mt-1">
                   <button
                     onClick={(ev) => { ev.stopPropagation(); abrirEditarEmpresa(e); }}
-                    className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-black/70" : "text-neutral-500 dark:text-neutral-400"}`}
+                    className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-orange-800/80 dark:text-orange-300/80" : "text-neutral-500 dark:text-neutral-400"}`}
                   >
                     Editar
                   </button>
@@ -284,7 +286,7 @@ export default function PanelEmpresas() {
                       setErrorGestion("");
                       setConfirmandoEliminar(false);
                     }}
-                    className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-black/70" : "text-neutral-500 dark:text-neutral-400"}`}
+                    className={`text-[11px] font-medium underline ${e.id === empresaId ? "text-orange-800/80 dark:text-orange-300/80" : "text-neutral-500 dark:text-neutral-400"}`}
                   >
                     Gestionar
                   </button>
@@ -313,14 +315,16 @@ export default function PanelEmpresas() {
                 key={s.id}
                 onClick={() => setSitioId(s.id)}
                 className={`px-3 py-2.5 rounded-xl cursor-pointer transition shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
-                  s.id === sitioId ? "bg-orange-500 text-black" : "bg-white hover:bg-neutral-100"
+                  s.id === sitioId
+                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-800 dark:text-orange-300"
+                    : "bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                 }`}
               >
                 <span className="text-sm font-medium block truncate">{s.nombre}</span>
                 <div className="flex gap-2 mt-1">
                   <button
                     onClick={(ev) => { ev.stopPropagation(); abrirEditarSitio(s); }}
-                    className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-black/70" : "text-neutral-500 dark:text-neutral-400"}`}
+                    className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-orange-800/80 dark:text-orange-300/80" : "text-neutral-500 dark:text-neutral-400"}`}
                   >
                     Editar
                   </button>
@@ -331,7 +335,7 @@ export default function PanelEmpresas() {
                       setErrorGestion("");
                       setConfirmandoEliminar(false);
                     }}
-                    className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-black/70" : "text-neutral-500 dark:text-neutral-400"}`}
+                    className={`text-[11px] font-medium underline ${s.id === sitioId ? "text-orange-800/80 dark:text-orange-300/80" : "text-neutral-500 dark:text-neutral-400"}`}
                   >
                     Gestionar
                   </button>
