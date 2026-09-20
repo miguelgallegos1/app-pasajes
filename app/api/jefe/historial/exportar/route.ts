@@ -61,15 +61,14 @@ export async function GET(req: Request) {
 
   const { filas, truncado } = limitarFilasExportacion(
     solicitudes.map((s) => ({
-      Código: s.codigo,
-      Colaborador: s.colaborador.nombreCompleto,
-      "Código colaborador": s.colaborador.codigoNomina ?? "",
       Empresa: s.ruta.empresa.nombre,
       Sitio: s.ruta.sitio.nombre,
       Área: s.ruta.area.nombre,
+      "Código colaborador": s.colaborador.codigoNomina ?? "",
+      Colaborador: s.colaborador.nombreCompleto,
       Ruta: s.ruta.nombre,
       Estado: s.estado as string,
-      "Fecha del pasaje": formatearFecha(s.fecha),
+      Fecha: formatearFecha(s.fecha),
       Valor: Number(s.montoTotal),
     }))
   );
@@ -78,15 +77,14 @@ export async function GET(req: Request) {
   // directo, no hay forma de mostrar un aviso en pantalla).
   if (truncado) {
     filas.push({
-      Código: "Exportación limitada a 5000 filas. Acorta el rango de fechas para ver el resto.",
-      Colaborador: "",
-      "Código colaborador": "",
-      Empresa: "",
+      Empresa: "Exportación limitada a 5000 filas. Acorta el rango de fechas para ver el resto.",
       Sitio: "",
       Área: "",
+      "Código colaborador": "",
+      Colaborador: "",
       Ruta: "",
       Estado: "",
-      "Fecha del pasaje": "",
+      Fecha: "",
       Valor: 0,
     });
   }
