@@ -18,6 +18,8 @@ import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
+import EncabezadoOrdenable from "./EncabezadoOrdenable";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
 
 type Pendiente = {
   id: string;
@@ -31,6 +33,15 @@ type Pendiente = {
   supervisorId: string | null;
   supervisorNombre: string | null;
   rutaLabel: string;
+};
+
+type CampoOrden = "codigo" | "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal";
+const VALOR_ORDEN: Record<CampoOrden, (p: Pendiente) => string | number> = {
+  codigo: (p) => p.codigo,
+  fecha: (p) => p.fecha,
+  nombreColaborador: (p) => p.nombreColaborador,
+  rutaLabel: (p) => p.rutaLabel,
+  montoTotal: (p) => p.montoTotal,
 };
 
 const POR_PAGINA = 8;
@@ -121,10 +132,16 @@ export default function PanelTH() {
     setPaginaActual(1);
   };
 
+  const { orden, ordenar, itemsOrdenados: pendientesOrdenadas } = useOrdenTabla<Pendiente, CampoOrden>(
+    pendientesFiltradas,
+    (p, campo) => VALOR_ORDEN[campo](p),
+    "th-aprobaciones"
+  );
+
   const totalPaginas = Math.max(1, Math.ceil(pendientesFiltradas.length / POR_PAGINA));
   const pendientesPagina = useMemo(
-    () => pendientesFiltradas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
-    [pendientesFiltradas, paginaActual]
+    () => pendientesOrdenadas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
+    [pendientesOrdenadas, paginaActual]
   );
   const totalGeneral = useMemo(
     () => pendientesFiltradas.reduce((acc, s) => acc + s.montoTotal, 0),
@@ -402,6 +419,7 @@ export default function PanelTH() {
             cargarItems={(colaboradorId) => gruposColaborador.get(colaboradorId)?.solicitudes ?? []}
             clave={(s) => s.id}
             porPagina={POR_PAGINA}
+            claveOrden="th-aprobaciones-colaborador"
             seleccion={{
               seleccionadas,
               alternar: alternarSeleccion,
@@ -454,11 +472,11 @@ export default function PanelTH() {
                       className="w-4 h-4 accent-orange-500 rounded"
                     />
                   </th>
-                  <th className="px-4 py-3 font-medium">Código</th>
-                  <th className="px-4 py-3 font-medium">Fecha</th>
-                  <th className="px-4 py-3 font-medium">Colaborador</th>
-                  <th className="px-4 py-3 font-medium">Ruta</th>
-                  <th className="px-4 py-3 font-medium">Valor</th>
+                  <EncabezadoOrdenable campo="codigo" ordenActivo={orden} onOrdenar={ordenar}>Código</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="fecha" ordenActivo={orden} onOrdenar={ordenar}>Fecha</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
                   <th className="px-4 py-3 font-medium">Observaciones</th>
                   <th className="px-4 py-3"></th>
                 </tr>

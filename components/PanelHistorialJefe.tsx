@@ -321,6 +321,7 @@ export default function PanelHistorialJefe() {
             filas={filasColaborador}
             cargarItems={cargarItemsColaborador}
             clave={(s) => s.id}
+            claveOrden="jefe-historial-colaborador"
             columnas={[
               { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
               { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },

@@ -284,6 +284,7 @@ export default function PanelHistorialNomina() {
             filas={filasColaborador}
             cargarItems={cargarItemsColaborador}
             clave={(s) => s.id}
+            claveOrden="nomina-historial-colaborador"
             columnas={[
               { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
               {

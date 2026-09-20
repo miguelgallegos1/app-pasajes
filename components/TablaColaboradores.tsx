@@ -14,13 +14,20 @@
 
 import { useRef, useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoChevron } from "./Icons";
+import { IconoChevron, IconoOrdenar } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import Spinner from "./Spinner";
 import Paginacion from "./Paginacion";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
 
 export type FilaColaborador = { id: string; nombre: string; cantidad: number; total: number };
+
+type CampoOrdenColaborador = "nombre" | "total";
+const VALOR_ORDEN_COLABORADOR: Record<CampoOrdenColaborador, (f: FilaColaborador) => string | number> = {
+  nombre: (f) => f.nombre,
+  total: (f) => f.total,
+};
 
 export type ColumnaItem<T> = {
   encabezado: string;
@@ -53,6 +60,10 @@ type Props<T> = {
   // Paginación interna (client-side). Se omite en los historiales, que ya
   // paginan del lado del servidor.
   porPagina?: number;
+  // Identifica esta tabla para recordar el orden elegido entre visitas
+  // (ver useOrdenTabla). Sin ella, el orden igual funciona pero se resetea
+  // cada vez que se navega a la pantalla.
+  claveOrden?: string;
 };
 
 function CheckboxColaborador({
@@ -94,13 +105,20 @@ export default function TablaColaboradores<T>({
   vacio = "Sin resultados",
   vacioItems = "Sin solicitudes",
   porPagina,
+  claveOrden,
 }: Props<T>) {
+  const { orden, ordenar, itemsOrdenados: filasOrdenadas } = useOrdenTabla<FilaColaborador, CampoOrdenColaborador>(
+    filas,
+    (f, campo) => VALOR_ORDEN_COLABORADOR[campo](f),
+    claveOrden
+  );
+
   const [pagina, setPagina] = useState(1);
-  const totalPaginas = porPagina ? Math.max(1, Math.ceil(filas.length / porPagina)) : 1;
+  const totalPaginas = porPagina ? Math.max(1, Math.ceil(filasOrdenadas.length / porPagina)) : 1;
   const paginaSegura = Math.min(pagina, totalPaginas);
   const filasPagina = useMemo(
-    () => (porPagina ? filas.slice((paginaSegura - 1) * porPagina, paginaSegura * porPagina) : filas),
-    [filas, porPagina, paginaSegura]
+    () => (porPagina ? filasOrdenadas.slice((paginaSegura - 1) * porPagina, paginaSegura * porPagina) : filasOrdenadas),
+    [filasOrdenadas, porPagina, paginaSegura]
   );
 
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -156,8 +174,34 @@ export default function TablaColaboradores<T>({
         )}
         <span className="w-3.5 shrink-0" />
         <span className="w-8 shrink-0" />
-        <span className="flex-1">Colaborador</span>
-        <span className="shrink-0">Total</span>
+        <button
+          type="button"
+          onClick={() => ordenar("nombre")}
+          className={`flex-1 flex items-center gap-1 text-left select-none transition ${
+            orden?.campo === "nombre" ? "text-neutral-900 dark:text-white" : "hover:text-neutral-700 dark:hover:text-neutral-300"
+          }`}
+        >
+          Colaborador
+          <IconoOrdenar
+            className={`w-3 h-3 transition-all ${orden?.campo === "nombre" ? "opacity-100" : "opacity-25"} ${
+              orden?.campo === "nombre" && orden.direccion === "desc" ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        <button
+          type="button"
+          onClick={() => ordenar("total")}
+          className={`shrink-0 flex items-center gap-1 select-none transition ${
+            orden?.campo === "total" ? "text-neutral-900 dark:text-white" : "hover:text-neutral-700 dark:hover:text-neutral-300"
+          }`}
+        >
+          Total
+          <IconoOrdenar
+            className={`w-3 h-3 transition-all ${orden?.campo === "total" ? "opacity-100" : "opacity-25"} ${
+              orden?.campo === "total" && orden.direccion === "desc" ? "rotate-180" : ""
+            }`}
+          />
+        </button>
       </div>
 
       <div className="divide-y divide-neutral-200/70 dark:divide-neutral-800/70">

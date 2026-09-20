@@ -19,6 +19,8 @@ import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
+import EncabezadoOrdenable from "./EncabezadoOrdenable";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
 
 type Revisada = {
   id: string;
@@ -36,6 +38,15 @@ type Revisada = {
   areaNombre: string;
   rutaId: string;
   rutaNombre: string;
+};
+
+type CampoOrden = "codigo" | "fecha" | "nombreColaborador" | "rutaNombre" | "montoTotal";
+const VALOR_ORDEN: Record<CampoOrden, (r: Revisada) => string | number> = {
+  codigo: (r) => r.codigo,
+  fecha: (r) => r.fecha,
+  nombreColaborador: (r) => r.nombreColaborador,
+  rutaNombre: (r) => r.rutaNombre,
+  montoTotal: (r) => r.montoTotal,
 };
 
 const POR_PAGINA = 8;
@@ -131,10 +142,16 @@ export default function PanelNomina() {
     });
   }, [revisadas, empresaId, sitioId, areaId, colaboradorId, busqueda]);
 
+  const { orden, ordenar, itemsOrdenados: revisadasOrdenadas } = useOrdenTabla<Revisada, CampoOrden>(
+    revisadasFiltradas,
+    (r, campo) => VALOR_ORDEN[campo](r),
+    "nomina-pagos"
+  );
+
   const totalPaginas = Math.max(1, Math.ceil(revisadasFiltradas.length / POR_PAGINA));
   const revisadasPagina = useMemo(
-    () => revisadasFiltradas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
-    [revisadasFiltradas, paginaActual]
+    () => revisadasOrdenadas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
+    [revisadasOrdenadas, paginaActual]
   );
   const totalGeneral = useMemo(
     () => revisadasFiltradas.reduce((acc, a) => acc + a.montoTotal, 0),
@@ -441,6 +458,7 @@ export default function PanelNomina() {
           cargarItems={(colaboradorId) => gruposPorColaborador.get(colaboradorId)?.items ?? []}
           clave={(a) => a.id}
           porPagina={POR_PAGINA}
+          claveOrden="nomina-pagos-colaborador"
           seleccion={{
             seleccionadas,
             alternar: alternarSeleccion,
@@ -487,12 +505,12 @@ export default function PanelNomina() {
                       className="w-4 h-4 accent-orange-500 rounded"
                     />
                   </th>
-                  <th className="px-4 py-3 font-medium">Código</th>
-                  <th className="px-4 py-3 font-medium">Fecha del pasaje</th>
-                  <th className="px-4 py-3 font-medium">Colaborador</th>
+                  <EncabezadoOrdenable campo="codigo" ordenActivo={orden} onOrdenar={ordenar}>Código</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="fecha" ordenActivo={orden} onOrdenar={ordenar}>Fecha del pasaje</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
                   <th className="px-4 py-3 font-medium">Empresa · Sitio · Área</th>
-                  <th className="px-4 py-3 font-medium">Ruta</th>
-                  <th className="px-4 py-3 font-medium">Valor</th>
+                  <EncabezadoOrdenable campo="rutaNombre" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>

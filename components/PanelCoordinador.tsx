@@ -19,6 +19,8 @@ import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
+import EncabezadoOrdenable from "./EncabezadoOrdenable";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
 
 type Aprobada = {
   id: string;
@@ -38,6 +40,15 @@ type Aprobada = {
   areaNombre: string;
   rutaId: string;
   rutaLabel: string;
+};
+
+type CampoOrden = "codigo" | "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal";
+const VALOR_ORDEN: Record<CampoOrden, (a: Aprobada) => string | number> = {
+  codigo: (a) => a.codigo,
+  fecha: (a) => a.fecha,
+  nombreColaborador: (a) => a.nombreColaborador,
+  rutaLabel: (a) => a.rutaLabel,
+  montoTotal: (a) => a.montoTotal,
 };
 
 const POR_PAGINA = 8;
@@ -165,10 +176,16 @@ export default function PanelCoordinador() {
 
   const cambiarBusqueda = (v: string) => { setBusqueda(v); setPaginaActual(1); };
 
+  const { orden, ordenar, itemsOrdenados: aprobadasOrdenadas } = useOrdenTabla<Aprobada, CampoOrden>(
+    aprobadasFiltradas,
+    (a, campo) => VALOR_ORDEN[campo](a),
+    "coordinador-revision"
+  );
+
   const totalPaginas = Math.max(1, Math.ceil(aprobadasFiltradas.length / POR_PAGINA));
   const aprobadasPagina = useMemo(
-    () => aprobadasFiltradas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
-    [aprobadasFiltradas, paginaActual]
+    () => aprobadasOrdenadas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
+    [aprobadasOrdenadas, paginaActual]
   );
   const totalGeneral = useMemo(
     () => aprobadasFiltradas.reduce((acc, s) => acc + s.montoTotal, 0),
@@ -485,6 +502,7 @@ export default function PanelCoordinador() {
             cargarItems={(colaboradorId) => gruposPorColaborador.get(colaboradorId)?.items ?? []}
             clave={(s) => s.id}
             porPagina={POR_PAGINA}
+            claveOrden="coordinador-revision-colaborador"
             seleccion={{
               seleccionadas,
               alternar: alternarSeleccion,
@@ -531,11 +549,11 @@ export default function PanelCoordinador() {
                         className="w-4 h-4 accent-orange-500 rounded"
                       />
                     </th>
-                    <th className="px-4 py-3 font-medium">Código</th>
-                    <th className="px-4 py-3 font-medium">Fecha</th>
-                    <th className="px-4 py-3 font-medium">Colaborador</th>
-                    <th className="px-4 py-3 font-medium">Ruta</th>
-                    <th className="px-4 py-3 font-medium">Valor</th>
+                    <EncabezadoOrdenable campo="codigo" ordenActivo={orden} onOrdenar={ordenar}>Código</EncabezadoOrdenable>
+                    <EncabezadoOrdenable campo="fecha" ordenActivo={orden} onOrdenar={ordenar}>Fecha</EncabezadoOrdenable>
+                    <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
+                    <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
+                    <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
