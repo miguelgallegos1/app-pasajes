@@ -4,11 +4,10 @@
 // una conserva su propia nota anterior, así que la actualización va fila
 // por fila dentro de una transacción — no un solo updateMany.
 
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
-import { notificarCambioEstadoLote } from "../../../../lib/webPush";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -48,7 +47,6 @@ export async function POST(req: Request) {
 
   const etiqueta = session.rol === "NOMINA" ? "NOVEDAD EN NÓMINA" : "DISCREPANCIA EN REVISIÓN";
   const motivoLimpio = motivo.trim().toUpperCase();
-  const idsValidos = solicitudesValidas.map((s) => s.id);
 
   const resultados = await db.$transaction(
     solicitudesValidas.map((s) => {
@@ -66,13 +64,7 @@ export async function POST(req: Request) {
   );
   const count = resultados.reduce((acc, r) => acc + r.count, 0);
 
-  after(async () => {
-    const devueltas = await db.solicitudPasaje.findMany({
-      where: { id: { in: idsValidos }, estado: "APROBADA" },
-      select: { colaboradorId: true, estado: true },
-    });
-    await notificarCambioEstadoLote(devueltas, session.id);
-  });
-
+  // No se notifica al colaborador (ver [id]/devolver-revision/route.ts) —
+  // Coordinación ya ve esto solo, en su propia campanita de pendientes.
   return NextResponse.json({ devueltas: count });
 }

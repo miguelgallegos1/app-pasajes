@@ -1,8 +1,10 @@
 // app/api/mis-pasajes/notificaciones/route.ts
-// Últimas solicitudes PROPIAS del colaborador que ya quedaron resueltas
-// (Aprobada o Rechazada), para la campanita del header. Se limita a 15:
-// alcanza de sobra para "qué me resolvieron últimamente" y mantiene la
-// consulta liviana — el colaborador ve el historial completo en Mis Pasajes.
+// Últimas solicitudes resueltas (Aprobada o Rechazada) para la campanita
+// del header: las propias del colaborador y, si es supervisor, también
+// las de su equipo (mismo alcance que mis-pasajes/datos) — un colaborador
+// a cargo de un supervisor nunca entra a ver esto por su cuenta. Se
+// limita a 15: alcanza de sobra para "qué se resolvió últimamente" y
+// mantiene la consulta liviana — el historial completo está en Mis Pasajes.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
@@ -16,11 +18,19 @@ export async function GET() {
   const colaborador = await obtenerColaboradorPorUsuarioId(session.id);
   if (!colaborador) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
+  const equipo = colaborador.esSupervisor
+    ? await db.colaborador.findMany({
+        where: { supervisorId: colaborador.id, estado: "ACTIVO" },
+        select: { id: true },
+      })
+    : [];
+  const idsAConsultar = [colaborador.id, ...equipo.map((c) => c.id)];
+
   const solicitudes = await db.solicitudPasaje.findMany({
-    where: { colaboradorId: colaborador.id, estado: { in: ["APROBADA", "RECHAZADA"] } },
+    where: { colaboradorId: { in: idsAConsultar }, estado: { in: ["APROBADA", "RECHAZADA"] } },
     orderBy: { fecha: "desc" },
     take: 15,
-    include: { ruta: { select: { nombre: true } } },
+    include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true } } },
   });
 
   // aprobadoPorId/rechazadoPorId no tienen relación declarada hacia
@@ -43,6 +53,9 @@ export async function GET() {
       rutaLabel: s.ruta.nombre,
       fecha: s.fecha.toISOString(),
       quien: actorId ? (nombrePorActorId.get(actorId) ?? null) : null,
+      // Solo interesa mostrarlo cuando es de un miembro del equipo, no la
+      // propia — el front lo omite si coincide con el colaborador logueado.
+      nombreColaborador: s.colaboradorId !== colaborador.id ? s.colaborador.nombreCompleto : null,
     };
   });
 

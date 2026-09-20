@@ -5,11 +5,10 @@
 // No aplica a solicitudes ya PAGADAS (revertir un pago ya hecho es otro
 // problema).
 
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
-import { notificarCambioEstado } from "../../../../../lib/webPush";
 
 export async function PATCH(
   req: Request,
@@ -62,19 +61,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Solo se pueden revertir solicitudes aprobadas" }, { status: 400 });
   }
 
+  // No se notifica al colaborador: esto es trabajo interno (TH corrige su
+  // propia aprobación, o Coordinación reporta una discrepancia y se la
+  // devuelve a TH) — el colaborador no tiene nada que hacer con esto. A
+  // quien sí le compete (TH) ya lo ve solo: la solicitud vuelve a contar
+  // como "pendiente de aprobar" en su propia campanita/alerta.
   const actualizada = await db.solicitudPasaje.findUnique({
     where: { id },
     include: { ruta: { select: { nombre: true } } },
   });
-  if (actualizada) {
-    after(() =>
-      notificarCambioEstado(actualizada.colaboradorId, {
-        codigo: actualizada.codigo,
-        estado: actualizada.estado,
-        rutaLabel: actualizada.ruta.nombre,
-        actorId: session.id,
-      })
-    );
-  }
   return NextResponse.json(actualizada);
 }

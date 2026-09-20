@@ -71,6 +71,30 @@ async function nombreDeUsuario(usuarioId: string | undefined): Promise<string | 
   return usuario?.nombre ? acortarNombreLibre(usuario.nombre) : null;
 }
 
+// A quién le llega el aviso: si el colaborador está a cargo de un
+// supervisor (bloqueado del login individual — ver verificarAccesoColaborador
+// en lib/auth.ts), el propio colaborador nunca puede entrar a suscribirse
+// ni a ver la campanita, así que el aviso va para el supervisor, que es
+// quien realmente le gestiona los pasajes.
+type ColaboradorParaAviso = {
+  usuarioId: string;
+  esSupervisor: boolean;
+  supervisor: { usuarioId: string } | null;
+  nombreCompleto: string;
+};
+
+function usuarioDestino(colaborador: ColaboradorParaAviso): string {
+  return !colaborador.esSupervisor && colaborador.supervisor ? colaborador.supervisor.usuarioId : colaborador.usuarioId;
+}
+
+// Cuando el aviso va para el supervisor (no para el propio colaborador),
+// se antepone de quién es — un supervisor puede tener varias personas a
+// cargo y "CODE · ruta" solo no alcanza para saber cuál.
+function conNombreSiEsParaSupervisor(colaborador: ColaboradorParaAviso, texto: string): string {
+  const paraSupervisor = !colaborador.esSupervisor && colaborador.supervisor;
+  return paraSupervisor ? `${colaborador.nombreCompleto}: ${texto}` : texto;
+}
+
 // Una solicitud puntual cambió de estado — usado por los endpoints
 // individuales (aprobar, rechazar, revisar, pagar, revertir,
 // devolver-revision).
@@ -82,19 +106,20 @@ export async function notificarCambioEstado(
   try {
     const colaborador = await db.colaborador.findUnique({
       where: { id: colaboradorId },
-      select: { usuarioId: true },
+      select: { usuarioId: true, esSupervisor: true, nombreCompleto: true, supervisor: { select: { usuarioId: true } } },
     });
     if (!colaborador) return;
 
     const nombreActor = await nombreDeUsuario(opts.actorId);
+    const cuerpo = nombreActor
+      ? `${opts.codigo} · ${opts.rutaLabel} · Por ${nombreActor}`
+      : `${opts.codigo} · ${opts.rutaLabel}`;
     const payload = JSON.stringify({
       title: TITULOS_ESTADO[opts.estado] ?? "Tu solicitud cambió de estado",
-      body: nombreActor
-        ? `${opts.codigo} · ${opts.rutaLabel} · Por ${nombreActor}`
-        : `${opts.codigo} · ${opts.rutaLabel}`,
+      body: conNombreSiEsParaSupervisor(colaborador, cuerpo),
       url: "/mis-pasajes",
     });
-    await enviarATodasLasSuscripciones(colaborador.usuarioId, payload);
+    await enviarATodasLasSuscripciones(usuarioDestino(colaborador), payload);
   } catch {
     // No bloquea la acción real si esto falla por cualquier otro motivo.
   }
@@ -122,19 +147,20 @@ export async function notificarCambioEstadoLote(
       Array.from(cantidadPorColaborador.entries()).map(async ([colaboradorId, cantidad]) => {
         const colaborador = await db.colaborador.findUnique({
           where: { id: colaboradorId },
-          select: { usuarioId: true },
+          select: { usuarioId: true, esSupervisor: true, nombreCompleto: true, supervisor: { select: { usuarioId: true } } },
         });
         if (!colaborador) return;
 
+        const cuerpo = nombreActor ? `Por ${nombreActor} · Revisa el detalle en Mis Pasajes` : "Revisa el detalle en Mis Pasajes";
         const payload = JSON.stringify({
           title:
             cantidad === 1
               ? (TITULOS_ESTADO[estado] ?? "Tu solicitud cambió de estado")
               : `${cantidad} ${TITULOS_ESTADO_PLURAL[estado] ?? "solicitudes cambiaron de estado"}`,
-          body: nombreActor ? `Por ${nombreActor} · Revisa el detalle en Mis Pasajes` : "Revisa el detalle en Mis Pasajes",
+          body: conNombreSiEsParaSupervisor(colaborador, cuerpo),
           url: "/mis-pasajes",
         });
-        await enviarATodasLasSuscripciones(colaborador.usuarioId, payload);
+        await enviarATodasLasSuscripciones(usuarioDestino(colaborador), payload);
       })
     );
   } catch {

@@ -1,7 +1,9 @@
 // components/NotificacionesMenu.tsx
-// Campanita del header: se pide UNA sola vez al montar AppShell (que vive
-// en el layout y no se remonta entre navegaciones), nunca en cada clic del
-// menú. Reutiliza los mismos colores/íconos que la tarjeta del Dashboard
+// Campanita del header de TH/Coordinación/Nómina. A diferencia del
+// colaborador (que recibe push y por eso se refresca al instante cuando
+// llega uno), estos roles no tienen suscripción push — así que se sondea
+// con un intervalo liviano en vez de quedarse pegado al valor del montaje.
+// Reutiliza los mismos colores/íconos que la tarjeta del Dashboard
 // (AlertaPendientes) para que ambos lugares se vean como la misma alerta.
 
 "use client";
@@ -13,6 +15,7 @@ import { TEMAS } from "./AlertaPendientes";
 import type { AlertaPendiente } from "../lib/alertasPendientes";
 
 const ROLES_CON_ALERTA = new Set(["ADMIN_TH", "COORDINADOR", "NOMINA"]);
+const INTERVALO_SONDEO_MS = 30_000;
 
 export default function NotificacionesMenu({ rol }: { rol: string }) {
   const [alerta, setAlerta] = useState<AlertaPendiente | null>(null);
@@ -22,14 +25,26 @@ export default function NotificacionesMenu({ rol }: { rol: string }) {
   useEffect(() => {
     if (!ROLES_CON_ALERTA.has(rol)) return;
     let cancelado = false;
-    fetch("/api/dashboard/pendientes-accion")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelado && data) setAlerta(data.alerta);
-      })
-      .catch(() => {});
+    const cargar = () => {
+      fetch("/api/dashboard/pendientes-accion")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!cancelado && data) setAlerta(data.alerta);
+        })
+        .catch(() => {});
+    };
+    cargar();
+
+    // Sondeo liviano (no en cada clic/navegación) para reflejar cambios
+    // que hace OTRA persona — ej. Nómina devuelve un pago con novedad y
+    // Coordinación necesita verlo sin recargar toda la app. Se salta el
+    // pedido si la pestaña está en segundo plano.
+    const intervalo = setInterval(() => {
+      if (document.visibilityState === "visible") cargar();
+    }, INTERVALO_SONDEO_MS);
     return () => {
       cancelado = true;
+      clearInterval(intervalo);
     };
   }, [rol]);
 

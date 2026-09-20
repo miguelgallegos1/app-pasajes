@@ -4,11 +4,10 @@
 // se valida y no se guarda, así que a diferencia de rechazar-lote esto sí
 // puede resolverse con un único updateMany.
 
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
-import { notificarCambioEstadoLote } from "../../../../lib/webPush";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -48,13 +47,7 @@ export async function POST(req: Request) {
     data: { estado: "PENDIENTE", fechaAprobacion: null, aprobadoPorId: null },
   });
 
-  after(async () => {
-    const revertidas = await db.solicitudPasaje.findMany({
-      where: { id: { in: idsValidos }, estado: "PENDIENTE" },
-      select: { colaboradorId: true, estado: true },
-    });
-    await notificarCambioEstadoLote(revertidas, session.id);
-  });
-
+  // No se notifica al colaborador (ver [id]/revertir/route.ts) — TH ya ve
+  // esto solo, reflejado en su propia campanita de pendientes de aprobar.
   return NextResponse.json({ revertidas: resultado.count });
 }

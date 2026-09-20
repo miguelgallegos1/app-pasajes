@@ -20,6 +20,7 @@ type ItemResuelto = {
   rutaLabel: string;
   fecha: string;
   quien: string | null;
+  nombreColaborador: string | null;
 };
 
 const CLAVE_VISTOS = "app-pasajes:notificaciones-vistas";
@@ -149,6 +150,9 @@ export default function NotificacionesColaborador() {
                         <span className="font-mono font-semibold">{it.codigo}</span>{" "}
                         {aprobada ? "fue aprobada" : "fue rechazada"}
                       </p>
+                      {it.nombreColaborador && (
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{it.nombreColaborador}</p>
+                      )}
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
                         {it.rutaLabel} · {formatearFecha(it.fecha)}
                       </p>
