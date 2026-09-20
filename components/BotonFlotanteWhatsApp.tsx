@@ -36,9 +36,15 @@ export default function BotonFlotanteWhatsApp() {
       target="_blank"
       rel="noopener noreferrer"
       title="Contactar a Talento Humano por WhatsApp"
-      className="fixed z-40 bottom-5 left-5 w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+      // bottom-28 (no bottom-5) para no quedar tapado por
+      // TarjetaActualizarDomicilio, que en móvil ocupa todo el ancho de esa
+      // misma esquina cuando está visible — right, porque el menú vive a
+      // la izquierda. Semi-transparente en reposo (opacity-80) para que no
+      // pese sobre el contenido de abajo; se ve completo apenas se le
+      // presta atención (hover/tap).
+      className="fixed z-40 bottom-28 right-5 w-11 h-11 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white flex items-center justify-center shadow-md shadow-black/15 opacity-80 hover:opacity-100 active:opacity-100 transition hover:-translate-y-0.5 hover:shadow-xl"
     >
-      <IconoWhatsApp className="w-7 h-7" />
+      <IconoWhatsApp className="w-5 h-5" />
     </a>
   );
 }
