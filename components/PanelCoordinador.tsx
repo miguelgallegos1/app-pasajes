@@ -546,7 +546,7 @@ export default function PanelCoordinador() {
               ref={contenedorRef}
               tabIndex={0}
               onKeyDown={alPresionar}
-              className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-inset"
+              className="overflow-x-auto outline-none"
             >
               <table className="w-full text-xs min-w-[680px]">
                 <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
