@@ -22,6 +22,7 @@ import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useNavegacionFilas } from "../lib/useNavegacionFilas";
+import { avisarCambioPendientes } from "../lib/avisoPendientes";
 
 type Revisada = {
   id: string;
@@ -252,6 +253,7 @@ export default function PanelNomina() {
         return;
       }
       toast.exito("Solicitud marcada como pagada");
+      avisarCambioPendientes();
       setRevisadas((prev) => prev.filter((a) => a.id !== idAPagar));
       // Si esta fila también estaba tildada para el lote, se saca — si no,
       // el contador de "Pagar (N)"/"Novedad (N)" queda contando una fila
@@ -288,6 +290,7 @@ export default function PanelNomina() {
         return;
       }
       toast.exito("Solicitudes marcadas como pagadas");
+      avisarCambioPendientes();
       const idsPagados = new Set(seleccionadas);
       setRevisadas((prev) => prev.filter((a) => !idsPagados.has(a.id)));
       setSeleccionadas(new Set());
@@ -327,6 +330,7 @@ export default function PanelNomina() {
         return;
       }
       toast.exito("Solicitud devuelta a Aprobada");
+      avisarCambioPendientes();
       setRevisadas((prev) => prev.filter((a) => a.id !== idANovedad));
       setSeleccionadas((prev) => {
         if (!prev.has(idANovedad)) return prev;
@@ -363,6 +367,7 @@ export default function PanelNomina() {
         return;
       }
       toast.exito("Solicitudes devueltas a Aprobada");
+      avisarCambioPendientes();
       const idsDevueltos = new Set(seleccionadas);
       setRevisadas((prev) => prev.filter((a) => !idsDevueltos.has(a.id)));
       setSeleccionadas(new Set());

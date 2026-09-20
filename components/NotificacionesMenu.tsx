@@ -13,9 +13,15 @@ import Link from "next/link";
 import { IconoCampana } from "./Icons";
 import { TEMAS } from "./AlertaPendientes";
 import type { AlertaPendiente } from "../lib/alertasPendientes";
+import { suscribirseACambioPendientes } from "../lib/avisoPendientes";
 
 const ROLES_CON_ALERTA = new Set(["ADMIN_TH", "COORDINADOR", "NOMINA"]);
-const INTERVALO_SONDEO_MS = 30_000;
+// 5 minutos: la base (plan gratis) se duerme sola sin uso, y mantenerla
+// despierta todo el día con un sondeo corto es justamente lo que más
+// cuesta — no la cantidad de consultas en sí. El propio cambio del
+// usuario (aprobar/revisar/pagar) se refleja al instante aparte, sin
+// esperar este intervalo (ver avisarCambioPendientes más abajo).
+const INTERVALO_SONDEO_MS = 5 * 60_000;
 
 export default function NotificacionesMenu({ rol }: { rol: string }) {
   const [alerta, setAlerta] = useState<AlertaPendiente | null>(null);
@@ -49,10 +55,15 @@ export default function NotificacionesMenu({ rol }: { rol: string }) {
       if (document.visibilityState === "visible") cargar();
     }
     document.addEventListener("visibilitychange", manejarVisibilidad);
+    // Refresco inmediato tras la propia acción (aprobar/revisar/pagar/
+    // revertir, ver avisarCambioPendientes en los paneles) — no espera
+    // al sondeo de arriba.
+    const desuscribirse = suscribirseACambioPendientes(cargar);
     return () => {
       cancelado = true;
       clearInterval(intervalo);
       document.removeEventListener("visibilitychange", manejarVisibilidad);
+      desuscribirse();
     };
   }, [rol]);
 

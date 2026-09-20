@@ -22,6 +22,7 @@ import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useNavegacionFilas } from "../lib/useNavegacionFilas";
+import { avisarCambioPendientes } from "../lib/avisoPendientes";
 
 type Aprobada = {
   id: string;
@@ -282,6 +283,7 @@ export default function PanelCoordinador() {
         return;
       }
       toast.exito("Solicitud marcada como revisada");
+      avisarCambioPendientes();
       setAprobadas((prev) => prev.filter((s) => s.id !== idARevisar));
       // Si esta fila también estaba tildada para el lote, se saca — si no,
       // el contador de "Revisar (N)"/"Discrepancia (N)" queda contando una
@@ -318,6 +320,7 @@ export default function PanelCoordinador() {
         return;
       }
       toast.exito("Solicitudes marcadas como revisadas");
+      avisarCambioPendientes();
       const idsRevisados = new Set(seleccionadas);
       setAprobadas((prev) => prev.filter((s) => !idsRevisados.has(s.id)));
       setSeleccionadas(new Set());
@@ -357,6 +360,7 @@ export default function PanelCoordinador() {
         return;
       }
       toast.exito("Solicitud devuelta a Talento Humano");
+      avisarCambioPendientes();
       setAprobadas((prev) => prev.filter((s) => s.id !== idADiscrepancia));
       setSeleccionadas((prev) => {
         if (!prev.has(idADiscrepancia)) return prev;
@@ -393,6 +397,7 @@ export default function PanelCoordinador() {
         return;
       }
       toast.exito("Solicitudes devueltas a Talento Humano");
+      avisarCambioPendientes();
       const idsDevueltos = new Set(seleccionadas);
       setAprobadas((prev) => prev.filter((s) => !idsDevueltos.has(s.id)));
       setSeleccionadas(new Set());

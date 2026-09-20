@@ -21,6 +21,7 @@ import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useNavegacionFilas } from "../lib/useNavegacionFilas";
+import { avisarCambioPendientes } from "../lib/avisoPendientes";
 
 type Pendiente = {
   id: string;
@@ -239,6 +240,7 @@ export default function PanelTH() {
         return;
       }
       toast.exito("Solicitud aprobada");
+      avisarCambioPendientes();
       setPendientes((prev) => prev.filter((p) => p.id !== idAAprobar));
       // Si esta fila también estaba tildada para el lote, se saca — si no,
       // el contador de "Aprobar (N)"/"Devolver (N)" queda contando una
@@ -276,6 +278,7 @@ export default function PanelTH() {
         return;
       }
       toast.exito("Solicitudes aprobadas");
+      avisarCambioPendientes();
       const idsAprobados = new Set(seleccionadas);
       setPendientes((prev) => prev.filter((p) => !idsAprobados.has(p.id)));
       setSeleccionadas(new Set());
@@ -316,6 +319,7 @@ export default function PanelTH() {
         return;
       }
       toast.exito("Solicitud devuelta para corrección");
+      avisarCambioPendientes();
       setPendientes((prev) => prev.filter((p) => p.id !== idADevolver));
       setSeleccionadas((prev) => {
         if (!prev.has(idADevolver)) return prev;
@@ -352,6 +356,7 @@ export default function PanelTH() {
         return;
       }
       toast.exito("Solicitudes devueltas para corrección");
+      avisarCambioPendientes();
       const idsDevueltos = new Set(seleccionadas);
       setPendientes((prev) => prev.filter((p) => !idsDevueltos.has(p.id)));
       setSeleccionadas(new Set());
