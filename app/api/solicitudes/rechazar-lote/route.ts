@@ -56,6 +56,7 @@ export async function POST(req: Request) {
         data: {
           estado: "RECHAZADA",
           observaciones: `${notaExistente}CORRECCIÓN SOLICITADA: ${comentarioLimpio}`,
+          rechazadoPorId: session.id,
         },
       });
     })
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
       where: { id: { in: idsValidos }, estado: "RECHAZADA" },
       select: { colaboradorId: true, estado: true },
     });
-    await notificarCambioEstadoLote(rechazadas);
+    await notificarCambioEstadoLote(rechazadas, session.id);
   });
 
   return NextResponse.json({ rechazadas: count });

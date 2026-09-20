@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       where: { id: { in: idsValidos }, estado: "APROBADA" },
       select: { colaboradorId: true, estado: true },
     });
-    await notificarCambioEstadoLote(devueltas);
+    await notificarCambioEstadoLote(devueltas, session.id);
   });
 
   return NextResponse.json({ devueltas: count });

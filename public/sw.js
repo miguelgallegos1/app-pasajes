@@ -24,12 +24,20 @@ self.addEventListener("push", (event) => {
     }
   }
   event.waitUntil(
-    self.registration.showNotification(datos.title || "Gestión de Pasajes", {
-      body: datos.body || "",
-      icon: "/logo.png",
-      badge: "/logo.png",
-      data: { url: datos.url || "/" },
-    })
+    Promise.all([
+      self.registration.showNotification(datos.title || "Gestión de Pasajes", {
+        body: datos.body || "",
+        icon: "/logo.png",
+        badge: "/logo.png",
+        data: { url: datos.url || "/" },
+      }),
+      // Si la app ya está abierta en alguna pestaña, le avisa para que
+      // refresque la campanita al toque — sin esto, el cambio recién se
+      // ve si el usuario recarga la página entera.
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((lista) => {
+        lista.forEach((cliente) => cliente.postMessage({ type: "push-recibido" }));
+      }),
+    ])
   );
 });
 

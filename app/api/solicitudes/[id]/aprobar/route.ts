@@ -70,6 +70,7 @@ export async function PATCH(
         codigo: actualizada.codigo,
         estado: actualizada.estado,
         rutaLabel: actualizada.ruta.nombre,
+        actorId: session.id,
       })
     );
   }

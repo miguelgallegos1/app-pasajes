@@ -23,13 +23,28 @@ export async function GET() {
     include: { ruta: { select: { nombre: true } } },
   });
 
-  const items = solicitudes.map((s) => ({
-    id: s.id,
-    codigo: s.codigo,
-    estado: s.estado as "APROBADA" | "RECHAZADA",
-    rutaLabel: s.ruta.nombre,
-    fecha: s.fecha.toISOString(),
-  }));
+  // aprobadoPorId/rechazadoPorId no tienen relación declarada hacia
+  // Usuario (son solo el id) — se resuelven los nombres en un segundo
+  // paso, con un único IN en vez de una consulta por fila.
+  const idsActores = Array.from(
+    new Set(solicitudes.map((s) => s.aprobadoPorId ?? s.rechazadoPorId).filter((v): v is string => !!v))
+  );
+  const actores = idsActores.length
+    ? await db.usuario.findMany({ where: { id: { in: idsActores } }, select: { id: true, nombre: true } })
+    : [];
+  const nombrePorActorId = new Map(actores.map((u) => [u.id, u.nombre]));
+
+  const items = solicitudes.map((s) => {
+    const actorId = s.aprobadoPorId ?? s.rechazadoPorId;
+    return {
+      id: s.id,
+      codigo: s.codigo,
+      estado: s.estado as "APROBADA" | "RECHAZADA",
+      rutaLabel: s.ruta.nombre,
+      fecha: s.fecha.toISOString(),
+      quien: actorId ? (nombrePorActorId.get(actorId) ?? null) : null,
+    };
+  });
 
   return NextResponse.json({ items });
 }

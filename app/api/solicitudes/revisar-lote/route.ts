@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       where: { id: { in: idsValidos }, estado: "REVISADO" },
       select: { colaboradorId: true, estado: true },
     });
-    await notificarCambioEstadoLote(revisadas);
+    await notificarCambioEstadoLote(revisadas, session.id);
   });
 
   return NextResponse.json({ revisadas: resultado.count });

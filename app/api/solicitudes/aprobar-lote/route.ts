@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       where: { id: { in: idsValidos }, estado: "APROBADA" },
       select: { colaboradorId: true, estado: true },
     });
-    await notificarCambioEstadoLote(aprobadas);
+    await notificarCambioEstadoLote(aprobadas, session.id);
   });
 
   return NextResponse.json({ aprobadas: resultado.count });

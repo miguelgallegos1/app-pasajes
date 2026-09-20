@@ -73,7 +73,7 @@ export default function NotificacionesMenu({ rol }: { rol: string }) {
       </button>
 
       {abierto && (
-        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top-right animate-[dropdown-in_0.15s_ease-out] z-40">
+        <div className="fixed left-1/2 -translate-x-1/2 top-16 w-[calc(100vw-2rem)] max-w-xs sm:absolute sm:left-auto sm:translate-x-0 sm:top-auto sm:right-0 sm:mt-2 sm:w-72 sm:max-w-none bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top animate-[dropdown-in_0.15s_ease-out] z-40">
           {!alerta || !tema ? (
             <p className="px-4 py-8 text-sm text-neutral-400 dark:text-neutral-500 text-center">Estás al día — nada pendiente.</p>
           ) : (

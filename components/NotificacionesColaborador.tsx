@@ -13,7 +13,14 @@ import Link from "next/link";
 import { IconoCampana, IconoCheck, IconoDevolver } from "./Icons";
 import { formatearFecha } from "../lib/fechas";
 
-type ItemResuelto = { id: string; codigo: string; estado: "APROBADA" | "RECHAZADA"; rutaLabel: string; fecha: string };
+type ItemResuelto = {
+  id: string;
+  codigo: string;
+  estado: "APROBADA" | "RECHAZADA";
+  rutaLabel: string;
+  fecha: string;
+  quien: string | null;
+};
 
 const CLAVE_VISTOS = "app-pasajes:notificaciones-vistas";
 
@@ -44,14 +51,26 @@ export default function NotificacionesColaborador() {
 
   useEffect(() => {
     let cancelado = false;
-    fetch("/api/mis-pasajes/notificaciones")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { items: ItemResuelto[] } | null) => {
-        if (!cancelado && data) setItems(data.items);
-      })
-      .catch(() => {});
+    const cargar = () => {
+      fetch("/api/mis-pasajes/notificaciones")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { items: ItemResuelto[] } | null) => {
+          if (!cancelado && data) setItems(data.items);
+        })
+        .catch(() => {});
+    };
+    cargar();
+
+    // Solo se vuelve a pedir cuando el service worker avisa que llegó un
+    // push (un cambio de estado real) — nunca por foco/clics, para no
+    // gastar consultas a la base sin necesidad.
+    function manejarMensaje(e: MessageEvent) {
+      if (e.data?.type === "push-recibido") cargar();
+    }
+    navigator.serviceWorker?.addEventListener("message", manejarMensaje);
     return () => {
       cancelado = true;
+      navigator.serviceWorker?.removeEventListener("message", manejarMensaje);
     };
   }, []);
 
@@ -105,7 +124,7 @@ export default function NotificacionesColaborador() {
       </button>
 
       {abierto && (
-        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top-right animate-[dropdown-in_0.15s_ease-out] z-40">
+        <div className="fixed left-1/2 -translate-x-1/2 top-16 w-[calc(100vw-2rem)] max-w-xs sm:absolute sm:left-auto sm:translate-x-0 sm:top-auto sm:right-0 sm:mt-2 sm:w-72 sm:max-w-none bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-2xl shadow-2xl overflow-hidden origin-top animate-[dropdown-in_0.15s_ease-out] z-40">
           {items.length === 0 ? (
             <p className="px-4 py-8 text-sm text-neutral-400 dark:text-neutral-500 text-center">
               Nada resuelto todavía.
@@ -133,6 +152,9 @@ export default function NotificacionesColaborador() {
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
                         {it.rutaLabel} · {formatearFecha(it.fecha)}
                       </p>
+                      {it.quien && (
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 truncate">Por {it.quien}</p>
+                      )}
                     </div>
                   </div>
                 );

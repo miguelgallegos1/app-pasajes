@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       where: { id: { in: idsValidos }, estado: "PAGADA" },
       select: { colaboradorId: true, estado: true },
     });
-    await notificarCambioEstadoLote(pagadas);
+    await notificarCambioEstadoLote(pagadas, session.id);
   });
 
   return NextResponse.json({ pagadas: resultado.count });

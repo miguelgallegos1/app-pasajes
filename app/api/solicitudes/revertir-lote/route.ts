@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       where: { id: { in: idsValidos }, estado: "PENDIENTE" },
       select: { colaboradorId: true, estado: true },
     });
-    await notificarCambioEstadoLote(revertidas);
+    await notificarCambioEstadoLote(revertidas, session.id);
   });
 
   return NextResponse.json({ revertidas: resultado.count });

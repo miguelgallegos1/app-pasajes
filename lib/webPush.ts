@@ -57,12 +57,22 @@ async function enviarATodasLasSuscripciones(usuarioId: string, payload: string) 
   );
 }
 
+// Nombre de quien hizo el cambio, para mostrarlo en el cuerpo del push
+// ("Por Juan Pérez"). Se resuelve acá (a partir del id de quien está
+// logueado, session.id de la ruta que llama) en vez de exigirle a cada
+// endpoint que arme el texto — un solo lugar sabe cómo mostrarlo.
+async function nombreDeUsuario(usuarioId: string | undefined): Promise<string | null> {
+  if (!usuarioId) return null;
+  const usuario = await db.usuario.findUnique({ where: { id: usuarioId }, select: { nombre: true } });
+  return usuario?.nombre ?? null;
+}
+
 // Una solicitud puntual cambió de estado — usado por los endpoints
 // individuales (aprobar, rechazar, revisar, pagar, revertir,
 // devolver-revision).
 export async function notificarCambioEstado(
   colaboradorId: string,
-  opts: { codigo: string; estado: string; rutaLabel: string }
+  opts: { codigo: string; estado: string; rutaLabel: string; actorId?: string }
 ) {
   if (!asegurarConfigurado()) return;
   try {
@@ -72,9 +82,12 @@ export async function notificarCambioEstado(
     });
     if (!colaborador) return;
 
+    const nombreActor = await nombreDeUsuario(opts.actorId);
     const payload = JSON.stringify({
       title: TITULOS_ESTADO[opts.estado] ?? "Tu solicitud cambió de estado",
-      body: `${opts.codigo} · ${opts.rutaLabel}`,
+      body: nombreActor
+        ? `${opts.codigo} · ${opts.rutaLabel} · Por ${nombreActor}`
+        : `${opts.codigo} · ${opts.rutaLabel}`,
       url: "/mis-pasajes",
     });
     await enviarATodasLasSuscripciones(colaborador.usuarioId, payload);
@@ -88,7 +101,10 @@ export async function notificarCambioEstado(
 // notificación por persona con el total, en vez de una por cada
 // solicitud (nómina pagando todo el período junto podría ser decenas de
 // una sola vez para el mismo colaborador).
-export async function notificarCambioEstadoLote(items: { colaboradorId: string; estado: string }[]) {
+export async function notificarCambioEstadoLote(
+  items: { colaboradorId: string; estado: string }[],
+  actorId?: string
+) {
   if (items.length === 0 || !asegurarConfigurado()) return;
   try {
     const cantidadPorColaborador = new Map<string, number>();
@@ -96,6 +112,7 @@ export async function notificarCambioEstadoLote(items: { colaboradorId: string; 
       cantidadPorColaborador.set(it.colaboradorId, (cantidadPorColaborador.get(it.colaboradorId) ?? 0) + 1);
     }
     const estado = items[0].estado;
+    const nombreActor = await nombreDeUsuario(actorId);
 
     await Promise.all(
       Array.from(cantidadPorColaborador.entries()).map(async ([colaboradorId, cantidad]) => {
@@ -110,7 +127,7 @@ export async function notificarCambioEstadoLote(items: { colaboradorId: string; 
             cantidad === 1
               ? (TITULOS_ESTADO[estado] ?? "Tu solicitud cambió de estado")
               : `${cantidad} ${TITULOS_ESTADO_PLURAL[estado] ?? "solicitudes cambiaron de estado"}`,
-          body: "Revisa el detalle en Mis Pasajes",
+          body: nombreActor ? `Por ${nombreActor} · Revisa el detalle en Mis Pasajes` : "Revisa el detalle en Mis Pasajes",
           url: "/mis-pasajes",
         });
         await enviarATodasLasSuscripciones(colaborador.usuarioId, payload);

@@ -291,6 +291,7 @@ model SolicitudPasaje {
   aprobadoPorId   String?
   revisadoPorId   String?
   pagadoPorId     String?
+  rechazadoPorId  String?
   comentario      String?
 
   creadoPorUsuarioId String?
