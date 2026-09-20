@@ -23,18 +23,30 @@ export async function PATCH(
   const { id } = await params;
   const { nombre, activo, pin, rol } = await req.json();
 
-  // No dejamos que nadie se cambie su propio rol: si se equivoca de opción
-  // podría quedar sin acceso a Usuarios y no habría cómo revertirlo.
-  if (rol !== undefined && id === session.id) {
-    return NextResponse.json({ error: "No puedes cambiar tu propio rol" }, { status: 400 });
-  }
-
   const data: Record<string, unknown> = {};
   if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
   if (typeof activo === "boolean") data.activo = activo;
   if (rol !== undefined) {
     if (typeof rol !== "string" || !ROLES_VALIDOS.includes(rol)) {
       return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
+    }
+    // Sí se puede cambiar el propio rol (incluso el dueño de la app puede
+    // necesitarlo) — lo único que de verdad no tiene vuelta atrás es
+    // quedarse sin NINGÚN Super Admin: nadie podría volver a entrar a
+    // Usuarios para revertirlo.
+    if (rol !== "SUPER_ADMIN") {
+      const usuarioActual = await db.usuario.findUnique({ where: { id }, select: { rol: true } });
+      if (usuarioActual?.rol === "SUPER_ADMIN") {
+        const otrosSuperAdmins = await db.usuario.count({
+          where: { rol: "SUPER_ADMIN", activo: true, id: { not: id } },
+        });
+        if (otrosSuperAdmins === 0) {
+          return NextResponse.json(
+            { error: "No puedes quitarle el rol al último Super Administrador — nadie más podría gestionar usuarios/roles." },
+            { status: 400 }
+          );
+        }
+      }
     }
     data.rol = rol;
   }
