@@ -55,6 +55,9 @@ type Props<T> = {
   columnas: ColumnaItem<T>[];
   acciones?: (item: T) => React.ReactNode;
   seleccion?: Seleccion;
+  // Si no todos los items son seleccionables (ej. Mis Pasajes: solo se
+  // puede eliminar Pendiente/Rechazada) — por defecto, todos lo son.
+  puedeSeleccionar?: (item: T) => boolean;
   vacio?: string;
   vacioItems?: string;
   // Paginación interna (client-side). Se omite en los historiales, que ya
@@ -102,6 +105,7 @@ export default function TablaColaboradores<T>({
   columnas,
   acciones,
   seleccion,
+  puedeSeleccionar,
   vacio = "Sin resultados",
   vacioItems = "Sin solicitudes",
   porPagina,
@@ -253,6 +257,7 @@ export default function TablaColaboradores<T>({
                         <tbody>
                           {items.map((item) => {
                             const id = clave(item);
+                            const seleccionable = puedeSeleccionar ? puedeSeleccionar(item) : true;
                             return (
                               <tr
                                 key={id}
@@ -264,7 +269,8 @@ export default function TablaColaboradores<T>({
                                       type="checkbox"
                                       checked={seleccion.seleccionadas.has(id)}
                                       onChange={() => seleccion.alternar(id)}
-                                      className="w-4 h-4 accent-orange-500 rounded"
+                                      disabled={!seleccionable}
+                                      className="w-4 h-4 accent-orange-500 rounded disabled:opacity-0"
                                     />
                                   </td>
                                 )}

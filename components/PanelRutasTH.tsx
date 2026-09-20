@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoAlerta, IconoLupa, IconoChevron } from "./Icons";
+import { IconoAlerta, IconoLupa, IconoChevron, IconoEliminar } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
@@ -405,9 +405,9 @@ export default function PanelRutasTH() {
       {esSuperAdmin && seleccionadas.size > 0 && (
         <button
           onClick={() => { setConfirmandoLote(true); setErrorLote(""); }}
-          className="text-xs sm:text-sm font-semibold bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+          className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-semibold bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
         >
-          Eliminar seleccionadas ({seleccionadas.size})
+          <IconoEliminar className="w-4 h-4 shrink-0" /> Eliminar ({seleccionadas.size})
         </button>
       )}
       <button

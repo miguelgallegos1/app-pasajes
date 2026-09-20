@@ -21,8 +21,11 @@ import Avatar from "./Avatar";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import FilaRutasSeleccionables, { type RutaSimple } from "./FilaRutasSeleccionables";
 import NotificacionesPush from "./NotificacionesPush";
-import { IconoPregunta, IconoLupa, IconoAlerta, IconoChevron } from "./Icons";
+import { IconoPregunta, IconoLupa, IconoAlerta, IconoChevron, IconoEliminar } from "./Icons";
 import { useAccionesHeader } from "../lib/accionesHeader";
+import EncabezadoOrdenable from "./EncabezadoOrdenable";
+import { useOrdenTabla } from "../lib/useOrdenTabla";
+import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 
 type Solicitud = {
   id: string;
@@ -39,6 +42,16 @@ type Solicitud = {
 };
 
 type MiembroEquipo = { id: string; nombreCompleto: string };
+
+type CampoOrden = "codigo" | "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
+const VALOR_ORDEN: Record<CampoOrden, (s: Solicitud) => string | number> = {
+  codigo: (s) => s.codigo,
+  fecha: (s) => s.fecha,
+  nombreColaborador: (s) => s.nombreColaborador,
+  rutaLabel: (s) => s.rutaLabel,
+  montoTotal: (s) => s.montoTotal,
+  estado: (s) => s.estado,
+};
 
 const ESTILOS_ESTADO: Record<string, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800",
@@ -124,15 +137,6 @@ export default function PanelColaborador() {
   // equipo simplemente ve una sola tarjeta (la suya); un supervisor ve la
   // suya más la de cada persona a su cargo.
   const [vista, setVista] = useState<VistaListado>("lista");
-  const [tarjetasAbiertas, setTarjetasAbiertas] = useState<Set<string>>(new Set());
-  const alternarTarjeta = (id: string) => {
-    setTarjetasAbiertas((prev) => {
-      const copia = new Set(prev);
-      if (copia.has(id)) copia.delete(id);
-      else copia.add(id);
-      return copia;
-    });
-  };
 
   // Al eliminar, la fila se oculta al instante (con opción de deshacer)
   // sin tocar el array que vino del servidor — así "Crear"/"Editar" siguen
@@ -225,11 +229,27 @@ export default function PanelColaborador() {
         .filter((c) => c.solicitudes.length > 0),
     [colaboradoresParaTarjetas, solicitudesPorColaborador]
   );
+  const filasColaborador: FilaColaborador[] = useMemo(
+    () =>
+      tarjetasColaborador.map((c) => ({
+        id: c.id,
+        nombre: c.id === colaboradorId ? `${c.nombreCompleto} (yo)` : c.nombreCompleto,
+        cantidad: c.solicitudes.length,
+        total: c.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0),
+      })),
+    [tarjetasColaborador, colaboradorId]
+  );
+
+  const { orden, ordenar, itemsOrdenados: solicitudesOrdenadas } = useOrdenTabla<Solicitud, CampoOrden>(
+    solicitudesFiltradas,
+    (s, campo) => VALOR_ORDEN[campo](s),
+    "mis-pasajes"
+  );
 
   const totalPaginas = Math.max(1, Math.ceil(solicitudesFiltradas.length / POR_PAGINA));
   const solicitudesPagina = useMemo(
-    () => solicitudesFiltradas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
-    [solicitudesFiltradas, paginaActual]
+    () => solicitudesOrdenadas.slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA),
+    [solicitudesOrdenadas, paginaActual]
   );
   const totalGeneral = useMemo(
     () => solicitudesFiltradas.reduce((acc, s) => acc + s.montoTotal, 0),
@@ -259,6 +279,18 @@ export default function PanelColaborador() {
       const copia = new Set(prev);
       if (todasEnPaginaSeleccionadas) solicitudesEliminablesPagina.forEach((s) => copia.delete(s.id));
       else solicitudesEliminablesPagina.forEach((s) => copia.add(s.id));
+      return copia;
+    });
+  };
+
+  // Selección en grupo desde la vista "Por colaborador": si ya están
+  // todas seleccionadas las quita, si no las agrega todas — mismo criterio
+  // que "Seleccionar todos" en Lista.
+  const alternarGrupoSeleccion = (ids: string[]) => {
+    setSeleccionadas((prev) => {
+      const copia = new Set(prev);
+      const todas = ids.every((id) => copia.has(id));
+      ids.forEach((id) => (todas ? copia.delete(id) : copia.add(id)));
       return copia;
     });
   };
@@ -508,9 +540,9 @@ export default function PanelColaborador() {
       {seleccionadas.size > 0 && (
         <button
           onClick={() => { setConfirmandoLote(true); setErrorLote(""); }}
-          className="text-xs sm:text-sm font-semibold bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+          className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-semibold bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
         >
-          Eliminar seleccionadas ({seleccionadas.size})
+          <IconoEliminar className="w-4 h-4 shrink-0" /> Eliminar ({seleccionadas.size})
         </button>
       )}
       <button
@@ -551,76 +583,49 @@ export default function PanelColaborador() {
         </div>
 
         {vista === "colaborador" ? (
-          <div className="space-y-3">
-            {tarjetasColaborador.length === 0 && (
-              <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 px-4 py-10">
-                <EstadoVacio mensaje={busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"} />
-              </div>
-            )}
-            {tarjetasColaborador.map((c, i) => {
-              const abierta = tarjetasAbiertas.has(c.id);
-              const total = c.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0);
-              return (
-                <div key={c.id} className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => alternarTarjeta(c.id)}
-                    className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${abierta ? "rotate-90" : ""}`} />
-                      <Avatar nombre={c.nombreCompleto} indice={i} className="w-9 h-9 text-xs" />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-neutral-900 dark:text-white truncate">
-                          {c.nombreCompleto}
-                          {c.id === colaboradorId && <span className="text-neutral-400 dark:text-neutral-500 text-xs font-normal ml-1">(yo)</span>}
-                        </p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {c.solicitudes.length} {c.solicitudes.length === 1 ? "solicitud" : "solicitudes"}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">{formatearMoneda(total)}</span>
-                  </button>
-
-                  {abierta && (
-                    <div className="border-t border-neutral-200/70 dark:border-neutral-800/70 divide-y divide-neutral-200/70 dark:divide-neutral-800/70">
-                      {c.solicitudes.map((s) => (
-                        <div key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={seleccionadas.has(s.id)}
-                            onChange={() => alternarSeleccion(s.id)}
-                            disabled={!(s.estado === "PENDIENTE" || s.estado === "RECHAZADA")}
-                            className="w-4 h-4 accent-orange-500 rounded shrink-0 disabled:opacity-0"
-                          />
-                          <span className="font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 text-xs">{s.codigo}</span>
-                          <span className="font-medium">{formatearFecha(s.fecha)}</span>
-                          <span className="text-neutral-600 dark:text-neutral-300">{s.rutaLabel}</span>
-                          <span className="text-neutral-500 dark:text-neutral-400">{formatearMoneda(s.montoTotal)}</span>
-                          {s.observaciones && (
-                            <span className="text-neutral-500 dark:text-neutral-400 max-w-[220px] truncate" title={s.observaciones}>{s.observaciones}</span>
-                          )}
-                          <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
-                            {s.estado}
-                          </span>
-                          <span className="ml-auto">
-                            {(s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
-                              <MenuAcciones
-                                acciones={[
-                                  { label: "Editar", onClick: () => abrirEdicion(s) },
-                                  { label: "Eliminar", tono: "peligro", onClick: () => eliminarConDeshacer(s) },
-                                ]}
-                              />
-                            )}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+            <TablaColaboradores
+              filas={filasColaborador}
+              cargarItems={(id) => solicitudesPorColaborador.get(id) ?? []}
+              clave={(s) => s.id}
+              porPagina={POR_PAGINA}
+              claveOrden="mis-pasajes-colaborador"
+              seleccion={{
+                seleccionadas,
+                alternar: alternarSeleccion,
+                idsDe: (id) =>
+                  (solicitudesPorColaborador.get(id) ?? [])
+                    .filter((s) => s.estado === "PENDIENTE" || s.estado === "RECHAZADA")
+                    .map((s) => s.id),
+                alternarGrupo: alternarGrupoSeleccion,
+              }}
+              puedeSeleccionar={(s) => s.estado === "PENDIENTE" || s.estado === "RECHAZADA"}
+              columnas={[
+                { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+                { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
+                { encabezado: "Ruta", render: (s) => s.rutaLabel },
+                { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+                {
+                  encabezado: "Estado",
+                  render: (s) => (
+                    <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
+                      {s.estado}
+                    </span>
+                  ),
+                },
+              ]}
+              acciones={(s) =>
+                (s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
+                  <MenuAcciones
+                    acciones={[
+                      { label: "Editar", onClick: () => abrirEdicion(s) },
+                      { label: "Eliminar", tono: "peligro", onClick: () => eliminarConDeshacer(s) },
+                    ]}
+                  />
+                )
+              }
+              vacio={busqueda ? "Sin resultados para esa búsqueda" : "Aún no hay solicitudes registradas"}
+            />
           </div>
         ) : (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
@@ -636,13 +641,15 @@ export default function PanelColaborador() {
                       className="w-4 h-4 accent-orange-500 rounded"
                     />
                   </th>
-                  <th className="px-4 py-3 font-medium">Código</th>
-                  <th className="px-4 py-3 font-medium">Fecha</th>
-                  {esSupervisor && <th className="px-4 py-3 font-medium">Colaborador</th>}
-                  <th className="px-4 py-3 font-medium">Ruta</th>
-                  <th className="px-4 py-3 font-medium">Valor</th>
+                  <EncabezadoOrdenable campo="codigo" ordenActivo={orden} onOrdenar={ordenar}>Código</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="fecha" ordenActivo={orden} onOrdenar={ordenar}>Fecha</EncabezadoOrdenable>
+                  {esSupervisor && (
+                    <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
+                  )}
+                  <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
                   <th className="px-4 py-3 font-medium">Observaciones</th>
-                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <EncabezadoOrdenable campo="estado" ordenActivo={orden} onOrdenar={ordenar}>Estado</EncabezadoOrdenable>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>

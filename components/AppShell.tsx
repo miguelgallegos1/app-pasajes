@@ -62,7 +62,7 @@ const MENU_TALENTO_HUMANO: GrupoMenu = {
     { label: "Colaboradores", href: "/th/colaboradores", descripcion: "Crea y administra los colaboradores de tu Empresa/Sitio/Área", icono: IconoPersonas },
     { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", descripcion: "Elegir un supervisor y marca quiénes de su área le reportan", icono: IconoPersonas },
     { label: "Rutas", href: "/th/rutas", descripcion: "Cada Área puede tener varias rutas (una por cada trayecto)", icono: IconoRuta },
-    { label: "Asignar rutas", href: "/th/rutas/asignaciones", descripcion: "Elegir un colaborador y marcar qué rutas le quedan exclusivas a él", icono: IconoRuta },
+    { label: "Asignar rutas", href: "/th/rutas/asignaciones", descripcion: "Elegir un colaborador y marcar que rutas le quedan exclusivas a él", icono: IconoRuta },
   ],
 };
 
@@ -111,7 +111,7 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
       items: [
         { label: "Empresas", href: "/admin/empresas", descripcion: "Administra la estructura de empresas, sitios y áreas", icono: IconoEdificio },
         { label: "Usuarios", href: "/admin/usuarios", descripcion: "Talento Humano, Coordinadores, Nómina, Jefes y Super Administradores", icono: IconoUsuario },
-        { label: "Control de Solicitudes", href: "/admin/solicitudes", descripcion: "Buscá por código o filtrá, y puedes eliminar cualquier solicitud sin importar su estado", icono: IconoControl },
+        { label: "Control de Solicitudes", href: "/admin/solicitudes", descripcion: "Busca por código o filtra, y puedes eliminar cualquier solicitud sin importar su estado", icono: IconoControl },
         { label: "Carga masiva", href: "/admin/carga-masiva", descripcion: "Cargá muchos colaboradores o rutas de una sola vez desde un Excel", icono: IconoDescargar },
         { label: "Accesos", href: "/admin/accesos", descripcion: "Bitácora de logins (PIN y biometría) y cierre de sesión forzado", icono: IconoEscudo },
       ],
