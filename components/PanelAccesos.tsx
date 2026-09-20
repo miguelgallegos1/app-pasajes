@@ -1,8 +1,10 @@
 // components/PanelAccesos.tsx
-// Bitácora de accesos (Super Admin): quién entró, cuándo, desde qué IP y
-// con qué método (PIN o biometría), con la opción de forzar el cierre de
-// cualquier sesión activa de un usuario puntual sin esperar a que expire
-// sola (30 min de inactividad como mucho).
+// Bitácora de accesos ACTIVOS (Super Admin): quién tiene una sesión
+// vigente ahora mismo, desde qué IP y con qué método (PIN o biometría),
+// con la opción de forzar el cierre sin esperar a que expire sola (30
+// min de inactividad como mucho). Las sesiones ya cerradas no se listan
+// — el endpoint solo devuelve las activas, así que cada fila que llega
+// aquí siempre tiene el botón "Cerrar" habilitado.
 
 "use client";
 
@@ -28,7 +30,6 @@ type Fila = {
   ip: string | null;
   userAgent: string | null;
   creadoEn: string;
-  revocada: boolean;
 };
 
 const OPCIONES_ROL = [{ id: "", label: "Todos los roles" }, ...Object.entries(ETIQUETAS_ROL).map(([value, label]) => ({ id: value, label }))];
@@ -178,9 +179,9 @@ export default function PanelAccesos() {
                         {r.metodo === "BIOMETRIA" && <IconoHuella className="w-3 h-3" />}
                         {r.metodo === "BIOMETRIA" ? "Biometría" : "PIN"}
                       </span>
-                      {r.revocada && (
-                        <span className="block mt-1 text-[10px] font-medium text-neutral-400 dark:text-neutral-500">Sesión cerrada</span>
-                      )}
+                      <span className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-green-600 dark:text-green-500">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Activa
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-neutral-600 dark:text-neutral-300 font-mono text-xs">{r.ip ?? "—"}</td>
                     <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400 max-w-[220px] truncate" title={r.userAgent ?? ""}>
