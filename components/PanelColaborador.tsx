@@ -931,7 +931,7 @@ export default function PanelColaborador() {
             </div>
       </Modal>
 
-      <Modal abierto={confirmando} onCerrar={() => setConfirmando(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={confirmando} onCerrar={() => setConfirmando(false)} onConfirmar={confirmarRegistro} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoPregunta className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">
               {modoEdicionId
@@ -962,7 +962,7 @@ export default function PanelColaborador() {
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={eliminarLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar {seleccionadas.size} solicitud{seleccionadas.size === 1 ? "" : "es"}?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>

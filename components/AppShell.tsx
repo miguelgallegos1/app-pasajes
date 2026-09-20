@@ -464,7 +464,7 @@ export default function AppShell({
 
       {rol === "COLABORADOR" && <TarjetaActualizarDomicilio />}
 
-      <Modal abierto={confirmandoSalir} onCerrar={() => setConfirmandoSalir(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={confirmandoSalir} onCerrar={() => setConfirmandoSalir(false)} onConfirmar={cerrarSesion} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
           <IconoSalir className="w-5 h-5" />
         </div>

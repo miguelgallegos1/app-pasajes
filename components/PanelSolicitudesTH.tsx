@@ -436,7 +436,7 @@ export default function PanelSolicitudesTH() {
         </>
       )}
 
-      <Modal abierto={confirmando} onCerrar={() => setConfirmando(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={confirmando} onCerrar={() => setConfirmando(false)} onConfirmar={confirmarRegistro} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
         <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoPregunta className="w-6 h-6" /></div>
         <p className="font-semibold text-neutral-900 dark:text-white">
           ¿Registrar {rutaIdsElegidas.length} solicitud{rutaIdsElegidas.length === 1 ? "" : "es"} para {colaboradorSeleccionado?.nombreCompleto}?

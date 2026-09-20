@@ -21,6 +21,7 @@ import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useNavegacionFilas } from "../lib/useNavegacionFilas";
 
 type Aprobada = {
   id: string;
@@ -389,6 +390,10 @@ export default function PanelCoordinador() {
     }
   };
 
+  const { filaActiva, setFilaActiva, alPresionar, contenedorRef } = useNavegacionFilas(aprobadasPagina, (a) =>
+    setIdARevisar(a.id)
+  );
+
   return (
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
@@ -537,7 +542,12 @@ export default function PanelCoordinador() {
           </div>
         ) : (
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-            <div className="overflow-x-auto">
+            <div
+              ref={contenedorRef}
+              tabIndex={0}
+              onKeyDown={alPresionar}
+              className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-inset"
+            >
               <table className="w-full text-xs min-w-[680px]">
                 <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                   <tr>
@@ -559,7 +569,13 @@ export default function PanelCoordinador() {
                 </thead>
                 <tbody>
                   {aprobadasPagina.map((s, i) => (
-                    <tr key={s.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
+                    <tr
+                      key={s.id}
+                      onClick={() => setFilaActiva(i)}
+                      className={`border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition ${
+                        i === filaActiva ? "bg-orange-50 dark:bg-orange-500/10" : ""
+                      }`}
+                    >
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
@@ -622,7 +638,7 @@ export default function PanelCoordinador() {
         )}
       </div>
 
-      <Modal abierto={!!idARevisar} onCerrar={() => setIdARevisar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={!!idARevisar} onCerrar={() => setIdARevisar(null)} onConfirmar={confirmarRevisar} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar esta solicitud como revisada?</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -645,7 +661,7 @@ export default function PanelCoordinador() {
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={confirmarRevisarLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar {seleccionadas.size} solicitudes como revisadas?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Total: {formatearMoneda(totalSeleccionado)}</p>
@@ -669,7 +685,7 @@ export default function PanelCoordinador() {
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLoteDiscrepancia} onCerrar={() => setConfirmandoLoteDiscrepancia(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={confirmandoLoteDiscrepancia} onCerrar={() => setConfirmandoLoteDiscrepancia(false)} onConfirmar={confirmarDiscrepanciaLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900 dark:text-white">Discrepancia en {seleccionadas.size} solicitudes</h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
@@ -704,7 +720,7 @@ export default function PanelCoordinador() {
             </div>
       </Modal>
 
-      <Modal abierto={!!idADiscrepancia} onCerrar={() => setIdADiscrepancia(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idADiscrepancia} onCerrar={() => setIdADiscrepancia(null)} onConfirmar={confirmarDiscrepancia} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900 dark:text-white">Reportar discrepancia</h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">

@@ -397,6 +397,7 @@ export default function PanelEmpresas() {
       <Modal
         abierto={!!modal}
         onCerrar={() => setModal(null)}
+        onConfirmar={guardar}
         className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
       >
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
@@ -527,7 +528,7 @@ export default function PanelEmpresas() {
             </button>
       </Modal>
 
-      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} onConfirmar={eliminar} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar {gestionando?.nombre}?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>

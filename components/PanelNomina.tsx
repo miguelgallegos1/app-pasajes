@@ -21,6 +21,7 @@ import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useNavegacionFilas } from "../lib/useNavegacionFilas";
 
 type Revisada = {
   id: string;
@@ -359,6 +360,10 @@ export default function PanelNomina() {
     }
   };
 
+  const { filaActiva, setFilaActiva, alPresionar, contenedorRef } = useNavegacionFilas(revisadasPagina, (r) =>
+    setIdAPagar(r.id)
+  );
+
   return (
     <div className="flex-1 px-4 sm:px-8 py-5 space-y-4">
       <div className="flex flex-wrap items-baseline gap-2">
@@ -493,7 +498,12 @@ export default function PanelNomina() {
         </div>
       ) : (
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-          <div className="overflow-x-auto">
+          <div
+            ref={contenedorRef}
+            tabIndex={0}
+            onKeyDown={alPresionar}
+            className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-inset"
+          >
             <table className="w-full text-xs min-w-[720px]">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
@@ -516,7 +526,13 @@ export default function PanelNomina() {
               </thead>
               <tbody>
                 {revisadasPagina.map((a, i) => (
-                  <tr key={a.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
+                  <tr
+                    key={a.id}
+                    onClick={() => setFilaActiva(i)}
+                    className={`border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition ${
+                      i === filaActiva ? "bg-orange-50 dark:bg-orange-500/10" : ""
+                    }`}
+                  >
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
@@ -580,7 +596,7 @@ export default function PanelNomina() {
       </>
       )}
 
-      <Modal abierto={!!idAPagar} onCerrar={() => setIdAPagar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={!!idAPagar} onCerrar={() => setIdAPagar(null)} onConfirmar={confirmarPago} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar esta solicitud como pagada?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">{revisadaAPagar?.nombreColaborador} · {formatearMoneda(revisadaAPagar?.montoTotal ?? 0)}</p>
@@ -604,7 +620,7 @@ export default function PanelNomina() {
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={confirmarPagoLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar {seleccionadas.size} solicitudes como pagadas?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Total a pagar: {formatearMoneda(totalSeleccionado)}</p>
@@ -628,7 +644,7 @@ export default function PanelNomina() {
             </div>
       </Modal>
 
-      <Modal abierto={confirmandoLoteNovedad} onCerrar={() => setConfirmandoLoteNovedad(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={confirmandoLoteNovedad} onCerrar={() => setConfirmandoLoteNovedad(false)} onConfirmar={confirmarNovedadLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900 dark:text-white">Novedad en {seleccionadas.size} solicitudes</h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
@@ -663,7 +679,7 @@ export default function PanelNomina() {
             </div>
       </Modal>
 
-      <Modal abierto={!!idANovedad} onCerrar={() => setIdANovedad(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
+      <Modal abierto={!!idANovedad} onCerrar={() => setIdANovedad(null)} onConfirmar={confirmarNovedad} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
             <div>
               <h2 className="font-semibold text-neutral-900 dark:text-white">Reportar novedad</h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">

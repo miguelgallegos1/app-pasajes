@@ -668,6 +668,7 @@ export default function PanelAsignacionEquipo() {
       <Modal
         abierto={confirmandoMover}
         onCerrar={() => setConfirmandoMover(false)}
+        onConfirmar={confirmarMover}
         variante="centro"
         className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm text-center space-y-4 shadow-2xl"
       >

@@ -384,7 +384,7 @@ export default function PanelHistorialTH() {
         </div>
       )}
 
-      <Modal abierto={!!idARevertir} onCerrar={() => setIdARevertir(null)} className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl">
+      <Modal abierto={!!idARevertir} onCerrar={() => setIdARevertir(null)} onConfirmar={confirmarRevertir} className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl">
         <div>
           <h2 className="font-semibold text-neutral-900 dark:text-white">Revertir a Pendiente</h2>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">

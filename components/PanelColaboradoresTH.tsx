@@ -536,6 +536,7 @@ export default function PanelColaboradoresTH() {
       <Modal
         abierto={modalAbierto && !confirmandoResetPin}
         onCerrar={() => setModalAbierto(false)}
+        onConfirmar={guardar}
         className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
       >
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
@@ -777,7 +778,13 @@ export default function PanelColaboradoresTH() {
       </Modal>
 
       {/* Modal: advertencia antes de resetear el PIN */}
-      <Modal abierto={confirmandoResetPin} onCerrar={() => setConfirmandoResetPin(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal
+        abierto={confirmandoResetPin}
+        onCerrar={() => setConfirmandoResetPin(false)}
+        onConfirmar={() => { setConfirmandoResetPin(false); setReseteandoPin(true); generarPin(); }}
+        variante="centro"
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl"
+      >
         <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
         <p className="font-semibold text-neutral-900 dark:text-white">¿Resetear el PIN de acceso?</p>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -853,7 +860,7 @@ export default function PanelColaboradoresTH() {
             </button>
       </Modal>
 
-      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
+      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} onConfirmar={eliminarPermanente} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar a {colaboradorGestionar?.nombreCompleto}?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>

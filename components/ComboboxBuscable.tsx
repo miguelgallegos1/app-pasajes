@@ -23,6 +23,10 @@ export default function ComboboxBuscable({
 }) {
   const [abierto, setAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  // Índice resaltado dentro de las opciones filtradas, para poder elegir
+  // con flechas + Enter sin soltar el teclado (igual que la paleta de
+  // comandos, Ctrl+K).
+  const [activo, setActivo] = useState(0);
   const contenedorRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,6 +51,7 @@ export default function ComboboxBuscable({
     if (cargando) return;
     setAbierto(true);
     setBusqueda("");
+    setActivo(0);
     // Foco automático en el buscador al abrir
     setTimeout(() => inputRef.current?.focus(), 0);
   };
@@ -55,6 +60,33 @@ export default function ComboboxBuscable({
     onChange(opcion.id);
     setAbierto(false);
     setBusqueda("");
+  };
+
+  const cambiarBusqueda = (v: string) => {
+    setBusqueda(v);
+    setActivo(0);
+  };
+
+  const alPresionarEnDesplegable = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActivo((a) => Math.min(a + 1, opcionesFiltradas.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActivo((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Enter") {
+      // stopPropagation: si este combobox vive dentro de un Modal con
+      // confirmación por Enter, no queremos elegir la opción Y encima
+      // disparar esa confirmación con el mismo toque de tecla.
+      e.preventDefault();
+      e.stopPropagation();
+      if (opcionesFiltradas[activo]) elegir(opcionesFiltradas[activo]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setAbierto(false);
+      setBusqueda("");
+    }
   };
 
   return (
@@ -97,7 +129,8 @@ export default function ComboboxBuscable({
             <input
               ref={inputRef}
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              onKeyDown={alPresionarEnDesplegable}
               placeholder="Buscar..."
               className="w-full px-3 py-2 text-sm rounded-lg bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-white border border-transparent focus:border-orange-300 outline-none"
             />
@@ -108,13 +141,18 @@ export default function ComboboxBuscable({
             {opcionesFiltradas.length === 0 && (
               <p className="px-4 py-3 text-sm text-neutral-400 dark:text-neutral-500">Sin resultados</p>
             )}
-            {opcionesFiltradas.map((o) => (
+            {opcionesFiltradas.map((o, i) => (
               <button
                 key={o.id}
                 type="button"
                 onClick={() => elegir(o)}
+                onMouseEnter={() => setActivo(i)}
                 className={`w-full text-left px-4 py-2.5 text-sm transition
-                  ${o.id === value ? "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 font-medium" : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700"}
+                  ${
+                    i === activo || o.id === value
+                      ? "bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 font-medium"
+                      : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                  }
                 `}
               >
                 {o.label}

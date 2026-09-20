@@ -226,6 +226,7 @@ export default function PanelAccesos() {
       <Modal
         abierto={!!usuarioARevocar}
         onCerrar={() => setUsuarioARevocar(null)}
+        onConfirmar={confirmarRevocar}
         variante="centro"
         className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl"
       >

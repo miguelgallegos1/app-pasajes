@@ -15,6 +15,7 @@ export default function Modal({
   variante = "hoja",
   className = "",
   onCerrar,
+  onConfirmar,
   children,
 }: {
   abierto: boolean;
@@ -26,6 +27,11 @@ export default function Modal({
   // sin ella el modal no se puede cerrar con Escape ni tocando afuera —
   // pasarla siempre que exista un botón "Cancelar" equivalente.
   onCerrar?: () => void;
+  // Opcional: qué hacer al presionar Enter (el botón de acción principal,
+  // "Aprobar"/"Guardar"/etc). No se dispara si el foco está en un
+  // <textarea> (ahí Enter es salto de línea) o en un <button> (que ya
+  // reacciona a Enter por sí solo, nativamente).
+  onConfirmar?: () => void;
   children: ReactNode;
 }) {
   const [montado, setMontado] = useState(abierto);
@@ -41,6 +47,10 @@ export default function Modal({
   useEffect(() => {
     onCerrarRef.current = onCerrar;
   }, [onCerrar]);
+  const onConfirmarRef = useRef(onConfirmar);
+  useEffect(() => {
+    onConfirmarRef.current = onConfirmar;
+  }, [onConfirmar]);
 
   useEffect(() => {
     if (abierto) {
@@ -66,7 +76,18 @@ export default function Modal({
     elementoPrevioRef.current = document.activeElement as HTMLElement | null;
     const id = setTimeout(() => panelRef.current?.focus(), 10);
     const alPresionar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCerrarRef.current?.();
+      if (e.key === "Escape") {
+        onCerrarRef.current?.();
+        return;
+      }
+      if (e.key !== "Enter" || !onConfirmarRef.current) return;
+      const objetivo = e.target as HTMLElement;
+      // Un <textarea> usa Enter para salto de línea, y un <button> ya
+      // reacciona por sí solo — en ninguno de los dos casos hace falta (ni
+      // conviene) que el modal entero se confirme además.
+      if (objetivo.tagName === "TEXTAREA" || objetivo.tagName === "BUTTON") return;
+      e.preventDefault();
+      onConfirmarRef.current();
     };
     window.addEventListener("keydown", alPresionar);
     return () => {
