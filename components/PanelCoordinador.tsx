@@ -283,6 +283,15 @@ export default function PanelCoordinador() {
       }
       toast.exito("Solicitud marcada como revisada");
       setAprobadas((prev) => prev.filter((s) => s.id !== idARevisar));
+      // Si esta fila también estaba tildada para el lote, se saca — si no,
+      // el contador de "Revisar (N)"/"Discrepancia (N)" queda contando una
+      // fila que ya no existe.
+      setSeleccionadas((prev) => {
+        if (!prev.has(idARevisar)) return prev;
+        const siguiente = new Set(prev);
+        siguiente.delete(idARevisar);
+        return siguiente;
+      });
     } catch {
       setIdARevisar(null);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -349,6 +358,12 @@ export default function PanelCoordinador() {
       }
       toast.exito("Solicitud devuelta a Talento Humano");
       setAprobadas((prev) => prev.filter((s) => s.id !== idADiscrepancia));
+      setSeleccionadas((prev) => {
+        if (!prev.has(idADiscrepancia)) return prev;
+        const siguiente = new Set(prev);
+        siguiente.delete(idADiscrepancia);
+        return siguiente;
+      });
       setIdADiscrepancia(null);
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");

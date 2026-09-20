@@ -253,6 +253,15 @@ export default function PanelNomina() {
       }
       toast.exito("Solicitud marcada como pagada");
       setRevisadas((prev) => prev.filter((a) => a.id !== idAPagar));
+      // Si esta fila también estaba tildada para el lote, se saca — si no,
+      // el contador de "Pagar (N)"/"Novedad (N)" queda contando una fila
+      // que ya no existe.
+      setSeleccionadas((prev) => {
+        if (!prev.has(idAPagar)) return prev;
+        const siguiente = new Set(prev);
+        siguiente.delete(idAPagar);
+        return siguiente;
+      });
     } catch {
       setIdAPagar(null);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -319,6 +328,12 @@ export default function PanelNomina() {
       }
       toast.exito("Solicitud devuelta a Aprobada");
       setRevisadas((prev) => prev.filter((a) => a.id !== idANovedad));
+      setSeleccionadas((prev) => {
+        if (!prev.has(idANovedad)) return prev;
+        const siguiente = new Set(prev);
+        siguiente.delete(idANovedad);
+        return siguiente;
+      });
       setIdANovedad(null);
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");

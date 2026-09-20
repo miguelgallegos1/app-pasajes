@@ -239,6 +239,15 @@ export default function PanelTH() {
       }
       toast.exito("Solicitud aprobada");
       setPendientes((prev) => prev.filter((p) => p.id !== idAAprobar));
+      // Si esta fila también estaba tildada para el lote, se saca — si no,
+      // el contador de "Aprobar (N)"/"Devolver (N)" queda contando una
+      // fila que ya no existe (y el lote intenta procesarla de nuevo).
+      setSeleccionadas((prev) => {
+        if (!prev.has(idAAprobar)) return prev;
+        const siguiente = new Set(prev);
+        siguiente.delete(idAAprobar);
+        return siguiente;
+      });
     } catch {
       setIdAAprobar(null);
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -307,6 +316,12 @@ export default function PanelTH() {
       }
       toast.exito("Solicitud devuelta para corrección");
       setPendientes((prev) => prev.filter((p) => p.id !== idADevolver));
+      setSeleccionadas((prev) => {
+        if (!prev.has(idADevolver)) return prev;
+        const siguiente = new Set(prev);
+        siguiente.delete(idADevolver);
+        return siguiente;
+      });
       setIdADevolver(null);
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
