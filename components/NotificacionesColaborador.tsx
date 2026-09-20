@@ -132,6 +132,14 @@ export default function NotificacionesColaborador() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
           </span>
         )}
+        {/* Diagnóstico temporal: número sólido, sin animación ni
+            posicionamiento absoluto, para distinguir si el problema es que
+            "nuevos" da 0 (dato) o que el puntito de arriba no se pinta
+            (estilo/render) en la app instalada. Se saca apenas se confirme
+            cuál de las dos cosas es. */}
+        <span className="absolute -bottom-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-blue-600 text-white text-[9px] leading-[14px] text-center font-bold">
+          {nuevos.length}
+        </span>
       </button>
 
       {abierto && (
