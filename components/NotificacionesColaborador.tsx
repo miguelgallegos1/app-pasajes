@@ -38,12 +38,11 @@ function guardarVistos(ids: Set<string>) {
 
 export default function NotificacionesColaborador() {
   const [items, setItems] = useState<ItemResuelto[]>([]);
-  const [vistos, setVistos] = useState<Set<string>>(new Set());
+  const [vistos, setVistos] = useState<Set<string>>(leerVistos);
   const [abierto, setAbierto] = useState(false);
   const contenedorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setVistos(leerVistos());
     let cancelado = false;
     fetch("/api/mis-pasajes/notificaciones")
       .then((res) => (res.ok ? res.json() : null))
