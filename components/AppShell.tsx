@@ -432,6 +432,9 @@ export default function AppShell({
                 onClickItem={() => setMenuAbierto(false)}
               />
             </nav>
+            {rol === "COLABORADOR" && (
+              <BotonWhatsApp variante="fila" onClick={() => setMenuAbierto(false)} />
+            )}
             <button
               onClick={() => { setMenuAbierto(false); abrirBiometria(); }}
               className="flex items-center gap-2 text-sm text-neutral-500 hover:text-orange-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-orange-400 dark:hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
