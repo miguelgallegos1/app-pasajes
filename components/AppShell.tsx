@@ -179,7 +179,7 @@ function ItemLink({ item, activo, onClick }: { item: ItemMenu; activo: boolean; 
       onClick={onClick}
       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
         activo
-          ? "bg-orange-500 text-black shadow-[0_0_10px_rgba(249,115,22,0.3)]"
+          ? "bg-orange-500/10 text-orange-700 font-semibold dark:bg-orange-500/15 dark:text-orange-400"
           : "text-neutral-600 hover:bg-neutral-100 hover:shadow-sm hover:-translate-y-0.5 dark:text-neutral-300 dark:hover:bg-neutral-800/70"
       }`}
     >

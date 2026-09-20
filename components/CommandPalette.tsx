@@ -134,7 +134,7 @@ export default function CommandPalette({
           <kbd className="hidden sm:inline text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 border border-neutral-300 dark:border-neutral-700 rounded px-1.5 py-0.5">Esc</kbd>
         </div>
 
-        <div className="max-h-80 overflow-y-auto py-1.5">
+        <div className="max-h-80 overflow-y-auto p-1.5 space-y-0.5">
           {resultados.length === 0 && !buscandoColaboradores && (
             <p className="px-4 py-6 text-center text-sm text-neutral-400 dark:text-neutral-500">Sin resultados</p>
           )}
@@ -147,14 +147,16 @@ export default function CommandPalette({
                   type="button"
                   onClick={() => ir(resultado)}
                   onMouseEnter={() => setActivo(i)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition ${
-                    i === activo ? "bg-orange-500 text-black" : "text-neutral-700 dark:text-neutral-300"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition ${
+                    i === activo
+                      ? "bg-orange-500/10 text-orange-700 font-medium dark:bg-orange-500/15 dark:text-orange-400"
+                      : "text-neutral-700 dark:text-neutral-300"
                   }`}
                 >
-                  <Icono className={`w-4 h-4 shrink-0 ${i === activo ? "text-black" : "text-neutral-400 dark:text-neutral-500"}`} />
+                  <Icono className={`w-4 h-4 shrink-0 ${i === activo ? "text-orange-600 dark:text-orange-400" : "text-neutral-400 dark:text-neutral-500"}`} />
                   <span className="flex-1 truncate">{resultado.item.label}</span>
                   {resultado.item.grupo && (
-                    <span className={`text-xs shrink-0 ${i === activo ? "text-black/60" : "text-neutral-400 dark:text-neutral-500"}`}>
+                    <span className={`text-xs shrink-0 ${i === activo ? "text-orange-600/70 dark:text-orange-400/70" : "text-neutral-400 dark:text-neutral-500"}`}>
                       {resultado.item.grupo}
                     </span>
                   )}
@@ -167,13 +169,15 @@ export default function CommandPalette({
                 type="button"
                 onClick={() => ir(resultado)}
                 onMouseEnter={() => setActivo(i)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition ${
-                  i === activo ? "bg-orange-500 text-black" : "text-neutral-700 dark:text-neutral-300"
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition ${
+                  i === activo
+                    ? "bg-orange-500/10 text-orange-700 font-medium dark:bg-orange-500/15 dark:text-orange-400"
+                    : "text-neutral-700 dark:text-neutral-300"
                 }`}
               >
-                <IconoPersonas className={`w-4 h-4 shrink-0 ${i === activo ? "text-black" : "text-neutral-400 dark:text-neutral-500"}`} />
+                <IconoPersonas className={`w-4 h-4 shrink-0 ${i === activo ? "text-orange-600 dark:text-orange-400" : "text-neutral-400 dark:text-neutral-500"}`} />
                 <span className="flex-1 truncate">{resultado.item.label}</span>
-                <span className={`text-xs shrink-0 ${i === activo ? "text-black/60" : "text-neutral-400 dark:text-neutral-500"}`}>
+                <span className={`text-xs shrink-0 ${i === activo ? "text-orange-600/70 dark:text-orange-400/70" : "text-neutral-400 dark:text-neutral-500"}`}>
                   {resultado.item.sublabel}
                 </span>
               </button>
