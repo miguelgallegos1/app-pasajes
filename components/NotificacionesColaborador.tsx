@@ -53,7 +53,7 @@ export default function NotificacionesColaborador() {
   useEffect(() => {
     let cancelado = false;
     const cargar = () => {
-      fetch("/api/mis-pasajes/notificaciones")
+      fetch("/api/mis-pasajes/notificaciones", { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : null))
         .then((data: { items: ItemResuelto[] } | null) => {
           if (!cancelado && data) setItems(data.items);

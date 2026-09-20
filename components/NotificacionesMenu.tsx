@@ -26,7 +26,7 @@ export default function NotificacionesMenu({ rol }: { rol: string }) {
     if (!ROLES_CON_ALERTA.has(rol)) return;
     let cancelado = false;
     const cargar = () => {
-      fetch("/api/dashboard/pendientes-accion")
+      fetch("/api/dashboard/pendientes-accion", { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (!cancelado && data) setAlerta(data.alerta);

@@ -5,18 +5,27 @@
 // a cargo de un supervisor nunca entra a ver esto por su cuenta. Se
 // limita a 15: alcanza de sobra para "qué se resolvió últimamente" y
 // mantiene la consulta liviana — el historial completo está en Mis Pasajes.
+//
+// No-store explícito: es una consulta chica y sensible al segundo (la
+// campanita depende de que esto refleje el estado más reciente apenas se
+// pide), así que no conviene dejarla a criterio de ningún caché
+// intermedio (navegador, CDN) por más que ya sea dinámica por usar cookies.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession, acortarNombreLibre } from "../../../../lib/auth";
 import { obtenerColaboradorPorUsuarioId } from "../../../../lib/colaboradorSesion";
 
+export const dynamic = "force-dynamic";
+
+const SIN_CACHE = { headers: { "Cache-Control": "no-store" } };
+
 export async function GET() {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 403, ...SIN_CACHE });
 
   const colaborador = await obtenerColaboradorPorUsuarioId(session.id);
-  if (!colaborador) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  if (!colaborador) return NextResponse.json({ error: "No autorizado" }, { status: 403, ...SIN_CACHE });
 
   const equipo = colaborador.esSupervisor
     ? await db.colaborador.findMany({
@@ -26,12 +35,23 @@ export async function GET() {
     : [];
   const idsAConsultar = [colaborador.id, ...equipo.map((c) => c.id)];
 
+  // Se trae un lote más amplio que el que se muestra (ordenado por fecha de
+  // VIAJE, la única columna indexada) y se reordena abajo por fecha de
+  // RESOLUCIÓN real — con "fecha" nomás, una recién aprobada con viaje
+  // próximo se podía tapar detrás de otras con viaje más lejano resueltas
+  // hace rato, y nunca entraba en el "top 15".
   const solicitudes = await db.solicitudPasaje.findMany({
     where: { colaboradorId: { in: idsAConsultar }, estado: { in: ["APROBADA", "RECHAZADA"] } },
     orderBy: { fecha: "desc" },
-    take: 15,
+    take: 100,
     include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true } } },
   });
+  solicitudes.sort((a, b) => {
+    const fa = (a.fechaAprobacion ?? a.fechaRechazo ?? a.fechaSolicitud).getTime();
+    const fb = (b.fechaAprobacion ?? b.fechaRechazo ?? b.fechaSolicitud).getTime();
+    return fb - fa;
+  });
+  solicitudes.length = Math.min(solicitudes.length, 15);
 
   // aprobadoPorId/rechazadoPorId no tienen relación declarada hacia
   // Usuario (son solo el id) — se resuelven los nombres en un segundo
@@ -59,5 +79,5 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items }, SIN_CACHE);
 }

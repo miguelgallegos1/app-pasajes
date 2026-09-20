@@ -52,6 +52,7 @@ export async function PATCH(
       estado: "RECHAZADA",
       observaciones: nuevaObservacion,
       rechazadoPorId: session.id,
+      fechaRechazo: new Date(),
     },
   });
 

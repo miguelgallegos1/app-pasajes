@@ -57,6 +57,7 @@ export async function POST(req: Request) {
           estado: "RECHAZADA",
           observaciones: `${notaExistente}CORRECCIÓN SOLICITADA: ${comentarioLimpio}`,
           rechazadoPorId: session.id,
+          fechaRechazo: new Date(),
         },
       });
     })

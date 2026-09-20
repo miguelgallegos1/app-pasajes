@@ -288,6 +288,7 @@ model SolicitudPasaje {
   fechaAprobacion DateTime?
   fechaRevision   DateTime?
   fechaPago       DateTime?
+  fechaRechazo    DateTime?
   aprobadoPorId   String?
   revisadoPorId   String?
   pagadoPorId     String?
