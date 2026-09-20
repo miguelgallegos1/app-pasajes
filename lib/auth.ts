@@ -3,13 +3,14 @@
 
 import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { NextResponse } from "next/server";
 import { DURACION_SESION_SEGUNDOS } from "./config";
 import { JWT_SECRET } from "./jwtSecret";
 import { db } from "./db";
 import { obtenerColaboradorPorUsuarioId } from "./colaboradorSesion";
 import { sesionRevocada } from "./sesionRevocada";
+import { HEADER_ATESTACION, TIPO_ATESTACION } from "./atestacionSesion";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -38,7 +39,31 @@ export async function crearToken(payload: SesionUsuario) {
 // sus propias validaciones de rol) — sin esto, cada navegación disparaba
 // dos consultas idénticas a la base (la del layout y la de la página) más
 // la de proxy.ts, que es un contexto aparte y no se puede memoizar acá.
+//
+// Camino rápido con la atestación de proxy.ts: las rutas de página ya
+// pasan por proxy.ts, que hace exactamente esta misma verificación
+// (incluida sesionRevocada, una consulta a la base) ANTES de que la
+// página renderice. En vez de repetirla acá, proxy.ts firma un token
+// cortito (10s) con el mismo secreto y lo manda en un header — si llega y
+// la firma es válida, es matemáticamente imposible que lo haya fabricado
+// otra cosa que no sea proxy.ts (nadie más tiene JWT_SECRET), así que se
+// confía sin volver a tocar la base. Si el header falta o no verifica
+// (por ejemplo, en una ruta /api/*, que el matcher de proxy.ts no cubre)
+// se cae exactamente al camino de siempre: cookie + jwtVerify +
+// sesionRevocada, sin ningún cambio de seguridad ahí.
 export const getSession = cache(async (): Promise<SesionUsuario | null> => {
+  const encabezados = await headers();
+  const atestacion = encabezados.get(HEADER_ATESTACION);
+  if (atestacion) {
+    try {
+      const { payload } = await jwtVerify(atestacion, secret);
+      const datos = payload as unknown as { id: string; rol: SesionUsuario["rol"]; tipo?: string };
+      if (datos.tipo === TIPO_ATESTACION) return { id: datos.id, rol: datos.rol };
+    } catch {
+      // Vencida o inválida: sigue abajo con la verificación completa.
+    }
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
