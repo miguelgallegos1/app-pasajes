@@ -22,7 +22,6 @@ import Footer from "./Footer";
 import CommandPalette, { type ItemPaleta } from "./CommandPalette";
 import Breadcrumbs from "./Breadcrumbs";
 import TarjetaActualizarDomicilio from "./TarjetaActualizarDomicilio";
-import BotonFlotanteWhatsApp from "./BotonFlotanteWhatsApp";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -446,7 +445,7 @@ export default function AppShell({
         <main className="flex-1 min-w-0 flex flex-col">
           <Breadcrumbs items={itemsPaleta} />
           <div className="flex-1">{children}</div>
-          <Footer />
+          <Footer mostrarWhatsapp={rol === "COLABORADOR"} />
         </main>
         </div>
       </div>
@@ -456,7 +455,6 @@ export default function AppShell({
       )}
 
       {rol === "COLABORADOR" && <TarjetaActualizarDomicilio />}
-      {rol === "COLABORADOR" && <BotonFlotanteWhatsApp />}
 
       <Modal abierto={confirmandoSalir} onCerrar={() => setConfirmandoSalir(false)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
