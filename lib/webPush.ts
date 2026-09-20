@@ -96,8 +96,10 @@ function conNombreSiEsParaSupervisor(colaborador: ColaboradorParaAviso, texto: s
 }
 
 // Una solicitud puntual cambió de estado — usado por los endpoints
-// individuales (aprobar, rechazar, revisar, pagar, revertir,
-// devolver-revision).
+// individuales (aprobar, rechazar, revisar, pagar). revertir y
+// devolver-revision NO llaman esto: son correcciones internas entre
+// TH/Coordinación/Nómina, el colaborador no tiene nada que hacer con eso
+// (ver el comentario en esas rutas).
 export async function notificarCambioEstado(
   colaboradorId: string,
   opts: { codigo: string; estado: string; rutaLabel: string; actorId?: string }
