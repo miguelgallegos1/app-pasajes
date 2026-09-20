@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { APP_NOMBRE } from "../../lib/config";
 import Spinner from "../../components/Spinner";
-import { IconoHuella } from "../../components/Icons";
+import { IconoHuella, IconoCheck } from "../../components/Icons";
 import { INICIO_POR_ROL as DESTINO_POR_ROL } from "../../lib/roles";
 import BotonTema from "../../components/BotonTema";
 
@@ -42,6 +42,11 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [mensajeCarga, setMensajeCarga] = useState("Verificando tu PIN...");
+  // Distingue "todavía verificando" (spinner) de "ya se verificó, solo
+  // falta que cargue la siguiente pantalla" (check verde) — con el mismo
+  // spinner naranja durante todo el proceso se sentía como que la
+  // pantalla se quedaba pegada justo cuando en realidad ya había pasado.
+  const [entrando, setEntrando] = useState(false);
   const [biometriaDisponible, setBiometriaDisponible] = useState(false);
   // Firefox no soporta el enmascarado por CSS que usamos para evitar el
   // parpadeo de Android (ver más abajo); ahí volvemos a type="password" en
@@ -92,6 +97,11 @@ export default function LoginPage() {
     // Dejamos "loading" en true a propósito — la pantalla se queda mostrando
     // el overlay de carga hasta que router.push() navegue de verdad,
     // evitando el "parpadeo" de volver al formulario justo antes de cambiar.
+    // El mensaje cambia acá: seguir diciendo "Verificando tu PIN..." una vez
+    // que YA se verificó (y solo falta que cargue la siguiente pantalla) se
+    // siente como que la carga se quedó pegada.
+    setMensajeCarga("¡Listo! Entrando...");
+    setEntrando(true);
     const destino = DESTINO_POR_ROL[rol] ?? "/";
     // Red de seguridad: si la navegación de Next se queda colgada (caché
     // del router de una sesión anterior, etc.) forzamos una recarga dura.
@@ -300,13 +310,27 @@ export default function LoginPage() {
       </div>
 
       {/* Overlay de carga: cubre toda la pantalla mientras se verifica,
-          para que sea imposible confundirlo con que "no está pasando nada". */}
-      {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/50 dark:bg-black/40">
+          para que sea imposible confundirlo con que "no está pasando nada".
+          Aparece con un fade corto (en vez de aparecer de golpe) y, una vez
+          confirmado el PIN, cambia a un check verde — así la última imagen
+          antes de cambiar de pantalla es "listo", no el mismo spinner
+          dando vueltas, que se sentía como una pantalla trabada. */}
+      <div
+        className={`absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/50 dark:bg-black/40 transition-opacity duration-200 ${
+          loading ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {entrando ? (
+          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-500/15 text-green-600 dark:text-green-400 flex items-center justify-center">
+            <IconoCheck className="w-5 h-5" />
+          </div>
+        ) : (
           <Spinner className="w-10 h-10 text-orange-500" />
-          <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">{mensajeCarga}</p>
-        </div>
-      )}
+        )}
+        <p className={`text-sm font-medium ${entrando ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}`}>
+          {mensajeCarga}
+        </p>
+      </div>
     </div>
   );
 }

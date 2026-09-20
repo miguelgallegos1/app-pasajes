@@ -19,6 +19,7 @@ import BotonTema from "./BotonTema";
 import NotificacionesMenu from "./NotificacionesMenu";
 import NotificacionesColaborador from "./NotificacionesColaborador";
 import Modal from "./Modal";
+import Spinner from "./Spinner";
 import Footer from "./Footer";
 import CommandPalette, { type ItemPaleta } from "./CommandPalette";
 import Breadcrumbs from "./Breadcrumbs";
@@ -311,7 +312,10 @@ export default function AppShell({
     .join("")
     .toUpperCase();
 
+  const [cerrandoSesion, setCerrandoSesion] = useState(false);
   const cerrarSesion = async () => {
+    if (cerrandoSesion) return;
+    setCerrandoSesion(true);
     try {
       const controlador = new AbortController();
       const limite = setTimeout(() => controlador.abort(), 2000);
@@ -476,15 +480,18 @@ export default function AppShell({
         <div className="flex gap-2 justify-center pt-1">
           <button
             onClick={() => setConfirmandoSalir(false)}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+            disabled={cerrandoSesion}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={cerrarSesion}
-            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl transition"
+            disabled={cerrandoSesion}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl transition disabled:opacity-70 flex items-center justify-center gap-1.5"
           >
-            Sí, salir
+            {cerrandoSesion && <Spinner className="w-3.5 h-3.5" />}
+            {cerrandoSesion ? "Saliendo..." : "Sí, salir"}
           </button>
         </div>
       </Modal>
