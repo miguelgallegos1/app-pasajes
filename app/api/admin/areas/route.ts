@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { limpiarNumeroWhatsapp } from "../../../../lib/whatsappTH";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { sitioId, nombre } = await req.json();
+  const { sitioId, nombre, whatsapp } = await req.json();
   if (!sitioId || !nombre?.trim()) {
     return NextResponse.json({ error: "Sitio y nombre son obligatorios" }, { status: 400 });
   }
@@ -21,6 +22,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "El sitio indicado no existe" }, { status: 400 });
   }
 
-  const area = await db.area.create({ data: { sitioId, nombre: nombre.trim().toUpperCase() } });
+  const area = await db.area.create({
+    data: {
+      sitioId,
+      nombre: nombre.trim().toUpperCase(),
+      whatsapp: whatsapp?.trim() ? limpiarNumeroWhatsapp(whatsapp) : null,
+    },
+  });
   return NextResponse.json(area, { status: 201 });
 }

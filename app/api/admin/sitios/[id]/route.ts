@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { limpiarNumeroWhatsapp } from "../../../../../lib/whatsappTH";
 
 export async function PATCH(
   req: Request,
@@ -15,7 +16,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, direccion } = await req.json();
+  const { nombre, direccion, whatsapp } = await req.json();
 
   const sitio = await db.sitioProductivo.findUnique({ where: { id } });
   if (!sitio) return NextResponse.json({ error: "Sitio no encontrado" }, { status: 404 });
@@ -23,6 +24,7 @@ export async function PATCH(
   const data: Record<string, unknown> = {};
   if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
   if (direccion !== undefined) data.direccion = direccion?.trim() ? direccion.trim().toUpperCase() : null;
+  if (whatsapp !== undefined) data.whatsapp = whatsapp?.trim() ? limpiarNumeroWhatsapp(whatsapp) : null;
 
   const actualizado = await db.sitioProductivo.update({ where: { id }, data });
   return NextResponse.json(actualizado);

@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { limpiarNumeroWhatsapp } from "../../../../../lib/whatsappTH";
 
 export async function PATCH(
   req: Request,
@@ -15,7 +16,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, ruc, activo } = await req.json();
+  const { nombre, ruc, activo, whatsapp } = await req.json();
 
   const empresa = await db.empresa.findUnique({ where: { id } });
   if (!empresa) return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
@@ -24,12 +25,15 @@ export async function PATCH(
   if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
   if (ruc !== undefined) data.ruc = ruc?.trim() ? ruc.trim().toUpperCase() : null;
   if (typeof activo === "boolean") data.activo = activo;
+  if (whatsapp !== undefined) data.whatsapp = whatsapp?.trim() ? limpiarNumeroWhatsapp(whatsapp) : null;
 
   try {
     const actualizada = await db.empresa.update({ where: { id }, data });
     return NextResponse.json(actualizada);
-  } catch (e: any) {
-    if (e.code === "P2002") return NextResponse.json({ error: "Ya existe una empresa con ese RUC" }, { status: 400 });
+  } catch (e) {
+    if (e instanceof Error && "code" in e && e.code === "P2002") {
+      return NextResponse.json({ error: "Ya existe una empresa con ese RUC" }, { status: 400 });
+    }
     throw e;
   }
 }

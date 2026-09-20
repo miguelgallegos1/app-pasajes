@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { limpiarNumeroWhatsapp } from "../../../../../lib/whatsappTH";
 
 export async function PATCH(
   req: Request,
@@ -15,12 +16,15 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre } = await req.json();
+  const { nombre, whatsapp } = await req.json();
   if (!nombre?.trim()) return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 });
 
   const area = await db.area.findUnique({ where: { id } });
   if (!area) return NextResponse.json({ error: "Área no encontrada" }, { status: 404 });
 
-  const actualizada = await db.area.update({ where: { id }, data: { nombre: nombre.trim().toUpperCase() } });
+  const data: Record<string, unknown> = { nombre: nombre.trim().toUpperCase() };
+  if (whatsapp !== undefined) data.whatsapp = whatsapp?.trim() ? limpiarNumeroWhatsapp(whatsapp) : null;
+
+  const actualizada = await db.area.update({ where: { id }, data });
   return NextResponse.json(actualizada);
 }

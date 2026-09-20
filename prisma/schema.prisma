@@ -41,6 +41,10 @@ model Empresa {
   nombre       String
   ruc          String?           @unique
   activo       Boolean           @default(true)
+  // Número de WhatsApp de TH para el botón de contacto del colaborador
+  // (formato libre, ej. 593987654321). Opcional: si un Sitio/Área tiene
+  // el suyo propio, ese gana (ver lib/whatsappTH.ts).
+  whatsapp     String?
   createdAt    DateTime          @default(now())
   sitios       SitioProductivo[]
   rutas        Ruta[]
@@ -51,6 +55,8 @@ model SitioProductivo {
   id            String        @id @default(cuid())
   nombre        String
   direccion     String?
+  // Ver Empresa.whatsapp — si no está seteado acá, se usa el de la Empresa.
+  whatsapp      String?
   empresa       Empresa       @relation(fields: [empresaId], references: [id])
   empresaId     String
   areas         Area[]
@@ -64,6 +70,8 @@ model SitioProductivo {
 model Area {
   id            String        @id @default(cuid())
   nombre        String
+  // Ver Empresa.whatsapp — si no está seteado acá, se usa el del Sitio.
+  whatsapp      String?
   sitio         SitioProductivo @relation(fields: [sitioId], references: [id])
   sitioId       String
   colaboradores Colaborador[]

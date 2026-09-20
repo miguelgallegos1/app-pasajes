@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { limpiarNumeroWhatsapp } from "../../../../lib/whatsappTH";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -11,16 +12,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { nombre, ruc } = await req.json();
+  const { nombre, ruc, whatsapp } = await req.json();
   if (!nombre?.trim()) return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 });
 
   try {
     const empresa = await db.empresa.create({
-      data: { nombre: nombre.trim().toUpperCase(), ruc: ruc?.trim() ? ruc.trim().toUpperCase() : null },
+      data: {
+        nombre: nombre.trim().toUpperCase(),
+        ruc: ruc?.trim() ? ruc.trim().toUpperCase() : null,
+        whatsapp: whatsapp?.trim() ? limpiarNumeroWhatsapp(whatsapp) : null,
+      },
     });
     return NextResponse.json(empresa, { status: 201 });
-  } catch (e: any) {
-    if (e.code === "P2002") return NextResponse.json({ error: "Ya existe una empresa con ese RUC" }, { status: 400 });
+  } catch (e) {
+    if (e instanceof Error && "code" in e && e.code === "P2002") {
+      return NextResponse.json({ error: "Ya existe una empresa con ese RUC" }, { status: 400 });
+    }
     throw e;
   }
 }

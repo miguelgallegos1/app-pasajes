@@ -11,9 +11,17 @@ import { IconoAlerta } from "./Icons";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 
-type Area = { id: string; nombre: string };
-type Sitio = { id: string; nombre: string; direccion: string | null; areas: Area[] };
-type Empresa = { id: string; numero: number; nombre: string; ruc: string | null; activo: boolean; sitios: Sitio[] };
+type Area = { id: string; nombre: string; whatsapp: string | null };
+type Sitio = { id: string; nombre: string; direccion: string | null; whatsapp: string | null; areas: Area[] };
+type Empresa = {
+  id: string;
+  numero: number;
+  nombre: string;
+  ruc: string | null;
+  whatsapp: string | null;
+  activo: boolean;
+  sitios: Sitio[];
+};
 
 type ElementoGestion = {
   tipo: "empresa" | "sitio" | "area";
@@ -96,15 +104,16 @@ export default function PanelEmpresas() {
   const [modal, setModal] = useState<null | { tipo: "empresa" | "sitio" | "area"; id: string | null }>(null);
   const [nombre, setNombre] = useState("");
   const [extra, setExtra] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
-  const abrirCrearEmpresa = () => { setModal({ tipo: "empresa", id: null }); setNombre(""); setExtra(""); setError(""); };
-  const abrirEditarEmpresa = (e: Empresa) => { setModal({ tipo: "empresa", id: e.id }); setNombre(e.nombre); setExtra(e.ruc ?? ""); setError(""); };
-  const abrirCrearSitio = () => { setModal({ tipo: "sitio", id: null }); setNombre(""); setExtra(""); setError(""); };
-  const abrirEditarSitio = (s: Sitio) => { setModal({ tipo: "sitio", id: s.id }); setNombre(s.nombre); setExtra(s.direccion ?? ""); setError(""); };
-  const abrirCrearArea = () => { setModal({ tipo: "area", id: null }); setNombre(""); setError(""); };
-  const abrirEditarArea = (a: Area) => { setModal({ tipo: "area", id: a.id }); setNombre(a.nombre); setError(""); };
+  const abrirCrearEmpresa = () => { setModal({ tipo: "empresa", id: null }); setNombre(""); setExtra(""); setWhatsapp(""); setError(""); };
+  const abrirEditarEmpresa = (e: Empresa) => { setModal({ tipo: "empresa", id: e.id }); setNombre(e.nombre); setExtra(e.ruc ?? ""); setWhatsapp(e.whatsapp ?? ""); setError(""); };
+  const abrirCrearSitio = () => { setModal({ tipo: "sitio", id: null }); setNombre(""); setExtra(""); setWhatsapp(""); setError(""); };
+  const abrirEditarSitio = (s: Sitio) => { setModal({ tipo: "sitio", id: s.id }); setNombre(s.nombre); setExtra(s.direccion ?? ""); setWhatsapp(s.whatsapp ?? ""); setError(""); };
+  const abrirCrearArea = () => { setModal({ tipo: "area", id: null }); setNombre(""); setWhatsapp(""); setError(""); };
+  const abrirEditarArea = (a: Area) => { setModal({ tipo: "area", id: a.id }); setNombre(a.nombre); setWhatsapp(a.whatsapp ?? ""); setError(""); };
 
   const guardar = async () => {
     if (!nombre.trim()) {
@@ -119,13 +128,13 @@ export default function PanelEmpresas() {
 
     if (modal!.tipo === "empresa") {
       url = modal!.id ? `/api/admin/empresas/${modal!.id}` : "/api/admin/empresas";
-      body = { nombre, ruc: extra };
+      body = { nombre, ruc: extra, whatsapp };
     } else if (modal!.tipo === "sitio") {
       url = modal!.id ? `/api/admin/sitios/${modal!.id}` : "/api/admin/sitios";
-      body = modal!.id ? { nombre, direccion: extra } : { empresaId, nombre, direccion: extra };
+      body = modal!.id ? { nombre, direccion: extra, whatsapp } : { empresaId, nombre, direccion: extra, whatsapp };
     } else {
       url = modal!.id ? `/api/admin/areas/${modal!.id}` : "/api/admin/areas";
-      body = modal!.id ? { nombre } : { sitioId, nombre };
+      body = modal!.id ? { nombre, whatsapp } : { sitioId, nombre, whatsapp };
     }
 
     try {
@@ -426,6 +435,22 @@ export default function PanelEmpresas() {
                 />
               </div>
             )}
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                WhatsApp de contacto (opcional)
+              </label>
+              <input
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="Ej: 593987654321"
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+              />
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-1">
+                Con código de país, sin espacios ni &quot;+&quot;. Si no se carga acá, el botón de contacto del colaborador
+                usa el de {modal?.tipo === "area" ? "su Sitio o Empresa" : modal?.tipo === "sitio" ? "su Empresa" : "nadie más"}.
+              </p>
+            </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 

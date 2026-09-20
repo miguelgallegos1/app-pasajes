@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { limpiarNumeroWhatsapp } from "../../../../lib/whatsappTH";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { empresaId, nombre, direccion } = await req.json();
+  const { empresaId, nombre, direccion, whatsapp } = await req.json();
   if (!empresaId || !nombre?.trim()) {
     return NextResponse.json({ error: "Empresa y nombre son obligatorios" }, { status: 400 });
   }
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
       empresaId,
       nombre: nombre.trim().toUpperCase(),
       direccion: direccion?.trim() ? direccion.trim().toUpperCase() : null,
+      whatsapp: whatsapp?.trim() ? limpiarNumeroWhatsapp(whatsapp) : null,
     },
   });
   return NextResponse.json(sitio, { status: 201 });
