@@ -34,3 +34,17 @@ export function fechaATexto(fecha: Date): string {
 export function fechaHoyTexto(): string {
   return fechaATexto(new Date());
 }
+
+// Igual que fechaATexto ("YYYY-MM-DD", orden lexicográfico = orden
+// cronológico) pero con componentes UTC en vez de locales — para comparar
+// una fecha-sin-hora que viene del servidor (ISO a medianoche UTC, ver
+// formatearFecha) contra un rango elegido en un RangoFechasSelector/
+// CalendarioSelector (que sí usa fechaATexto, en hora LOCAL) sin el
+// corrimiento de un día que da mezclar ambas zonas horarias.
+export function fechaUTCATexto(fecha: string | Date): string {
+  const d = typeof fecha === "string" ? new Date(fecha) : fecha;
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dia = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${dia}`;
+}

@@ -157,6 +157,7 @@ export default function PanelAsignacionEquipo() {
   const [busquedaMiembro, setBusquedaMiembro] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  const [confirmandoGuardar, setConfirmandoGuardar] = useState(false);
 
   const supervisorSeleccionado = colaboradores.find((c) => c.id === supervisorSeleccionadoId) ?? null;
   const nombrePorId = useMemo(() => new Map(colaboradores.map((c) => [c.id, c.nombreCompleto])), [colaboradores]);
@@ -216,11 +217,20 @@ export default function PanelAsignacionEquipo() {
     setMiembroIdsSeleccionados((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
   };
 
+  // Mismo criterio que "deshabilitado" en cada fila (más abajo, en el
+  // render): fuera de "Ver solo su equipo", a quien ya reporta a OTRO
+  // supervisor no se lo toca desde acá (tiene su propio flujo, "Su
+  // equipo" + Mover). "Todos" tiene que respetar esto también — si no,
+  // terminaba marcando (y al guardar, robándole a otro supervisor) gente
+  // que ni siquiera se podía tildar a mano una por una.
+  const puedeMarcarse = (c: Colaborador) =>
+    verSoloEquipo || !c.supervisorId || c.supervisorId === supervisorSeleccionado?.id;
+
   // Actúa sobre lo BUSCADO/filtrado en pantalla (candidatosVisibles) y
   // suma/resta sobre la selección existente en vez de reemplazarla — mismo
   // criterio que "Marcar todas" en Asignar rutas.
   const marcarTodos = () => {
-    const idsVisibles = candidatosVisibles.map((c) => c.id);
+    const idsVisibles = candidatosVisibles.filter(puedeMarcarse).map((c) => c.id);
     setMiembroIdsSeleccionados((prev) => Array.from(new Set([...prev, ...idsVisibles])));
   };
   const desmarcarTodos = () => {
@@ -228,34 +238,37 @@ export default function PanelAsignacionEquipo() {
     setMiembroIdsSeleccionados((prev) => prev.filter((id) => !idsVisibles.has(id)));
   };
 
-  const hayCambios = useMemo(() => {
-    if (!supervisorSeleccionado) return false;
-    const a = [...miembroIdsSeleccionados].sort();
-    const b = [...equipoActual(supervisorSeleccionado)].sort();
-    return a.length !== b.length || a.some((id, i) => id !== b[i]);
-  }, [miembroIdsSeleccionados, supervisorSeleccionado, colaboradores]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const guardar = async () => {
-    if (!supervisorSeleccionado) return;
-    setGuardando(true);
-    setError("");
-
+  // Se recalcula contra candidatosDelArea — TODA el área, no solo lo que
+  // esté visible con la búsqueda/filtro puestos en este momento — así el
+  // modal de confirmación de abajo nunca deja afuera un cambio hecho
+  // mientras se estaba buscando otra cosa.
+  const cambiosPendientes = useMemo(() => {
+    if (!supervisorSeleccionado) return [];
     const equipoAntes = new Set(equipoActual(supervisorSeleccionado));
     const equipoAhora = new Set(miembroIdsSeleccionados);
-    const cambios: { id: string; supervisorId: string | null }[] = [];
+    const cambios: { id: string; nombreCompleto: string; tipo: "agregado" | "quitado" }[] = [];
     for (const c of candidatosDelArea) {
       const antes = equipoAntes.has(c.id);
       const ahora = equipoAhora.has(c.id);
-      if (antes !== ahora) cambios.push({ id: c.id, supervisorId: ahora ? supervisorSeleccionado.id : null });
+      if (antes !== ahora) cambios.push({ id: c.id, nombreCompleto: c.nombreCompleto, tipo: ahora ? "agregado" : "quitado" });
     }
+    return cambios;
+  }, [supervisorSeleccionado, miembroIdsSeleccionados, candidatosDelArea, colaboradores]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hayCambios = cambiosPendientes.length > 0;
+
+  const guardar = async () => {
+    if (!supervisorSeleccionado || cambiosPendientes.length === 0) return;
+    setGuardando(true);
+    setError("");
 
     try {
       const resultados = await Promise.all(
-        cambios.map((cambio) =>
+        cambiosPendientes.map((cambio) =>
           fetch(`/api/colaboradores/${cambio.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ supervisorId: cambio.supervisorId }),
+            body: JSON.stringify({ supervisorId: cambio.tipo === "agregado" ? supervisorSeleccionado.id : null }),
           })
         )
       );
@@ -267,6 +280,7 @@ export default function PanelAsignacionEquipo() {
         return;
       }
       toast.exito("Equipo actualizado");
+      setConfirmandoGuardar(false);
       await cargarDatos();
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -317,6 +331,13 @@ export default function PanelAsignacionEquipo() {
       setConfirmandoMover(false);
       setVerSoloEquipo(false);
       setSupervisorDestinoId("");
+      // Sin esto, quedaban en miembroIdsSeleccionados (quedó armado con el
+      // equipo ANTES de mover) — al volver a la vista normal, cambiosPendientes
+      // los veía "marcados" pero ya no en equipoActual(), y los mostraba como
+      // si hubiera que volver a agregarlos a este mismo supervisor: alguien
+      // que recién se movió podía reaparecer como cambio pendiente fantasma.
+      const idsMovidos = new Set(paraMover.map((c) => c.id));
+      setMiembroIdsSeleccionados((prev) => prev.filter((id) => !idsMovidos.has(id)));
       await cargarDatos();
     } catch {
       setErrorMover("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -578,7 +599,7 @@ export default function PanelAsignacionEquipo() {
                     // mostrando igual, en gris, para que quede claro que
                     // existe y dónde está — "Disponibles" filtra a quienes
                     // no tienen ninguno todavía, si se quiere evitarlos.
-                    const deshabilitado = !verSoloEquipo && tieneOtroSupervisor;
+                    const deshabilitado = !puedeMarcarse(c);
                     return (
                       <label
                         key={c.id}
@@ -642,12 +663,11 @@ export default function PanelAsignacionEquipo() {
               {!verSoloEquipo && (
                 <div className="flex justify-end">
                   <button
-                    onClick={guardar}
+                    onClick={() => { setError(""); setConfirmandoGuardar(true); }}
                     disabled={guardando || !hayCambios}
-                    className="px-5 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+                    className="px-5 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition"
                   >
-                    {guardando && <Spinner className="w-4 h-4" />}
-                    {guardando ? "Guardando..." : "Guardar cambios"}
+                    Guardar cambios{hayCambios ? ` (${cambiosPendientes.length})` : ""}
                   </button>
                 </div>
               )}
@@ -696,6 +716,51 @@ export default function PanelAsignacionEquipo() {
           >
             {moviendo && <Spinner className="w-4 h-4" />}
             {moviendo ? "Moviendo..." : "Sí, mover"}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        abierto={confirmandoGuardar}
+        onCerrar={() => setConfirmandoGuardar(false)}
+        onConfirmar={guardar}
+        variante="centro"
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm text-center space-y-4 shadow-2xl"
+      >
+        <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto">
+          <IconoPregunta className="w-6 h-6" />
+        </div>
+        <p className="font-semibold text-neutral-900 dark:text-white">
+          ¿Confirmar {cambiosPendientes.length} cambio{cambiosPendientes.length === 1 ? "" : "s"} en el equipo de{" "}
+          {supervisorSeleccionado?.nombreCompleto}?
+        </p>
+        <div className="text-sm text-neutral-500 dark:text-neutral-400 text-left space-y-1 max-h-48 overflow-y-auto">
+          {cambiosPendientes.map((c) => (
+            <p key={c.id}>
+              <span className={c.tipo === "agregado" ? "text-green-600 dark:text-green-400 font-semibold" : "text-red-600 dark:text-red-400 font-semibold"}>
+                {c.tipo === "agregado" ? "+" : "−"}
+              </span>{" "}
+              <span className="text-neutral-700 dark:text-neutral-300">{c.nombreCompleto}</span>{" "}
+              {c.tipo === "agregado" ? "se agrega al equipo" : "deja el equipo"}
+            </p>
+          ))}
+        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex gap-2 justify-center pt-1">
+          <button
+            onClick={() => setConfirmandoGuardar(false)}
+            disabled={guardando}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={guardar}
+            disabled={guardando}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+          >
+            {guardando && <Spinner className="w-4 h-4" />}
+            {guardando ? "Guardando..." : "Sí, guardar"}
           </button>
         </div>
       </Modal>

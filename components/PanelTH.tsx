@@ -7,14 +7,15 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoCheck, IconoLupa, IconoDevolver } from "./Icons";
+import { IconoCheck, IconoLupa, IconoDevolver, IconoX } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import ComboboxBuscable from "./ComboboxBuscable";
+import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
-import { formatearFecha } from "../lib/fechas";
+import { formatearFecha, fechaUTCATexto } from "../lib/fechas";
 import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
@@ -91,6 +92,8 @@ export default function PanelTH() {
 
   const [busqueda, setBusqueda] = useState("");
   const [supervisorId, setSupervisorId] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
   const [vista, setVista] = useState<VistaListado>("lista");
 
@@ -116,6 +119,11 @@ export default function PanelTH() {
     return pendientes.filter((p) => {
       if (supervisorId === SIN_SUPERVISOR && p.supervisorId) return false;
       if (supervisorId && supervisorId !== SIN_SUPERVISOR && p.supervisorId !== supervisorId) return false;
+      if (desde || hasta) {
+        const fechaTexto = fechaUTCATexto(p.fecha);
+        if (desde && fechaTexto < desde) return false;
+        if (hasta && fechaTexto > hasta) return false;
+      }
       if (!texto) return true;
       return (
         p.codigo.toLowerCase().includes(texto) ||
@@ -124,7 +132,12 @@ export default function PanelTH() {
         (p.observaciones ?? "").toLowerCase().includes(texto)
       );
     });
-  }, [pendientes, busqueda, supervisorId]);
+  }, [pendientes, busqueda, supervisorId, desde, hasta]);
+
+  // Para el mensaje de "vacío": antes solo miraba busqueda, así que
+  // filtrar por supervisor o por fecha y no encontrar nada decía "No hay
+  // solicitudes pendientes" (como si no hubiera ninguna en TODA la cola).
+  const hayFiltrosActivos = !!(busqueda || supervisorId || desde || hasta);
 
   const cambiarBusqueda = (v: string) => {
     setBusqueda(v);
@@ -133,6 +146,12 @@ export default function PanelTH() {
 
   const cambiarSupervisor = (v: string) => {
     setSupervisorId(v);
+    setPaginaActual(1);
+  };
+
+  const cambiarFechas = (d: string, h: string) => {
+    setDesde(d);
+    setHasta(h);
     setPaginaActual(1);
   };
 
@@ -411,25 +430,51 @@ export default function PanelTH() {
 
         {!cargandoInicial && (
         <>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <div className="relative max-w-sm flex-1">
-            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-            <input
-              value={busqueda}
-              onChange={(e) => cambiarBusqueda(e.target.value)}
-              placeholder="Buscar por código, colaborador, ruta u observación..."
-              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
-            />
+        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Supervisor</label>
+              <div className="mt-1.5">
+                <ComboboxBuscable
+                  opciones={[{ id: "", label: "Todos los supervisores" }, ...supervisoresOpciones]}
+                  value={supervisorId}
+                  onChange={cambiarSupervisor}
+                  placeholder="Todos los supervisores"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Fecha</label>
+              <div className="mt-1.5 flex items-center gap-1">
+                <div className="flex-1 min-w-0">
+                  <RangoFechasSelector desde={desde} hasta={hasta} onChange={cambiarFechas} />
+                </div>
+                {(desde || hasta) && (
+                  <button
+                    type="button"
+                    onClick={() => cambiarFechas("", "")}
+                    title="Quitar filtro de fecha"
+                    className="shrink-0 text-neutral-400 hover:text-neutral-700 dark:text-neutral-500 dark:hover:text-neutral-200 p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                  >
+                    <IconoX className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="w-full sm:w-60">
-            <ComboboxBuscable
-              opciones={[{ id: "", label: "Todos los supervisores" }, ...supervisoresOpciones]}
-              value={supervisorId}
-              onChange={cambiarSupervisor}
-              placeholder="Todos los supervisores"
-            />
+
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="relative w-full max-w-sm">
+              <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
+              <input
+                value={busqueda}
+                onChange={(e) => cambiarBusqueda(e.target.value)}
+                placeholder="Buscar por código, colaborador, ruta u observación..."
+                className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
+              />
+            </div>
+            <SelectorVista valor={vista} onCambiar={setVista} className="self-start" />
           </div>
-          <SelectorVista valor={vista} onCambiar={setVista} className="sm:ml-auto" />
         </div>
 
         {vista === "colaborador" ? (
@@ -470,8 +515,8 @@ export default function PanelTH() {
               </div>
             )}
             vacio={
-              busqueda
-                ? "Sin resultados para esa búsqueda"
+              hayFiltrosActivos
+                ? "Sin resultados para esos filtros"
                 : sinAsignaciones
                 ? "Sin áreas asignadas"
                 : "No hay solicitudes pendientes"
@@ -565,14 +610,14 @@ export default function PanelTH() {
                     <td colSpan={8} className="px-4 py-10">
                       <EstadoVacio
                         mensaje={
-                          busqueda
-                            ? "Sin resultados para esa búsqueda"
+                          hayFiltrosActivos
+                            ? "Sin resultados para esos filtros"
                             : sinAsignaciones
                             ? "Sin áreas asignadas"
                             : "No hay solicitudes pendientes"
                         }
                         icono={
-                          !busqueda && !sinAsignaciones ? (
+                          !hayFiltrosActivos && !sinAsignaciones ? (
                             <IconoCheck className="w-10 h-10 text-emerald-400 dark:text-emerald-500" />
                           ) : undefined
                         }
