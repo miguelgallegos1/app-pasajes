@@ -12,7 +12,7 @@ import Paginacion from "./Paginacion";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar, IconoLupa } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
@@ -65,6 +65,7 @@ export default function PanelColaboradoresTH() {
   const [sinAsignaciones, setSinAsignaciones] = useState(false);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
 
   const cargarDatos = async () => {
     try {
@@ -399,9 +400,7 @@ export default function PanelColaboradoresTH() {
         </div>
       )}
 
-      {cargandoInicial ? (
-        <BarraCarga />
-      ) : (
+      {!cargandoInicial && (
       <>
       {/* Barra de filtros: buscador + switch + Empresa/Sitio/Área */}
       <div className="flex flex-col gap-3">

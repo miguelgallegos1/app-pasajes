@@ -11,7 +11,7 @@ import { formatearMoneda } from "../lib/formato";
 import RangoFechasSelector from "./RangoFechasSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { fechaHoyTexto } from "../lib/fechas";
 import GraficoBarrasMensual, { type FilaMes } from "./GraficoBarrasMensual";
 import GraficoPastelAreas from "./GraficoPastelAreas";
@@ -44,6 +44,7 @@ export default function PanelDashboard() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
 
   useEffect(() => {
     let cancelado = false;
@@ -131,9 +132,7 @@ export default function PanelDashboard() {
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
       )}
 
-      {cargandoInicial ? (
-        <BarraCarga />
-      ) : (
+      {!cargandoInicial && (
       <>
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
         <div className="max-w-xs">

@@ -313,3 +313,16 @@ model IntentoLogin {
   conteo  Int      @default(1)
   venceEn DateTime
 }
+
+// Fila única (id fijo "global") con los parámetros generales editables
+// desde Admin -> Parámetros. Pensado como fila única en vez de tabla
+// clave/valor porque por ahora hay uno solo; si se suman más a futuro,
+// simplemente se agregan como columnas nuevas acá.
+model Parametro {
+  id                   String   @id @default("global")
+  // Cuántos días hacia atrás desde hoy se puede elegir en el calendario
+  // de nueva solicitud (ver lib/parametros.ts). Antes era un "-2" fijo en
+  // el código; ahora lo decide Super Admin.
+  diasAtrasSolicitud   Int      @default(2)
+  actualizadoEn        DateTime @updatedAt
+}

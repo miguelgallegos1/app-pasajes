@@ -9,12 +9,13 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
 import CalendarioSelector from "./CalendarioSelector";
+import { useFechaMinimaSolicitud } from "./useFechaMinimaSolicitud";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Modal from "./Modal";
 import Paginacion from "./Paginacion";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import MenuAcciones from "./MenuAcciones";
@@ -82,6 +83,7 @@ export default function PanelColaborador() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
   const rutasPropias = useMemo(() => rutasEquipo[colaboradorId] ?? [], [rutasEquipo, colaboradorId]);
 
   const cargarDatos = async () => {
@@ -345,14 +347,7 @@ export default function PanelColaborador() {
     [rutaId, rutasDisponibles]
   );
 
-  const fechaMinima = useMemo(() => {
-    const limite = new Date();
-    limite.setDate(limite.getDate() - 2);
-    const y = limite.getFullYear();
-    const m = String(limite.getMonth() + 1).padStart(2, "0");
-    const d = String(limite.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, []);
+  const fechaMinima = useFechaMinimaSolicitud();
 
   const peticionRutasIdRef = useRef(0);
 
@@ -564,9 +559,7 @@ export default function PanelColaborador() {
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
         )}
 
-        {cargandoInicial ? (
-          <BarraCarga />
-        ) : (
+        {!cargandoInicial && (
         <>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="relative max-w-sm flex-1">

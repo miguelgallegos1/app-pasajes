@@ -1,13 +1,18 @@
 // app/(app)/loading.tsx
-// Se muestra al instante cuando cambian de sección (clic en el menú),
-// mientras el SERVIDOR prepara la página nueva — Next.js lo pone y lo
-// saca solo, vía Suspense, sin JS de nuestro lado. Apenas esa página
-// monta, sigue exactamente la misma barra (ver components/BarraCarga.tsx)
-// pero pintada por la propia pantalla mientras pide sus datos al
-// cliente — así se ve como una sola franja continua, sin corte.
+// Next.js monta esto solo, vía Suspense, apenas cambian de sección (clic
+// en el menú u otra navegación) mientras el SERVIDOR prepara la página
+// nueva — y lo desmonta solo cuando esa página ya está lista. En vez de
+// pintar su propia franja, avisa a la franja única de AppShell (ver
+// lib/cargaGlobal.tsx) que hay una carga en curso; cuando el panel de la
+// página nueva monta y empieza a pedir sus propios datos, esa misma
+// franja sigue encendida sin interrupción — nunca hay dos instancias de
+// DOM distintas de por medio, así que su animación nunca se reinicia.
 
-import BarraCarga from "../../components/BarraCarga";
+"use client";
+
+import { useReportarCarga } from "../../lib/cargaGlobal";
 
 export default function Cargando() {
-  return <BarraCarga />;
+  useReportarCarga(true);
+  return null;
 }

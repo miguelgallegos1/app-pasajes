@@ -4,10 +4,11 @@
 
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { useRouter } from "next/navigation";
 import CalendarioSelector from "./CalendarioSelector";
+import { useFechaMinimaSolicitud } from "./useFechaMinimaSolicitud";
 import Spinner from "./Spinner";
 import AvatarRuta from "./AvatarRuta";
 import { IconoChevron, IconoCheck } from "./Icons";
@@ -61,14 +62,7 @@ export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boole
   // pensando que no había funcionado. Con esto queda clarísimo que sí.
   const [ultimaCopia, setUltimaCopia] = useState<{ cantidad: number; fecha: string } | null>(null);
 
-  const fechaMinima = useMemo(() => {
-    const limite = new Date();
-    limite.setDate(limite.getDate() - 2);
-    const y = limite.getFullYear();
-    const m = String(limite.getMonth() + 1).padStart(2, "0");
-    const d = String(limite.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, []);
+  const fechaMinima = useFechaMinimaSolicitud();
 
   const cambiarFechaOrigen = async (valor: string) => {
     setFechaOrigen(valor);

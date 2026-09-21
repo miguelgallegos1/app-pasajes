@@ -14,7 +14,7 @@ import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
@@ -55,6 +55,7 @@ export default function PanelAsignacionEquipo() {
   const [sinAsignaciones, setSinAsignaciones] = useState(false);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
 
   // Usada tanto por la carga inicial (abajo) como para refrescar después
   // de guardar cambios, sin depender de router.refresh() (esta pantalla ya
@@ -340,9 +341,7 @@ export default function PanelAsignacionEquipo() {
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
       )}
 
-      {cargandoInicial ? (
-        <BarraCarga />
-      ) : (
+      {!cargandoInicial && (
         <>
           {sinAsignaciones && (
             <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">

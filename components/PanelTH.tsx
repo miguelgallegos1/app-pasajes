@@ -16,7 +16,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
@@ -63,6 +63,7 @@ export default function PanelTH() {
   const [sinAsignaciones, setSinAsignaciones] = useState(false);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
 
   useEffect(() => {
     let cancelado = false;
@@ -408,9 +409,7 @@ export default function PanelTH() {
           </div>
         )}
 
-        {cargandoInicial ? (
-          <BarraCarga />
-        ) : (
+        {!cargandoInicial && (
         <>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="relative max-w-sm flex-1">

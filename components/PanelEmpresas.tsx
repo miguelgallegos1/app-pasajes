@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { IconoAlerta } from "./Icons";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 
 type Area = { id: string; nombre: string; whatsapp: string | null };
@@ -50,6 +50,7 @@ export default function PanelEmpresas() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
   const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [sitioId, setSitioId] = useState<string | null>(null);
 
@@ -233,9 +234,7 @@ export default function PanelEmpresas() {
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
       )}
 
-      {cargandoInicial ? (
-        <BarraCarga />
-      ) : (
+      {!cargandoInicial && (
       <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Columna 1: Empresas */}

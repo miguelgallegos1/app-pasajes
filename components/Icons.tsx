@@ -167,6 +167,17 @@ export function IconoEscudo({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+export function IconoAjustes({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>
+      <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+      <circle cx="8" cy="6" r="2" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="12" r="2" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="18" r="2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function IconoGrafico({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth={2}>

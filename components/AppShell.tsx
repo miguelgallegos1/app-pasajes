@@ -8,13 +8,13 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
-import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoEscudo } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoEscudo, IconoAjustes } from "./Icons";
 import BotonTema from "./BotonTema";
 import NotificacionesMenu from "./NotificacionesMenu";
 import NotificacionesColaborador from "./NotificacionesColaborador";
@@ -26,6 +26,8 @@ import Breadcrumbs from "./Breadcrumbs";
 import TarjetaActualizarDomicilio from "./TarjetaActualizarDomicilio";
 import BotonWhatsApp from "./BotonWhatsApp";
 import { AccionesHeaderContext } from "../lib/accionesHeader";
+import { CargaGlobalContext } from "../lib/cargaGlobal";
+import BarraCarga from "./BarraCarga";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -116,6 +118,7 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Control de Solicitudes", href: "/admin/solicitudes", descripcion: "Busca por código o filtra, y puedes eliminar cualquier solicitud sin importar su estado", icono: IconoControl },
         { label: "Carga masiva", href: "/admin/carga-masiva", descripcion: "Cargá muchos colaboradores o rutas de una sola vez desde un Excel", icono: IconoDescargar },
         { label: "Accesos", href: "/admin/accesos", descripcion: "Bitácora de logins (PIN y biometría) y cierre de sesión forzado", icono: IconoEscudo },
+        { label: "Parámetros", href: "/admin/parametros", descripcion: "Valores generales del sistema, configurables sin tocar código", icono: IconoAjustes },
       ],
     },
   ],
@@ -274,6 +277,19 @@ export default function AppShell({
   // por el propio Panel vía useAccionesHeader — se muestra en la misma
   // fila que el breadcrumb, a la derecha (ver lib/accionesHeader.tsx).
   const [accionesHeader, setAccionesHeader] = useState<React.ReactNode>(null);
+  // Ids de todas las cargas en curso (loading.tsx mientras navegan, y el
+  // cargandoInicial de cada Panel mientras trae sus datos) — la franja se
+  // muestra mientras haya al menos una (ver lib/cargaGlobal.tsx).
+  const [cargasActivas, setCargasActivas] = useState<Set<string>>(new Set());
+  const reportarCarga = useCallback((id: string, cargando: boolean) => {
+    setCargasActivas((previas) => {
+      if (cargando === previas.has(id)) return previas;
+      const siguientes = new Set(previas);
+      if (cargando) siguientes.add(id);
+      else siguientes.delete(id);
+      return siguientes;
+    });
+  }, []);
   const [confirmandoSalir, setConfirmandoSalir] = useState(false);
   const [paletaAbierta, setPaletaAbierta] = useState(false);
   const [biometriaAbierta, setBiometriaAbierta] = useState(false);
@@ -345,7 +361,11 @@ export default function AppShell({
 
   return (
     <AccionesHeaderContext.Provider value={setAccionesHeader}>
+    <CargaGlobalContext.Provider value={reportarCarga}>
     <div className="min-h-screen bg-neutral-100 text-neutral-900 dark:bg-neutral-950 dark:text-white flex flex-col">
+      {/* Única instancia de la franja naranja para TODA la sesión — nunca
+          se desmonta, ver components/BarraCarga.tsx y lib/cargaGlobal.tsx. */}
+      <BarraCarga visible={cargasActivas.size > 0} />
       {/* ---------- Header (todo el ancho, todas las pantallas): logo+nombre+rol a la izquierda, usuario a la derecha ---------- */}
       {/* Alto fijo (h-14/h-16), no por padding+contenido: así el offset
           "top" que usan el loading bar y los encabezados de tabla sticky
@@ -512,6 +532,7 @@ export default function AppShell({
         </div>
       </Modal>
     </div>
+    </CargaGlobalContext.Provider>
     </AccionesHeaderContext.Provider>
   );
 }

@@ -17,7 +17,7 @@ import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
@@ -78,6 +78,7 @@ export default function PanelCoordinador() {
   const [sinAsignaciones, setSinAsignaciones] = useState(false);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
 
   useEffect(() => {
     let cancelado = false;
@@ -429,9 +430,7 @@ export default function PanelCoordinador() {
           </div>
         )}
 
-        {cargandoInicial ? (
-          <BarraCarga />
-        ) : (
+        {!cargandoInicial && (
         <>
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">

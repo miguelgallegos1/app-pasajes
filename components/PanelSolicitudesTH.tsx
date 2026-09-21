@@ -13,12 +13,13 @@ import { formatearMoneda } from "../lib/formato";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 import CalendarioSelector from "./CalendarioSelector";
+import { useFechaMinimaSolicitud } from "./useFechaMinimaSolicitud";
 import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
@@ -54,6 +55,7 @@ export default function PanelSolicitudesTH() {
   const [sinAsignaciones, setSinAsignaciones] = useState(false);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
 
   const cargarDatos = async () => {
     try {
@@ -191,14 +193,7 @@ export default function PanelSolicitudesTH() {
     [rutaIdsElegidas, rutasDelColaborador]
   );
 
-  const fechaMinima = useMemo(() => {
-    const limite = new Date();
-    limite.setDate(limite.getDate() - 2);
-    const y = limite.getFullYear();
-    const m = String(limite.getMonth() + 1).padStart(2, "0");
-    const d = String(limite.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, []);
+  const fechaMinima = useFechaMinimaSolicitud();
 
   const confirmarRegistro = async () => {
     if (!colaboradorSeleccionadoId) return;
@@ -242,9 +237,7 @@ export default function PanelSolicitudesTH() {
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
       )}
 
-      {cargandoInicial ? (
-        <BarraCarga />
-      ) : (
+      {!cargandoInicial && (
         <>
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">

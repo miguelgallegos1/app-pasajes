@@ -13,7 +13,7 @@ import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
-import BarraCarga from "./BarraCarga";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import MenuAcciones from "./MenuAcciones";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
@@ -60,6 +60,7 @@ export default function PanelRutasTH() {
   const [esSuperAdmin, setEsSuperAdmin] = useState(false);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
+  useReportarCarga(cargandoInicial);
 
   const cargarDatos = async () => {
     try {
@@ -433,9 +434,7 @@ export default function PanelRutasTH() {
         </div>
       )}
 
-      {cargandoInicial ? (
-        <BarraCarga />
-      ) : (
+      {!cargandoInicial && (
       <>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">

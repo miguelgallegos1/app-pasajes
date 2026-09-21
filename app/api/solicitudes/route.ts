@@ -74,13 +74,15 @@ export async function POST(req: Request) {
   }
 
   // --- Restricción de fecha (dejada lista pero flexible) ---
-  // Regla pedida: por defecto permitimos el día actual y fechas futuras,
-  // y dejamos aquí comentado cómo activar el límite de "solo 2 días atrás"
-  // si en el futuro el cliente lo pide de forma estricta:
+  // Por defecto permitimos el día actual y fechas futuras sin límite. El
+  // calendario del cliente ya no deja elegir fechas más viejas que el
+  // parámetro "días atrás" (ver lib/parametros.ts, editable en Admin ->
+  // Parámetros), pero acá no se vuelve a validar en el servidor —si en el
+  // futuro se pide hacerlo estricto, sería con algo así:
   //
-  // const hoy = new Date();
+  // const diasAtras = await obtenerDiasAtrasSolicitud();
   // const limiteAtras = new Date();
-  // limiteAtras.setDate(hoy.getDate() - 2);
+  // limiteAtras.setDate(limiteAtras.getDate() - diasAtras);
   // if (new Date(fecha) < limiteAtras) {
   //   return NextResponse.json(
   //     { error: "No puedes registrar una fecha tan antigua" },
