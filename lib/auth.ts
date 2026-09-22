@@ -3,14 +3,12 @@
 
 import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import { DURACION_SESION_SEGUNDOS } from "./config";
 import { JWT_SECRET } from "./jwtSecret";
 import { db } from "./db";
 import { obtenerColaboradorPorUsuarioId } from "./colaboradorSesion";
-import { sesionRevocada } from "./sesionRevocada";
-import { HEADER_ATESTACION, TIPO_ATESTACION } from "./atestacionSesion";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -20,8 +18,8 @@ export type SesionUsuario = {
 };
 
 // Crea un token firmado que se guarda en una cookie del navegador.
-// setIssuedAt() es necesario para poder revocar sesiones más tarde
-// (sesionRevocada compara este "iat" contra sesionesRevocadasEn).
+// setIssuedAt() es necesario para que setExpirationTime() calcule el
+// vencimiento relativo a este momento.
 export async function crearToken(payload: SesionUsuario) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
@@ -30,47 +28,20 @@ export async function crearToken(payload: SesionUsuario) {
     .sign(secret);
 }
 
-// Lee la sesión actual desde la cookie (null si no hay sesión, expiró, o
-// un Super Admin la revocó explícitamente desde el panel de accesos).
+// Lee la sesión actual desde la cookie (null si no hay sesión o expiró).
 //
 // cache() de React memoiza por la duración de UNA sola petición: el layout
 // compartido de las pantallas internas ya llama a getSession(), y casi
 // todas las páginas individuales la vuelven a llamar por su cuenta (para
 // sus propias validaciones de rol) — sin esto, cada navegación disparaba
-// dos consultas idénticas a la base (la del layout y la de la página) más
-// la de proxy.ts, que es un contexto aparte y no se puede memoizar acá.
-//
-// Camino rápido con la atestación de proxy.ts: las rutas de página ya
-// pasan por proxy.ts, que hace exactamente esta misma verificación
-// (incluida sesionRevocada, una consulta a la base) ANTES de que la
-// página renderice. En vez de repetirla acá, proxy.ts firma un token
-// cortito (10s) con el mismo secreto y lo manda en un header — si llega y
-// la firma es válida, es matemáticamente imposible que lo haya fabricado
-// otra cosa que no sea proxy.ts (nadie más tiene JWT_SECRET), así que se
-// confía sin volver a tocar la base. Si el header falta o no verifica
-// (por ejemplo, en una ruta /api/*, que el matcher de proxy.ts no cubre)
-// se cae exactamente al camino de siempre: cookie + jwtVerify +
-// sesionRevocada, sin ningún cambio de seguridad ahí.
+// dos verificaciones idénticas (la del layout y la de la página).
 export const getSession = cache(async (): Promise<SesionUsuario | null> => {
-  const encabezados = await headers();
-  const atestacion = encabezados.get(HEADER_ATESTACION);
-  if (atestacion) {
-    try {
-      const { payload } = await jwtVerify(atestacion, secret);
-      const datos = payload as unknown as { id: string; rol: SesionUsuario["rol"]; tipo?: string };
-      if (datos.tipo === TIPO_ATESTACION) return { id: datos.id, rol: datos.rol };
-    } catch {
-      // Vencida o inválida: sigue abajo con la verificación completa.
-    }
-  }
-
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret);
-    const sesion = payload as unknown as SesionUsuario & { iat?: number };
-    if (await sesionRevocada(sesion.id, sesion.iat)) return null;
+    const sesion = payload as unknown as SesionUsuario;
     return { id: sesion.id, rol: sesion.rol };
   } catch {
     return null;
@@ -132,18 +103,7 @@ export async function obtenerPerfilSesion(
 // Firma el token de la sesión y lo deja puesto en la cookie de la respuesta.
 // Centralizado para que el login por PIN y el login biométrico usen
 // exactamente la misma configuración de cookie.
-//
-// Sesión única por usuario: cada login de éxito revoca cualquier sesión
-// anterior de ese mismo usuario (otro dispositivo, otra pestaña, etc.) —
-// mismo mecanismo que "Cerrar sesión" en el panel de Accesos, pero
-// automático. sesionesRevocadasEn se trunca al inicio del segundo actual
-// (igual que el "iat" del JWT, que jose también trunca a segundos) para
-// que el token que se firma a continuación no quede revocado por su
-// propia marca de tiempo.
 export async function establecerCookieSesion(res: NextResponse, usuario: SesionUsuario) {
-  const ahoraTruncado = new Date(Math.floor(Date.now() / 1000) * 1000);
-  await db.usuario.update({ where: { id: usuario.id }, data: { sesionesRevocadasEn: ahoraTruncado } });
-
   const token = await crearToken(usuario);
   res.cookies.set("session", token, {
     httpOnly: true,

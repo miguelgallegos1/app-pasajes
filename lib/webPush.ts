@@ -3,7 +3,7 @@
 // donde un colaborador activó notificaciones. Nunca bloquea ni hace
 // fallar la acción que la llama (aprobar, rechazar, etc.) — si el envío
 // falla, o no hay llaves VAPID configuradas en este entorno, se ignora en
-// silencio, mismo criterio que lib/registrarAcceso.ts con la bitácora.
+// silencio.
 
 import webpush from "web-push";
 import { db } from "./db";

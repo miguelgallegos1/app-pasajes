@@ -13,8 +13,6 @@ import { jwtVerify, SignJWT } from "jose";
 import { DURACION_SESION_SEGUNDOS } from "./lib/config";
 import { JWT_SECRET } from "./lib/jwtSecret";
 import { INICIO_POR_ROL } from "./lib/roles";
-import { sesionRevocada } from "./lib/sesionRevocada";
-import { HEADER_ATESTACION, crearAtestacionSesion } from "./lib/atestacionSesion";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -55,26 +53,11 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("session")?.value;
 
-  // Se descarta ACÁ, apenas entra, cualquier valor que haya llegado ya en
-  // la propia petición — antes de que exista la más mínima chance de que
-  // pase de largo sin pasar por acá (por ejemplo, si el día de mañana se
-  // agrega alguna ruta pública nueva al matcher). Recién más abajo, en el
-  // único lugar donde se confirma la sesión, se vuelve a poner con el
-  // valor real.
-  const encabezadosLimpios = new Headers(req.headers);
-  encabezadosLimpios.delete(HEADER_ATESTACION);
-
-  let payload: { id: string; rol: string; iat?: number } | null = null;
+  let payload: { id: string; rol: string } | null = null;
   if (token) {
     try {
       const verificado = await jwtVerify(token, secret);
-      payload = verificado.payload as unknown as { id: string; rol: string; iat?: number };
-      // Chequeado ACÁ, antes de renovar: si no, cada visita le renueva la
-      // cookie con un "iat" fresco y la sesión revocada quedaría válida
-      // de nuevo en la siguiente navegación.
-      if (await sesionRevocada(payload.id, payload.iat)) {
-        payload = null;
-      }
+      payload = verificado.payload as unknown as { id: string; rol: string };
     } catch {
       payload = null;
     }
@@ -85,7 +68,7 @@ export async function proxy(req: NextRequest) {
   }
 
   const rutaProtegida = Object.keys(RUTAS_POR_ROL).find((r) => pathname.startsWith(r));
-  if (!rutaProtegida) return NextResponse.next({ request: { headers: encabezadosLimpios } });
+  if (!rutaProtegida) return NextResponse.next();
 
   if (!payload) {
     const res = NextResponse.redirect(new URL("/login", req.url));
@@ -98,14 +81,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL(INICIO_POR_ROL[payload.rol] ?? "/login", req.url));
   }
 
-  // Le pasamos a la página una "atestación" firmada de que ya se validó
-  // acá (ver lib/atestacionSesion.ts y el comentario en getSession(), en
-  // lib/auth.ts) — así evita repetir la consulta de sesión revocada al
-  // renderizar. encabezadosLimpios ya viene sin ningún valor de este
-  // header que haya llegado en la petición original (ver arriba).
-  encabezadosLimpios.set(HEADER_ATESTACION, await crearAtestacionSesion(payload));
-
-  return renovarSesion(NextResponse.next({ request: { headers: encabezadosLimpios } }), payload);
+  return renovarSesion(NextResponse.next(), payload);
 }
 
 export const config = {

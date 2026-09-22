@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
-import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoEscudo, IconoAjustes } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoAjustes } from "./Icons";
 import BotonTema from "./BotonTema";
 import NotificacionesMenu from "./NotificacionesMenu";
 import NotificacionesColaborador from "./NotificacionesColaborador";
@@ -117,7 +117,6 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Usuarios", href: "/admin/usuarios", descripcion: "Talento Humano, Coordinadores, Nómina, Jefes y Super Administradores", icono: IconoUsuario },
         { label: "Control de Solicitudes", href: "/admin/solicitudes", descripcion: "Busca por código o filtra, y puedes eliminar cualquier solicitud sin importar su estado", icono: IconoControl },
         { label: "Carga masiva", href: "/admin/carga-masiva", descripcion: "Cargá muchos colaboradores o rutas de una sola vez desde un Excel", icono: IconoDescargar },
-        { label: "Accesos", href: "/admin/accesos", descripcion: "Bitácora de logins (PIN y biometría) y cierre de sesión forzado", icono: IconoEscudo },
         { label: "Parámetros", href: "/admin/parametros", descripcion: "Valores generales del sistema, configurables sin tocar código", icono: IconoAjustes },
       ],
     },

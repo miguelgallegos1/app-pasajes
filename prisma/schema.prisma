@@ -131,14 +131,7 @@ model Usuario {
   colaborador  Colaborador?
   asignaciones AsignacionTH[]
   credencialesBiometricas CredencialBiometrica[]
-  registrosAcceso RegistroAcceso[]
   suscripcionesPush PushSubscription[]
-
-  // Si tiene valor, cualquier sesión (token JWT) emitida ANTES de este
-  // momento se considera inválida — es lo que usa "Cerrar sesión" del
-  // Super Admin para forzar el cierre de una sesión ajena sin esperar a
-  // que expire sola. getSession() la compara contra el "iat" del token.
-  sesionesRevocadasEn DateTime?
 
   @@index([rol])
 }
@@ -170,23 +163,6 @@ model CredencialBiometrica {
   // eso no alcanza porque cada intento genera un id distinto.
   @@unique([usuarioId, dispositivo])
   @@index([usuarioId])
-}
-
-// Bitácora de logins exitosos (PIN o biometría) — no confundir con
-// IntentoLogin, que solo cuenta intentos fallidos para el rate-limit y no
-// identifica quién entró. Pensada para que Super Admin audite accesos:
-// quién entró, cuándo, desde qué IP y con qué método.
-model RegistroAcceso {
-  id        String   @id @default(cuid())
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
-  usuarioId String
-  metodo    String   // "PIN" | "BIOMETRIA"
-  ip        String?
-  userAgent String?
-  creadoEn  DateTime @default(now())
-
-  @@index([usuarioId, creadoEn])
-  @@index([creadoEn])
 }
 
 // Suscripción a notificaciones push (Web Push) de un dispositivo/navegador
