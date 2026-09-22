@@ -16,6 +16,7 @@ import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import { IconoDescargar } from "./Icons";
 
@@ -36,9 +37,6 @@ export default function PanelHistorialNomina() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
-  const [empresaId, setEmpresaId] = useState("");
-  const [sitioId, setSitioId] = useState("");
-  const [areaId, setAreaId] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
 
   // Empresa/Sitio/Área para los combos de filtro: se piden al montar en
@@ -60,6 +58,9 @@ export default function PanelHistorialNomina() {
       .catch(() => {});
   }, []);
 
+  const { empresaFiltro, sitioFiltro, areaFiltro, sitiosFiltro, areasFiltro, cambiarEmpresaFiltro, cambiarSitioFiltro, cambiarAreaFiltro } =
+    useFiltroEmpresaSitioArea(sitios, areas, () => setColaboradorId(""));
+
   // Opciones del combo "Colaborador": solo quienes tienen actividad en el
   // rango y los filtros Empresa/Sitio/Área elegidos, no la lista completa
   // de la empresa (que puede ser grande y no tiene relación con la
@@ -68,9 +69,9 @@ export default function PanelHistorialNomina() {
   useEffect(() => {
     if (!desde || !hasta) return;
     const params = new URLSearchParams({ desde, hasta });
-    if (empresaId) params.set("empresaId", empresaId);
-    if (sitioId) params.set("sitioId", sitioId);
-    if (areaId) params.set("areaId", areaId);
+    if (empresaFiltro) params.set("empresaId", empresaFiltro);
+    if (sitioFiltro) params.set("sitioId", sitioFiltro);
+    if (areaFiltro) params.set("areaId", areaFiltro);
     let cancelado = false;
     fetch(`/api/nomina/historial/colaboradores-filtro?${params.toString()}`)
       .then((res) => (res.ok ? res.json() : []))
@@ -83,7 +84,7 @@ export default function PanelHistorialNomina() {
     return () => {
       cancelado = true;
     };
-  }, [desde, hasta, empresaId, sitioId, areaId]);
+  }, [desde, hasta, empresaFiltro, sitioFiltro, areaFiltro]);
 
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
@@ -102,32 +103,16 @@ export default function PanelHistorialNomina() {
     "historial-nomina"
   );
 
-  const sitiosOpciones = useMemo(
-    () => (empresaId ? sitios.filter((s) => s.empresaId === empresaId) : sitios).map((s) => ({ id: s.id, label: s.nombre })),
-    [sitios, empresaId]
-  );
-  const sitiosPermitidos = useMemo(
-    () => new Set((empresaId ? sitios.filter((s) => s.empresaId === empresaId) : sitios).map((s) => s.id)),
-    [sitios, empresaId]
-  );
-  const areasOpciones = useMemo(() => {
-    const base = sitioId ? areas.filter((a) => a.sitioId === sitioId) : areas.filter((a) => sitiosPermitidos.has(a.sitioId));
-    return base.map((a) => ({ id: a.id, label: a.nombre }));
-  }, [areas, sitioId, sitiosPermitidos]);
   const colaboradoresOpciones = useMemo(
     () => colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
     [colaboradores]
   );
 
-  const cambiarEmpresa = (v: string) => { setEmpresaId(v); setSitioId(""); setAreaId(""); setColaboradorId(""); };
-  const cambiarSitio = (v: string) => { setSitioId(v); setAreaId(""); setColaboradorId(""); };
-  const cambiarArea = (v: string) => { setAreaId(v); setColaboradorId(""); };
-
   const parametrosBase = () => {
     const params = new URLSearchParams({ desde, hasta });
-    if (empresaId) params.set("empresaId", empresaId);
-    if (sitioId) params.set("sitioId", sitioId);
-    if (areaId) params.set("areaId", areaId);
+    if (empresaFiltro) params.set("empresaId", empresaFiltro);
+    if (sitioFiltro) params.set("sitioId", sitioFiltro);
+    if (areaFiltro) params.set("areaId", areaFiltro);
     if (colaboradorId) params.set("colaboradorId", colaboradorId);
     return params;
   };
@@ -215,8 +200,8 @@ export default function PanelHistorialNomina() {
             <div className="mt-1.5">
               <ComboboxBuscable
                 opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
-                value={empresaId}
-                onChange={cambiarEmpresa}
+                value={empresaFiltro}
+                onChange={cambiarEmpresaFiltro}
                 placeholder="Todas"
               />
             </div>
@@ -224,13 +209,13 @@ export default function PanelHistorialNomina() {
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sitio</label>
             <div className="mt-1.5">
-              <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
+              <ComboboxBuscable opciones={sitiosFiltro} value={sitioFiltro} onChange={cambiarSitioFiltro} placeholder="Todos" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
             <div className="mt-1.5">
-              <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todas" />
+              <ComboboxBuscable opciones={areasFiltro} value={areaFiltro} onChange={cambiarAreaFiltro} placeholder="Todas" />
             </div>
           </div>
           <div>
@@ -324,7 +309,7 @@ export default function PanelHistorialNomina() {
                       <p>{formatearFecha(s.fecha)}</p>
                       {s.fechaPago && (
                         <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                          Pagada: {new Date(s.fechaPago).toLocaleDateString()}
+                          Pagada: {formatearFecha(s.fechaPago)}
                         </p>
                       )}
                     </td>

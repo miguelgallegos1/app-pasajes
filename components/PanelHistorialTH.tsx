@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
+import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -21,6 +21,7 @@ import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useHistorialLista } from "../lib/useHistorialLista";
 import { IconoImprimir, IconoDevolver } from "./Icons";
 
 type Fila = {
@@ -40,11 +41,6 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
   rutaLabel: (f) => f.rutaLabel,
   montoTotal: (f) => f.montoTotal,
   estado: (f) => f.estado,
-};
-
-const ESTILOS_ESTADO: Record<string, string> = {
-  APROBADA: "bg-green-100 text-green-800",
-  PAGADA: "bg-orange-100 text-orange-800",
 };
 
 // Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
@@ -116,13 +112,16 @@ export default function PanelHistorialTH() {
       cancelado = true;
     };
   }, [desde, hasta, estado, supervisorId]);
-  const [items, setItems] = useState<Fila[] | null>(null);
-  const [totalRegistros, setTotalRegistros] = useState(0);
-  const [totalMonto, setTotalMonto] = useState(0);
-  const [pagina, setPagina] = useState(1);
-  const [totalPaginas, setTotalPaginas] = useState(1);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState("");
+  const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar } = useHistorialLista<Fila>(
+    (paginaNueva) => {
+      if (!desde || !hasta) return null;
+      const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
+      if (estado) params.set("estado", estado);
+      if (supervisorId) params.set("supervisorId", supervisorId);
+      if (colaboradorId) params.set("colaboradorId", colaboradorId);
+      return `/api/th/historial?${params.toString()}`;
+    }
+  );
   const toast = useToast();
 
   const [idARevertir, setIdARevertir] = useState<string | null>(null);
@@ -152,38 +151,6 @@ export default function PanelHistorialTH() {
   const cambiarSupervisor = (v: string) => {
     setSupervisorId(v);
     setColaboradorId("");
-  };
-
-  const buscar = async (paginaNueva = 1) => {
-    if (!desde || !hasta) {
-      setError("Selecciona ambas fechas");
-      return;
-    }
-    setCargando(true);
-    setError("");
-    const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
-    if (estado) params.set("estado", estado);
-    if (supervisorId) params.set("supervisorId", supervisorId);
-    if (colaboradorId) params.set("colaboradorId", colaboradorId);
-
-    try {
-      const res = await fetch(`/api/th/historial?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "No se pudo cargar el historial");
-        return;
-      }
-      const data = await res.json();
-      setItems(data.items);
-      setTotalRegistros(data.total);
-      setTotalMonto(data.totalMonto);
-      setTotalPaginas(data.totalPaginas);
-      setPagina(paginaNueva);
-    } catch {
-      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-    } finally {
-      setCargando(false);
-    }
   };
 
   const abrirRevertir = (id: string) => {

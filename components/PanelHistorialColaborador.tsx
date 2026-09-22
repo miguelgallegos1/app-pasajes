@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
+import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -18,6 +18,7 @@ import EstadoVacio from "./EstadoVacio";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useHistorialLista } from "../lib/useHistorialLista";
 
 type Fila = {
   id: string;
@@ -36,11 +37,6 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
   rutaLabel: (f) => f.rutaLabel,
   montoTotal: (f) => f.montoTotal,
   estado: (f) => f.estado,
-};
-
-const ESTILOS_ESTADO: Record<string, string> = {
-  APROBADA: "bg-green-100 text-green-800",
-  PAGADA: "bg-orange-100 text-orange-800",
 };
 
 export default function PanelHistorialColaborador() {
@@ -66,12 +62,15 @@ export default function PanelHistorialColaborador() {
   const [hasta, setHasta] = useState(fechaHoyTexto);
   const [estado, setEstado] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
-  const [items, setItems] = useState<Fila[] | null>(null);
-  const [totalMonto, setTotalMonto] = useState(0);
-  const [pagina, setPagina] = useState(1);
-  const [totalPaginas, setTotalPaginas] = useState(1);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState("");
+  const { items, totalMonto, pagina, totalPaginas, cargando, error, buscar } = useHistorialLista<Fila>(
+    (paginaNueva) => {
+      if (!desde || !hasta) return null;
+      const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
+      if (estado) params.set("estado", estado);
+      if (colaboradorId) params.set("colaboradorId", colaboradorId);
+      return `/api/solicitudes/historial?${params.toString()}`;
+    }
+  );
 
   const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(
     items ?? [],
@@ -83,36 +82,6 @@ export default function PanelHistorialColaborador() {
     { id: "", label: "Todo mi equipo" },
     ...equipo.map((c) => ({ id: c.id, label: c.nombreCompleto })),
   ];
-
-  const buscar = async (paginaNueva = 1) => {
-    if (!desde || !hasta) {
-      setError("Selecciona ambas fechas");
-      return;
-    }
-    setCargando(true);
-    setError("");
-    const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
-    if (estado) params.set("estado", estado);
-    if (colaboradorId) params.set("colaboradorId", colaboradorId);
-
-    try {
-      const res = await fetch(`/api/solicitudes/historial?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "No se pudo cargar el historial");
-        return;
-      }
-      const data = await res.json();
-      setItems(data.items);
-      setTotalMonto(data.totalMonto);
-      setTotalPaginas(data.totalPaginas);
-      setPagina(paginaNueva);
-    } catch {
-      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-    } finally {
-      setCargando(false);
-    }
-  };
 
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">

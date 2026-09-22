@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
+import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -39,11 +39,6 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
   rutaLabel: (f) => f.rutaLabel,
   montoTotal: (f) => f.montoTotal,
   estado: (f) => f.estado,
-};
-
-const ESTILOS_ESTADO: Record<string, string> = {
-  REVISADO: "bg-sky-100 text-sky-800",
-  PAGADA: "bg-orange-100 text-orange-800",
 };
 
 // Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un

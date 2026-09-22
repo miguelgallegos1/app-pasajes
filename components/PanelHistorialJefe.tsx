@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
+import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -20,6 +20,7 @@ import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
 import { IconoDescargar } from "./Icons";
 
@@ -37,22 +38,11 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
   estado: (f) => f.estado,
 };
 
-const ESTILOS_ESTADO: Record<string, string> = {
-  PENDIENTE: "bg-amber-100 text-amber-800",
-  APROBADA: "bg-green-100 text-green-800",
-  RECHAZADA: "bg-red-100 text-red-800",
-  REVISADO: "bg-sky-100 text-sky-800",
-  PAGADA: "bg-orange-100 text-orange-800",
-};
-
 export default function PanelHistorialJefe() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
   const [desde, setDesde] = useState(fechaHoyTexto);
   const [hasta, setHasta] = useState(fechaHoyTexto);
   const [estado, setEstado] = useState("");
-  const [empresaId, setEmpresaId] = useState("");
-  const [sitioId, setSitioId] = useState("");
-  const [areaId, setAreaId] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
 
   // Empresa/Sitio/Área para los combos de filtro: se piden al montar en
@@ -78,13 +68,16 @@ export default function PanelHistorialJefe() {
   // rango y los filtros (Empresa/Sitio/Área/Estado) elegidos, no la lista
   // completa de la empresa (que puede ser grande y no tiene relación con
   // la búsqueda).
+  const { empresaFiltro, sitioFiltro, areaFiltro, sitiosFiltro, areasFiltro, cambiarEmpresaFiltro, cambiarSitioFiltro, cambiarAreaFiltro } =
+    useFiltroEmpresaSitioArea(sitios, areas, () => setColaboradorId(""));
+
   const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
   useEffect(() => {
     if (!desde || !hasta) return;
     const params = new URLSearchParams({ desde, hasta });
-    if (empresaId) params.set("empresaId", empresaId);
-    if (sitioId) params.set("sitioId", sitioId);
-    if (areaId) params.set("areaId", areaId);
+    if (empresaFiltro) params.set("empresaId", empresaFiltro);
+    if (sitioFiltro) params.set("sitioId", sitioFiltro);
+    if (areaFiltro) params.set("areaId", areaFiltro);
     if (estado) params.set("estado", estado);
     let cancelado = false;
     fetch(`/api/jefe/historial/colaboradores-filtro?${params.toString()}`)
@@ -98,7 +91,7 @@ export default function PanelHistorialJefe() {
     return () => {
       cancelado = true;
     };
-  }, [desde, hasta, empresaId, sitioId, areaId, estado]);
+  }, [desde, hasta, empresaFiltro, sitioFiltro, areaFiltro, estado]);
 
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
@@ -117,33 +110,17 @@ export default function PanelHistorialJefe() {
     "historial-jefe"
   );
 
-  const sitiosOpciones = useMemo(
-    () => (empresaId ? sitios.filter((s) => s.empresaId === empresaId) : sitios).map((s) => ({ id: s.id, label: s.nombre })),
-    [sitios, empresaId]
-  );
-  const sitiosPermitidos = useMemo(
-    () => new Set((empresaId ? sitios.filter((s) => s.empresaId === empresaId) : sitios).map((s) => s.id)),
-    [sitios, empresaId]
-  );
-  const areasOpciones = useMemo(() => {
-    const base = sitioId ? areas.filter((a) => a.sitioId === sitioId) : areas.filter((a) => sitiosPermitidos.has(a.sitioId));
-    return base.map((a) => ({ id: a.id, label: a.nombre }));
-  }, [areas, sitioId, sitiosPermitidos]);
   const colaboradoresOpciones = useMemo(
     () => colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
     [colaboradores]
   );
 
-  const cambiarEmpresa = (v: string) => { setEmpresaId(v); setSitioId(""); setAreaId(""); setColaboradorId(""); };
-  const cambiarSitio = (v: string) => { setSitioId(v); setAreaId(""); setColaboradorId(""); };
-  const cambiarArea = (v: string) => { setAreaId(v); setColaboradorId(""); };
-
   const parametrosBase = () => {
     const params = new URLSearchParams({ desde, hasta });
     if (estado) params.set("estado", estado);
-    if (empresaId) params.set("empresaId", empresaId);
-    if (sitioId) params.set("sitioId", sitioId);
-    if (areaId) params.set("areaId", areaId);
+    if (empresaFiltro) params.set("empresaId", empresaFiltro);
+    if (sitioFiltro) params.set("sitioId", sitioFiltro);
+    if (areaFiltro) params.set("areaId", areaFiltro);
     if (colaboradorId) params.set("colaboradorId", colaboradorId);
     return params;
   };
@@ -252,8 +229,8 @@ export default function PanelHistorialJefe() {
             <div className="mt-1.5">
               <ComboboxBuscable
                 opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
-                value={empresaId}
-                onChange={cambiarEmpresa}
+                value={empresaFiltro}
+                onChange={cambiarEmpresaFiltro}
                 placeholder="Todas"
               />
             </div>
@@ -261,13 +238,13 @@ export default function PanelHistorialJefe() {
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sitio</label>
             <div className="mt-1.5">
-              <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
+              <ComboboxBuscable opciones={sitiosFiltro} value={sitioFiltro} onChange={cambiarSitioFiltro} placeholder="Todos" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
             <div className="mt-1.5">
-              <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todas" />
+              <ComboboxBuscable opciones={areasFiltro} value={areaFiltro} onChange={cambiarAreaFiltro} placeholder="Todas" />
             </div>
           </div>
           <div>
