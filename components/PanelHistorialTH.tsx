@@ -117,6 +117,7 @@ export default function PanelHistorialTH() {
     };
   }, [desde, hasta, estado, supervisorId]);
   const [items, setItems] = useState<Fila[] | null>(null);
+  const [totalRegistros, setTotalRegistros] = useState(0);
   const [totalMonto, setTotalMonto] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
@@ -174,6 +175,7 @@ export default function PanelHistorialTH() {
       }
       const data = await res.json();
       setItems(data.items);
+      setTotalRegistros(data.total);
       setTotalMonto(data.totalMonto);
       setTotalPaginas(data.totalPaginas);
       setPagina(paginaNueva);
@@ -369,7 +371,9 @@ export default function PanelHistorialTH() {
               {items.length > 0 && (
                 <tfoot>
                   <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 font-semibold">
-                    <td className="px-4 py-3" colSpan={4}>Total del rango</td>
+                    <td className="px-4 py-3" colSpan={4}>
+                      Total del rango <span className="font-normal text-neutral-500 dark:text-neutral-400">({totalRegistros} solicitud{totalRegistros === 1 ? "" : "es"})</span>
+                    </td>
                     <td className="px-4 py-3" colSpan={3}>{formatearMoneda(totalMonto)}</td>
                   </tr>
                 </tfoot>
