@@ -166,3 +166,69 @@ select:focus-visible {
     transform: translateY(8px) scale(0.97);
   }
 }
+
+/* Efecto de "presión" para que cualquier botón/acción de la app (menú,
+   botones de acción, links con pinta de botón) se sienta físico al
+   tocarlo: un tinte naranja (el mismo naranja de marca que ya usan los
+   botones primarios y el foco de teclado, ver --presion-color) nace del
+   centro, se expande y se desvanece SIEMPRE completo, una sola vez por
+   click — sin importar lo breve que sea. Antes esto se disparaba con
+   :active, pero :active solo dura lo que el botón está físicamente
+   apretado: en un click rápido (la mayoría) la animación no llegaba a
+   terminar de crecer y ya se estaba revirtiendo, y se veía como un
+   parpadeo que "abre y cierra". Por eso la clase .presionando (agregada
+   por components/EfectoPresion.tsx con un solo listener delegado, sin
+   tocar los 200+ botones existentes) dispara una animación de una sola
+   pasada que corre entera pase lo que pase con el click.
+   El ::after tiene z-index:-1 dentro del propio botón (que ya queda con
+   position:relative) para pintarse detrás del texto/ícono, nunca encima. */
+/* Naranja más oscuro que el naranja "de marca" (#f97316) a propósito: la
+   mayoría de los botones de acción (Buscar, Guardar, Aprobar...) YA son
+   bg-orange-500, así que un pulso del mismo naranja se mezclaba con el
+   fondo y no se veía (naranja translúcido sobre naranja = el mismo
+   naranja). Este tono más oscuro (como el que ya usan hover:bg-orange-600)
+   sigue leyéndose como "la familia naranja" pero contrasta también ahí. */
+:root {
+  --presion-color: rgb(194 65 12 / 55%);
+}
+
+:where(button:not(:disabled), a[class], [role="button"]) {
+  position: relative;
+}
+
+:where(button:not(:disabled), a[class], [role="button"])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--presion-color);
+  opacity: 0;
+  transform: scale(0);
+  pointer-events: none;
+}
+
+:where(button:not(:disabled), a[class], [role="button"]).presionando::after {
+  animation: presion-onda 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes presion-onda {
+  0% {
+    transform: scale(0);
+    opacity: 0.9;
+  }
+  55% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button:not(:disabled), a[class], [role="button"])::after {
+    display: none;
+  }
+}

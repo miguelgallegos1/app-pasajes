@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "../components/Toast";
 import ThemeProvider from "../components/ThemeProvider";
 import SplashPWA from "../components/SplashPWA";
+import EfectoPresion from "../components/EfectoPresion";
 import "./globals.css";
 
 // Se ejecuta antes de pintar la página: decide "dark" u "light" (localStorage,
@@ -104,6 +105,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             reaparece después. El desmontado lo maneja React (ver
             SplashPWA), no un script que saque el nodo a mano. */}
         <SplashPWA />
+        <EfectoPresion />
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>
