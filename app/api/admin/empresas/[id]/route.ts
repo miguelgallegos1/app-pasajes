@@ -1,5 +1,6 @@
 // app/api/admin/empresas/[id]/route.ts
 // PATCH: Super Admin edita nombre/RUC/estado activo de una Empresa.
+// DELETE: Super Admin elimina una Empresa sin dependencias.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
@@ -36,4 +37,32 @@ export async function PATCH(
     }
     throw e;
   }
+}
+// DELETE: solo si la Empresa no tiene sitios, rutas ni asignaciones de TH.
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session || session.rol !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const empresa = await db.empresa.findUnique({
+    where: { id },
+    select: { _count: { select: { sitios: true, rutas: true, asignaciones: true } } },
+  });
+  if (!empresa) return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
+
+  const { sitios, rutas, asignaciones } = empresa._count;
+  if (sitios || rutas || asignaciones) {
+    return NextResponse.json(
+      { error: `No se puede eliminar: tiene ${sitios} sitio(s), ${rutas} ruta(s) y ${asignaciones} asignación(es) de TH asociadas.` },
+      { status: 409 }
+    );
+  }
+
+  await db.empresa.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
 }

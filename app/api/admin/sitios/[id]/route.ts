@@ -1,5 +1,6 @@
 // app/api/admin/sitios/[id]/route.ts
 // PATCH: Super Admin edita nombre/dirección de un Sitio.
+// DELETE: Super Admin elimina un Sitio sin dependencias.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
@@ -28,4 +29,32 @@ export async function PATCH(
 
   const actualizado = await db.sitioProductivo.update({ where: { id }, data });
   return NextResponse.json(actualizado);
+}
+// DELETE: solo si el Sitio no tiene áreas, colaboradores, rutas ni asignaciones de TH.
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session || session.rol !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const sitio = await db.sitioProductivo.findUnique({
+    where: { id },
+    select: { _count: { select: { areas: true, colaboradores: true, rutas: true, asignaciones: true } } },
+  });
+  if (!sitio) return NextResponse.json({ error: "Sitio no encontrado" }, { status: 404 });
+
+  const { areas, colaboradores, rutas, asignaciones } = sitio._count;
+  if (areas || colaboradores || rutas || asignaciones) {
+    return NextResponse.json(
+      { error: `No se puede eliminar: tiene ${areas} área(s), ${colaboradores} colaborador(es), ${rutas} ruta(s) y ${asignaciones} asignación(es) de TH asociadas.` },
+      { status: 409 }
+    );
+  }
+
+  await db.sitioProductivo.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
 }
