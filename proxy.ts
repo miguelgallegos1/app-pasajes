@@ -3,9 +3,10 @@
 // (En Next.js 16, esto reemplaza al antiguo "middleware.ts".)
 //
 // También implementa el cierre de sesión por inactividad: cada visita a
-// una ruta protegida renueva el token con una nueva expiración. Si el
-// usuario no genera ninguna visita durante DURACION_SESION_SEGUNDOS, el
-// token vencido deja de validar y se le pide iniciar sesión de nuevo.
+// una ruta protegida, y cada acción del usuario contra /api, renueva el
+// token con una nueva expiración. Si el usuario no hace nada durante
+// DURACION_SESION_SEGUNDOS, el token vencido deja de validar y se le pide
+// iniciar sesión de nuevo (ver components/VigilanteSesion.tsx).
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -13,6 +14,7 @@ import { jwtVerify, SignJWT } from "jose";
 import { DURACION_SESION_SEGUNDOS } from "./lib/config";
 import { JWT_SECRET } from "./lib/jwtSecret";
 import { INICIO_POR_ROL } from "./lib/roles";
+import { ponerCookiesSesion, borrarCookiesSesion } from "./lib/cookieSesion";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -26,11 +28,25 @@ const RUTAS_POR_ROL: Record<string, string[]> = {
   "/dashboard": ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"],
 };
 
+// Pedidos a /api que NO cuentan como actividad del usuario: el sondeo
+// automático de la campanita (NotificacionesMenu.tsx) — si renovara, una
+// pestaña abierta nunca vencería. /api/auth/* maneja su propia cookie.
+const API_SIN_RENOVAR = ["/api/dashboard/pendientes-accion", "/api/auth/"];
+
+type Payload = { id: string; rol: string; exp?: number };
+
+// En /api solo se re-firma cuando ya pasó la mitad de la sesión: una
+// ráfaga de acciones seguidas renueva una vez, no en cada pedido.
+function pasoMitadDeLaSesion(payload: Payload) {
+  if (!payload.exp) return true;
+  return payload.exp * 1000 - Date.now() < (DURACION_SESION_SEGUNDOS * 1000) / 2;
+}
+
 // Reemite la cookie de sesión con una expiración fresca de
 // DURACION_SESION_SEGUNDOS a partir de AHORA (ventana deslizante).
 async function renovarSesion(
   res: NextResponse,
-  payload: { id: string; rol: string }
+  payload: Payload
 ) {
   const token = await new SignJWT({ id: payload.id, rol: payload.rol })
     .setProtectedHeader({ alg: "HS256" })
@@ -38,13 +54,7 @@ async function renovarSesion(
     .setExpirationTime(`${DURACION_SESION_SEGUNDOS}s`)
     .sign(secret);
 
-  res.cookies.set("session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: DURACION_SESION_SEGUNDOS,
-    path: "/",
-  });
+  ponerCookiesSesion(res, token);
 
   return res;
 }
@@ -53,14 +63,22 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("session")?.value;
 
-  let payload: { id: string; rol: string } | null = null;
+  let payload: Payload | null = null;
   if (token) {
     try {
       const verificado = await jwtVerify(token, secret);
-      payload = verificado.payload as unknown as { id: string; rol: string };
+      payload = verificado.payload as unknown as Payload;
     } catch {
       payload = null;
     }
+  }
+
+  if (pathname.startsWith("/api/")) {
+    // Las rutas de /api validan la sesión por su cuenta; acá solo se renueva.
+    if (!payload || API_SIN_RENOVAR.some((r) => pathname.startsWith(r)) || !pasoMitadDeLaSesion(payload)) {
+      return NextResponse.next();
+    }
+    return renovarSesion(NextResponse.next(), payload);
   }
 
   if (pathname === "/login" && payload) {
@@ -72,7 +90,7 @@ export async function proxy(req: NextRequest) {
 
   if (!payload) {
     const res = NextResponse.redirect(new URL("/login", req.url));
-    res.cookies.delete("session");
+    borrarCookiesSesion(res);
     return res;
   }
 
@@ -93,6 +111,7 @@ export const config = {
     "/jefe/:path*",
     "/admin/:path*",
     "/dashboard/:path*",
+    "/api/:path*",
     "/login",
   ],
 };

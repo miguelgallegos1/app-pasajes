@@ -28,6 +28,7 @@ import BotonWhatsApp from "./BotonWhatsApp";
 import { AccionesHeaderContext } from "../lib/accionesHeader";
 import { CargaGlobalContext } from "../lib/cargaGlobal";
 import BarraCarga from "./BarraCarga";
+import VigilanteSesion from "./VigilanteSesion";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -365,6 +366,7 @@ export default function AppShell({
       {/* Única instancia de la franja naranja para TODA la sesión — nunca
           se desmonta, ver components/BarraCarga.tsx y lib/cargaGlobal.tsx. */}
       <BarraCarga visible={cargasActivas.size > 0} />
+      <VigilanteSesion />
       {/* ---------- Header (todo el ancho, todas las pantallas): logo+nombre+rol a la izquierda, usuario a la derecha ---------- */}
       {/* Alto fijo (h-14/h-16), no por padding+contenido: así el offset
           "top" que usan el loading bar y los encabezados de tabla sticky

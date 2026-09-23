@@ -78,6 +78,16 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
+    // Llegó desde VigilanteSesion. Se lee en el cliente (no con
+    // searchParams) por lo mismo que soportaMascaraCss: evitar un
+    // desajuste de hidratación.
+    if (new URLSearchParams(window.location.search).get("expirada") === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setError("Tu sesión se cerró por inactividad. Ingresa de nuevo.");
+    }
+  }, []);
+
+  useEffect(() => {
     if (error && !loading) {
       inputsRef.current[0]?.focus();
     }

@@ -9,6 +9,7 @@ import { DURACION_SESION_SEGUNDOS } from "./config";
 import { JWT_SECRET } from "./jwtSecret";
 import { db } from "./db";
 import { obtenerColaboradorPorUsuarioId } from "./colaboradorSesion";
+import { ponerCookiesSesion } from "./cookieSesion";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
 
@@ -104,14 +105,7 @@ export async function obtenerPerfilSesion(
 // Centralizado para que el login por PIN y el login biométrico usen
 // exactamente la misma configuración de cookie.
 export async function establecerCookieSesion(res: NextResponse, usuario: SesionUsuario) {
-  const token = await crearToken(usuario);
-  res.cookies.set("session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: DURACION_SESION_SEGUNDOS,
-    path: "/",
-  });
+  ponerCookiesSesion(res, await crearToken(usuario));
 }
 
 // Si es un Colaborador (no Supervisor) con un supervisor asignado, sus
