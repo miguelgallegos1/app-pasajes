@@ -63,6 +63,7 @@ export default function PanelColaboradoresTH() {
   const [sitios, setSitios] = useState<Sitio[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [sinAsignaciones, setSinAsignaciones] = useState(false);
+  const [truncado, setTruncado] = useState(false);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
   useReportarCarga(cargandoInicial);
@@ -81,6 +82,7 @@ export default function PanelColaboradoresTH() {
       setSitios(data.sitios);
       setAreas(data.areas);
       setSinAsignaciones(data.sinAsignaciones);
+      setTruncado(data.truncado);
       setErrorInicial("");
     } catch {
       setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -103,6 +105,7 @@ export default function PanelColaboradoresTH() {
         setSitios(data.sitios);
         setAreas(data.areas);
         setSinAsignaciones(data.sinAsignaciones);
+        setTruncado(data.truncado);
       })
       .catch(() => {
         if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -397,6 +400,12 @@ export default function PanelColaboradoresTH() {
       {sinAsignaciones && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
           No tienes ninguna Empresa/Sitio/Área asignada todavía.
+        </div>
+      )}
+
+      {truncado && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
+          Hay más colaboradores de los que se pueden mostrar acá. Usa los filtros de Empresa/Sitio/Área para acotar la lista.
         </div>
       )}
 

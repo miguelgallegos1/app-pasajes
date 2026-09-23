@@ -9,6 +9,15 @@ import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionColaboradorTH, obtenerAreasPermitidasTH } from "../../../../../lib/alcanceTH";
 
+// Tope de seguridad: la pantalla trae el listado completo de una sola vez
+// para que el buscador/filtro sea instantáneo en el cliente (sin ida y
+// vuelta al servidor en cada letra), así que la consulta no puede quedar
+// sin límite — una empresa con muchísimos colaboradores no debería poder
+// tirar abajo esta pantalla. Bien por encima de lo que cualquier empresa
+// real tiene hoy; si algún día se llega a este tope, mejor mostrar un
+// aviso (ver "truncado" en la respuesta) que fallar o colgarse.
+const LIMITE_COLABORADORES = 3000;
+
 export async function GET() {
   const session = await getSession();
   if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
@@ -25,13 +34,34 @@ export async function GET() {
     ? []
     : await db.colaborador.findMany({
         where: sinRestriccion ? {} : (condicion as object),
-        include: {
-          area: { include: { sitio: { include: { empresa: true } } } },
+        // select en vez de include: la tabla completa (con la relación
+        // area->sitio->empresa entera) viaja mucho más pesada de lo que
+        // esta pantalla realmente pinta — cada fila solo necesita estos
+        // campos puntuales, no el resto de columnas de cada modelo.
+        select: {
+          id: true,
+          numero: true,
+          nombreCompleto: true,
+          apellidos: true,
+          nombres: true,
+          codigoNomina: true,
+          estado: true,
+          esSupervisor: true,
+          areaId: true,
           supervisor: { select: { nombreCompleto: true } },
+          area: {
+            select: {
+              nombre: true,
+              sitioId: true,
+              sitio: { select: { nombre: true, empresa: { select: { id: true, nombre: true } } } },
+            },
+          },
           _count: { select: { solicitudes: true } },
         },
         orderBy: { numero: "asc" },
+        take: LIMITE_COLABORADORES,
       });
+  const truncado = colaboradores.length === LIMITE_COLABORADORES;
 
   const colaboradoresSerializados = colaboradores.map((c) => ({
     id: c.id,
@@ -75,5 +105,6 @@ export async function GET() {
     sitios: Array.from(sitiosMapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)),
     areas: Array.from(areasMapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)),
     sinAsignaciones,
+    truncado,
   });
 }

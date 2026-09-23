@@ -9,6 +9,11 @@ import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerAreasPermitidasTH } from "../../../../../lib/alcanceTH";
 
+// Mismo criterio que app/api/th/colaboradores/datos/route.ts: la pantalla
+// trae todo de una sola vez para que el buscador/filtro sea instantáneo
+// en el cliente, así que la consulta necesita un tope de seguridad.
+const LIMITE_RUTAS = 3000;
+
 export async function GET() {
   const session = await getSession();
   if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
@@ -21,8 +26,20 @@ export async function GET() {
   const rutas = areaIds.length
     ? await db.ruta.findMany({
         where: { areaId: { in: areaIds } },
-        include: {
-          area: { include: { sitio: { include: { empresa: true } } } },
+        // select en vez de include: solo los campos que esta pantalla
+        // realmente pinta, no la relación area->sitio->empresa entera.
+        select: {
+          id: true,
+          numero: true,
+          nombre: true,
+          valor: true,
+          activo: true,
+          empresaId: true,
+          sitioId: true,
+          areaId: true,
+          area: {
+            select: { nombre: true, sitio: { select: { nombre: true, empresa: { select: { nombre: true } } } } },
+          },
           colaboradoresExclusivos: { select: { nombreCompleto: true }, orderBy: { nombreCompleto: "asc" } },
           _count: { select: { solicitudes: true } },
         },
@@ -30,8 +47,10 @@ export async function GET() {
         // creada más reciente). El usuario puede reordenar por columna
         // desde la tabla (useOrdenTabla), esto es solo el orden inicial.
         orderBy: { numero: "desc" },
+        take: LIMITE_RUTAS,
       })
     : [];
+  const truncado = rutas.length === LIMITE_RUTAS;
 
   const rutasSerializadas = rutas.map((r) => ({
     id: r.id,
@@ -73,5 +92,6 @@ export async function GET() {
     areas: Array.from(areasMapa.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)),
     sinAsignaciones: areasPermitidas.length === 0,
     esSuperAdmin: session.rol === "SUPER_ADMIN",
+    truncado,
   });
 }

@@ -241,6 +241,11 @@ model Colaborador {
   // Cubre el "equipo activo de un supervisor" que se pide en Mis Pasajes,
   // Historial, Copiar rutas y Asignar equipo.
   @@index([supervisorId, estado])
+  // nombreCompleto y codigoNomina también tienen un índice GIN con
+  // pg_trgm (busqueda por "contains"/ILIKE, ver app/api/colaboradores/
+  // buscar/route.ts) agregado a mano en una migración — Prisma no lo
+  // representa acá porque no modela operator classes de Postgres, pero
+  // sí existe en la base.
 }
 
 model SolicitudPasaje {
