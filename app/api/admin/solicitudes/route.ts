@@ -11,7 +11,7 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { fechaValida } from "../../../../lib/fechas";
 
-const POR_PAGINA = 20;
+const POR_PAGINA = 15;
 const ESTADOS_VALIDOS = ["PENDIENTE", "APROBADA", "RECHAZADA", "PAGADA"] as const;
 
 export async function GET(req: Request) {

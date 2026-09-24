@@ -128,7 +128,7 @@ export default function PanelHistorialCoordinador() {
   );
 
   const opcionesColaborador = [
-    { id: "", label: "Todos los colaboradores" },
+    { id: "", label: "Todos" },
     ...colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
   ];
 
@@ -234,13 +234,13 @@ export default function PanelHistorialCoordinador() {
             <div className="mt-1.5">
               <SelectorModerno
                 opciones={[
-                  { value: "", label: "Todas" },
+                  { value: "", label: "Todos" },
                   { value: "REVISADO", label: "Revisada" },
                   { value: "PAGADA", label: "Pagada" },
                 ]}
                 value={estado}
                 onChange={setEstado}
-                placeholder="Todas"
+                placeholder="Todos"
               />
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function PanelHistorialCoordinador() {
                 ),
               },
             ]}
-            vacio="No hay resultados en ese rango"
+            vacio="Sin resultados para ese rango"
           />
           <Paginacion paginaActual={paginaColab} totalPaginas={totalPaginasColab} onCambiarPagina={buscar} deshabilitado={cargando} />
         </div>
@@ -358,7 +358,7 @@ export default function PanelHistorialCoordinador() {
                 {items.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-10">
-                      <EstadoVacio mensaje="No hay resultados en ese rango" />
+                      <EstadoVacio mensaje="Sin resultados para ese rango" />
                     </td>
                   </tr>
                 )}

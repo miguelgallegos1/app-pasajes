@@ -202,7 +202,7 @@ export default function PanelHistorialNomina() {
                 opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
                 value={empresaFiltro}
                 onChange={cambiarEmpresaFiltro}
-                placeholder="Todas"
+                placeholder="Todos"
               />
             </div>
           </div>
@@ -215,7 +215,7 @@ export default function PanelHistorialNomina() {
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
             <div className="mt-1.5">
-              <ComboboxBuscable opciones={areasFiltro} value={areaFiltro} onChange={cambiarAreaFiltro} placeholder="Todas" />
+              <ComboboxBuscable opciones={areasFiltro} value={areaFiltro} onChange={cambiarAreaFiltro} placeholder="Todos" />
             </div>
           </div>
           <div>

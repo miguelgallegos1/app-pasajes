@@ -136,7 +136,7 @@ export default function PanelHistorialTH() {
   );
 
   const opcionesColaborador = [
-    { id: "", label: "Todos los colaboradores" },
+    { id: "", label: "Todos" },
     ...colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
   ];
 
@@ -213,13 +213,13 @@ export default function PanelHistorialTH() {
             <div className="mt-1.5">
               <SelectorModerno
                 opciones={[
-                  { value: "", label: "Todas" },
+                  { value: "", label: "Todos" },
                   { value: "APROBADA", label: "Aprobada" },
                   { value: "PAGADA", label: "Pagada" },
                 ]}
                 value={estado}
                 onChange={setEstado}
-                placeholder="Todas"
+                placeholder="Todos"
               />
             </div>
           </div>
@@ -330,7 +330,7 @@ export default function PanelHistorialTH() {
                 {items.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-10">
-                      <EstadoVacio mensaje="No hay resultados en ese rango" />
+                      <EstadoVacio mensaje="Sin resultados para ese rango" />
                     </td>
                   </tr>
                 )}

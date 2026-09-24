@@ -39,7 +39,7 @@ type Opcion = { id: string; label: string };
 type Sitio = { id: string; nombre: string; empresaId: string };
 type Area = { id: string; nombre: string; sitioId: string; empresaId: string };
 
-const POR_PAGINA = 8;
+const POR_PAGINA = 15;
 
 export default function PanelAsignacionEquipo() {
   const router = useRouter();
@@ -406,19 +406,19 @@ export default function PanelAsignacionEquipo() {
                   opciones={empresas}
                   value={empresaFiltro}
                   onChange={cambiarEmpresaFiltro}
-                  placeholder="Todas las empresas"
+                  placeholder="Todos"
                 />
                 <ComboboxBuscable
                   opciones={sitiosFiltro}
                   value={sitioFiltro}
                   onChange={cambiarSitioFiltro}
-                  placeholder="Todos los sitios"
+                  placeholder="Todos"
                 />
                 <ComboboxBuscable
                   opciones={areasFiltro}
                   value={areaFiltro}
                   onChange={cambiarAreaFiltro}
-                  placeholder="Todas las áreas"
+                  placeholder="Todos"
                 />
               </div>
             )}

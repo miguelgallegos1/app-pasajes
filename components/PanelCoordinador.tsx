@@ -54,7 +54,7 @@ const VALOR_ORDEN: Record<CampoOrden, (a: Aprobada) => string | number> = {
   montoTotal: (a) => a.montoTotal,
 };
 
-const POR_PAGINA = 8;
+const POR_PAGINA = 15;
 
 // Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
 // id real de colaborador, así que no puede chocar con uno.
@@ -437,7 +437,7 @@ export default function PanelCoordinador() {
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Empresa</label>
               <div className="mt-1.5">
-                <ComboboxBuscable opciones={empresasOpciones} value={empresaId} onChange={cambiarEmpresa} placeholder="Todas" />
+                <ComboboxBuscable opciones={empresasOpciones} value={empresaId} onChange={cambiarEmpresa} placeholder="Todos" />
               </div>
             </div>
             <div>
@@ -449,7 +449,7 @@ export default function PanelCoordinador() {
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
               <div className="mt-1.5">
-                <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todas" />
+                <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todos" />
               </div>
             </div>
             <div>

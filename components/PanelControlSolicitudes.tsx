@@ -86,7 +86,7 @@ export default function PanelControlSolicitudes() {
   );
 
   const opcionesColaborador = [
-    { id: "", label: "Todos los colaboradores" },
+    { id: "", label: "Todos" },
     ...colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
   ];
 
@@ -272,7 +272,7 @@ export default function PanelControlSolicitudes() {
                 {items.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-10">
-                      <EstadoVacio mensaje="Sin resultados con esos filtros" />
+                      <EstadoVacio mensaje="Sin resultados para esos filtros" />
                     </td>
                   </tr>
                 )}

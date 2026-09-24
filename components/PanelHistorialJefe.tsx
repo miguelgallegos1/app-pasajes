@@ -231,7 +231,7 @@ export default function PanelHistorialJefe() {
                 opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
                 value={empresaFiltro}
                 onChange={cambiarEmpresaFiltro}
-                placeholder="Todas"
+                placeholder="Todos"
               />
             </div>
           </div>
@@ -244,7 +244,7 @@ export default function PanelHistorialJefe() {
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
             <div className="mt-1.5">
-              <ComboboxBuscable opciones={areasFiltro} value={areaFiltro} onChange={cambiarAreaFiltro} placeholder="Todas" />
+              <ComboboxBuscable opciones={areasFiltro} value={areaFiltro} onChange={cambiarAreaFiltro} placeholder="Todos" />
             </div>
           </div>
           <div>
@@ -312,7 +312,7 @@ export default function PanelHistorialJefe() {
                 ),
               },
             ]}
-            vacio="No hay resultados en ese rango"
+            vacio="Sin resultados para ese rango"
           />
           <Paginacion paginaActual={paginaColab} totalPaginas={totalPaginasColab} onCambiarPagina={buscar} deshabilitado={cargando} />
         </div>
@@ -355,7 +355,7 @@ export default function PanelHistorialJefe() {
                 {items.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-4 py-10">
-                      <EstadoVacio mensaje="No hay resultados en ese rango" />
+                      <EstadoVacio mensaje="Sin resultados para ese rango" />
                     </td>
                   </tr>
                 )}

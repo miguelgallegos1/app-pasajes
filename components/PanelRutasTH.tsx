@@ -46,7 +46,7 @@ const VALOR_ORDEN: Record<CampoOrden, (r: Ruta) => string | number> = {
   activo: (r) => (r.activo ? 1 : 0),
 };
 
-const POR_PAGINA = 10;
+const POR_PAGINA = 15;
 
 export default function PanelRutasTH() {
   const toast = useToast();
@@ -467,7 +467,7 @@ export default function PanelRutasTH() {
               opciones={empresas}
               value={empresaFiltro}
               onChange={cambiarEmpresaFiltro}
-              placeholder="Todas las empresas"
+              placeholder="Todos"
             />
           </div>
           <div className="flex-1 min-w-0">
@@ -475,7 +475,7 @@ export default function PanelRutasTH() {
               opciones={sitiosFiltro}
               value={sitioFiltro}
               onChange={cambiarSitioFiltro}
-              placeholder="Todos los sitios"
+              placeholder="Todos"
             />
           </div>
           <div className="flex-1 min-w-0">
@@ -483,7 +483,7 @@ export default function PanelRutasTH() {
               opciones={areasFiltro}
               value={areaFiltro}
               onChange={cambiarAreaFiltro}
-              placeholder="Todas las áreas"
+              placeholder="Todos"
             />
           </div>
         </div>

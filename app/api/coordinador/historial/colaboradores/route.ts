@@ -8,7 +8,7 @@ import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 import { fechaValida } from "../../../../../lib/fechas";
 import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
 
-const POR_PAGINA = 10;
+const POR_PAGINA = 15;
 
 // Debe coincidir con el mismo sentinel del combo "Supervisor" en el
 // cliente — no es un id real, así que no puede chocar con uno.

@@ -102,7 +102,7 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
   };
 
   if (datos.length === 0 || totalGeneral === 0) {
-    return <p className="text-sm text-neutral-400 dark:text-neutral-500 py-8 text-center">Sin datos en este rango</p>;
+    return <p className="text-sm text-neutral-400 dark:text-neutral-500 py-8 text-center">Sin resultados para ese rango</p>;
   }
 
   return (

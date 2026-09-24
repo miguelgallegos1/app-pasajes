@@ -145,14 +145,29 @@ export default function PanelDashboard() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400 mb-1.5">Filtrar por (opcional)</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <ComboboxBuscable
-              opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
-              value={empresaId}
-              onChange={cambiarEmpresa}
-              placeholder="Empresa"
-            />
-            <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Sitio" />
-            <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={setAreaId} placeholder="Área" />
+            <div>
+              <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Empresa</label>
+              <div className="mt-1">
+                <ComboboxBuscable
+                  opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
+                  value={empresaId}
+                  onChange={cambiarEmpresa}
+                  placeholder="Todos"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Sitio</label>
+              <div className="mt-1">
+                <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Área</label>
+              <div className="mt-1">
+                <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={setAreaId} placeholder="Todos" />
+              </div>
+            </div>
           </div>
         </div>
 

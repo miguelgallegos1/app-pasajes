@@ -775,7 +775,7 @@ function ModalAreasTH({
                   disabled={guardando}
                   className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition"
                 >
-                  {guardando ? "Guardando..." : "Sí, continuar"}
+                  {guardando ? "Guardando..." : "Sí, guardar"}
                 </button>
               </div>
         </Modal>

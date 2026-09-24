@@ -79,7 +79,7 @@ export default function PanelHistorialColaborador() {
   );
 
   const opcionesColaborador = [
-    { id: "", label: "Todo mi equipo" },
+    { id: "", label: "Todos" },
     ...equipo.map((c) => ({ id: c.id, label: c.nombreCompleto })),
   ];
 
@@ -99,13 +99,13 @@ export default function PanelHistorialColaborador() {
             <div className="mt-1.5">
               <SelectorModerno
                 opciones={[
-                  { value: "", label: "Todas" },
+                  { value: "", label: "Todos" },
                   { value: "APROBADA", label: "Aprobada" },
                   { value: "PAGADA", label: "Pagada" },
                 ]}
                 value={estado}
                 onChange={setEstado}
-                placeholder="Todas"
+                placeholder="Todos"
               />
             </div>
           </div>
@@ -117,7 +117,7 @@ export default function PanelHistorialColaborador() {
                   opciones={opcionesColaborador}
                   value={colaboradorId}
                   onChange={setColaboradorId}
-                  placeholder="Todo mi equipo"
+                  placeholder="Todos"
                 />
               </div>
             </div>
@@ -171,7 +171,7 @@ export default function PanelHistorialColaborador() {
                 {items.length === 0 && (
                   <tr>
                     <td colSpan={esSupervisor ? 6 : 5} className="px-4 py-10">
-                      <EstadoVacio mensaje="No hay resultados en ese rango" />
+                      <EstadoVacio mensaje="Sin resultados para ese rango" />
                     </td>
                   </tr>
                 )}

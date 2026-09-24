@@ -8,7 +8,7 @@ import { getSession } from "../../../../../lib/auth";
 import { fechaValida } from "../../../../../lib/fechas";
 import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
 
-const POR_PAGINA = 10;
+const POR_PAGINA = 15;
 
 export async function GET(req: Request) {
   const session = await getSession();

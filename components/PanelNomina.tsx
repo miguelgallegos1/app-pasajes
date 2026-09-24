@@ -52,7 +52,7 @@ const VALOR_ORDEN: Record<CampoOrden, (r: Revisada) => string | number> = {
   montoTotal: (r) => r.montoTotal,
 };
 
-const POR_PAGINA = 8;
+const POR_PAGINA = 15;
 
 function opcionesUnicas<T>(items: T[], idKey: keyof T, labelKey: keyof T) {
   const vistos = new Map<string, string>();
@@ -400,7 +400,7 @@ export default function PanelNomina() {
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Empresa</label>
             <div className="mt-1.5">
-              <ComboboxBuscable opciones={empresasOpciones} value={empresaId} onChange={cambiarEmpresa} placeholder="Todas" />
+              <ComboboxBuscable opciones={empresasOpciones} value={empresaId} onChange={cambiarEmpresa} placeholder="Todos" />
             </div>
           </div>
           <div>
@@ -412,7 +412,7 @@ export default function PanelNomina() {
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
             <div className="mt-1.5">
-              <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todas" />
+              <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todos" />
             </div>
           </div>
           <div>
@@ -507,7 +507,7 @@ export default function PanelNomina() {
               </button>
             </div>
           )}
-          vacio="Sin resultados con esos filtros"
+          vacio="Sin resultados para esos filtros"
         />
         </div>
       ) : (
@@ -597,7 +597,7 @@ export default function PanelNomina() {
                 {revisadasFiltradas.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-10">
-                      <EstadoVacio mensaje="Sin resultados con esos filtros" />
+                      <EstadoVacio mensaje="Sin resultados para esos filtros" />
                     </td>
                   </tr>
                 )}
@@ -629,7 +629,7 @@ export default function PanelNomina() {
                 className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
                 {pagando && <Spinner className="w-4 h-4" />}
-                {pagando ? "Guardando..." : "Confirmar"}
+                {pagando ? "Pagando..." : "Sí, pagar"}
               </button>
             </div>
       </Modal>

@@ -48,7 +48,7 @@ const VALOR_ORDEN: Record<CampoOrden, (p: Pendiente) => string | number> = {
   montoTotal: (p) => p.montoTotal,
 };
 
-const POR_PAGINA = 8;
+const POR_PAGINA = 15;
 
 // Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
 // id real de colaborador, así que no puede chocar con uno.
@@ -436,10 +436,10 @@ export default function PanelTH() {
               <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Supervisor</label>
               <div className="mt-1.5">
                 <ComboboxBuscable
-                  opciones={[{ id: "", label: "Todos los supervisores" }, ...supervisoresOpciones]}
+                  opciones={[{ id: "", label: "Todos" }, ...supervisoresOpciones]}
                   value={supervisorId}
                   onChange={cambiarSupervisor}
-                  placeholder="Todos los supervisores"
+                  placeholder="Todos"
                 />
               </div>
             </div>

@@ -52,7 +52,7 @@ type Opcion = { id: string; label: string };
 type Sitio = { id: string; nombre: string; empresaId: string };
 type Area = { id: string; nombre: string; sitioId: string };
 
-const POR_PAGINA = 10;
+const POR_PAGINA = 15;
 
 export default function PanelColaboradoresTH() {
   const toast = useToast();
@@ -434,7 +434,7 @@ export default function PanelColaboradoresTH() {
               opciones={empresas}
               value={empresaFiltro}
               onChange={cambiarEmpresaFiltro}
-              placeholder="Todas las empresas"
+              placeholder="Todos"
             />
           </div>
           <div className="flex-1 min-w-0">
@@ -442,7 +442,7 @@ export default function PanelColaboradoresTH() {
               opciones={sitiosFiltro}
               value={sitioFiltro}
               onChange={cambiarSitioFiltro}
-              placeholder="Todos los sitios"
+              placeholder="Todos"
             />
           </div>
           <div className="flex-1 min-w-0">
@@ -450,7 +450,7 @@ export default function PanelColaboradoresTH() {
               opciones={areasFiltro}
               value={areaFiltro}
               onChange={cambiarAreaFiltro}
-              placeholder="Todas las áreas"
+              placeholder="Todos"
             />
           </div>
         </div>
