@@ -24,6 +24,7 @@ import Modal from "./Modal";
 import { IconoFiltro, IconoLupa, IconoX } from "./Icons";
 import { formatearFecha } from "../lib/fechas";
 import ComboboxBuscable from "./ComboboxBuscable";
+import SelectorModerno from "./SelectorModerno";
 import type { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 
 export type ChipFiltro = {
@@ -68,6 +69,46 @@ export function CampoFiltro({ etiqueta, children }: { etiqueta: string; children
       <div className="mt-1.5">{children}</div>
     </div>
   );
+}
+
+// --- Filtro de Estado Activo/Inactivo (colaboradores, supervisores,
+// rutas): arranca en "Activos" y ese valor por defecto no cuenta como
+// filtro (sin chip); elegir Inactivos o Todos sí muestra chip, y quitarlo
+// vuelve a Activos.
+export type FiltroActivo = "ACTIVO" | "INACTIVO" | "";
+
+export function cumpleFiltroActivo(filtro: FiltroActivo, activo: boolean): boolean {
+  return !filtro || activo === (filtro === "ACTIVO");
+}
+
+export function CampoEstadoActivo({
+  valor,
+  onCambiar,
+  femenino = false,
+}: {
+  valor: FiltroActivo;
+  onCambiar: (v: FiltroActivo) => void;
+  femenino?: boolean;
+}) {
+  return (
+    <CampoFiltro etiqueta="Estado">
+      <SelectorModerno
+        opciones={[
+          { value: "ACTIVO", label: femenino ? "Activas" : "Activos" },
+          { value: "INACTIVO", label: femenino ? "Inactivas" : "Inactivos" },
+          { value: "", label: "Todos" },
+        ]}
+        value={valor}
+        onChange={(v) => onCambiar(v as FiltroActivo)}
+      />
+    </CampoFiltro>
+  );
+}
+
+export function chipEstadoActivo(valor: FiltroActivo, onQuitar: () => void, femenino = false): ChipFiltro | null {
+  if (valor === "ACTIVO") return null;
+  const texto = valor === "INACTIVO" ? (femenino ? "Inactivas" : "Inactivos") : "Todos";
+  return { id: "Estado", etiqueta: `Estado: ${texto}`, onQuitar };
 }
 
 // --- Piezas para el filtro en cascada Empresa -> Sitio -> Área (ver

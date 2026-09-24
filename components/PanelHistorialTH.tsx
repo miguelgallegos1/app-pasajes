@@ -119,7 +119,7 @@ export default function PanelHistorialTH() {
       cancelado = true;
     };
   }, [desde, hasta, estado, supervisorId]);
-  const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar } = useHistorialLista<Fila>(
+  const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaUrl, ultimaRespuesta } = useHistorialLista<Fila>(
     (paginaNueva) => {
       if (!desde || !hasta) return null;
       const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
@@ -148,10 +148,15 @@ export default function PanelHistorialTH() {
   ];
 
   // Siempre solo Pagadas (sin importar el filtro de Estado en pantalla):
-  // es la constancia que firma el colaborador al recibir su pago.
+  // es la constancia que firma el colaborador al recibir su pago. Usa el
+  // rango/colaborador de la ÚLTIMA búsqueda, y solo se habilita si en
+  // ella había pagadas para imprimir (la API las cuenta aparte).
+  const pagadasImprimibles = Number(ultimaRespuesta?.pagadasImprimibles ?? 0);
   const urlImprimir = () => {
-    const params = new URLSearchParams({ desde, hasta });
-    if (colaboradorId) params.set("colaboradorId", colaboradorId);
+    const buscado = new URLSearchParams(ultimaUrl?.split("?")[1] ?? "");
+    const params = new URLSearchParams({ desde: buscado.get("desde") ?? "", hasta: buscado.get("hasta") ?? "" });
+    const colaborador = buscado.get("colaboradorId");
+    if (colaborador) params.set("colaboradorId", colaborador);
     return `/th/historial/imprimir?${params.toString()}`;
   };
 
@@ -244,9 +249,9 @@ export default function PanelHistorialTH() {
         }
         acciones={
           <>
-            {!desde || !hasta || sinAsignaciones ? (
+            {cargando || sinAsignaciones || pagadasImprimibles === 0 ? (
               <span
-                title={sinAsignaciones ? "Sin áreas asignadas" : "Selecciona ambas fechas"}
+                title={sinAsignaciones ? "Sin áreas asignadas" : cargando ? "Buscando..." : "No hay solicitudes pagadas en este rango"}
                 className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
               >
                 <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
@@ -256,7 +261,7 @@ export default function PanelHistorialTH() {
                 href={urlImprimir()}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Solo incluye solicitudes Pagadas, sin importar el filtro de Estado elegido"
+                title={`Imprime ${pagadasImprimibles} ${pagadasImprimibles === 1 ? "solicitud pagada" : "solicitudes pagadas"} del rango, sin importar el filtro de Estado`}
                 className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
               >
                 <IconoImprimir className="w-4 h-4" /> Imprimir pagadas

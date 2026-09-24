@@ -29,6 +29,11 @@ export function useHistorialLista<T>(
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  // URL y respuesta de la última búsqueda que salió bien: para acciones
+  // que dependen de lo que SE BUSCÓ (ej. imprimir con esos mismos
+  // filtros), no de lo que se está eligiendo todavía en pantalla.
+  const [ultimaUrl, setUltimaUrl] = useState<string | null>(null);
+  const [ultimaRespuesta, setUltimaRespuesta] = useState<Record<string, unknown> | null>(null);
 
   const buscar = async (paginaNueva = 1) => {
     const url = construirUrl(paginaNueva);
@@ -51,6 +56,8 @@ export function useHistorialLista<T>(
       setTotalRegistros(data.total ?? 0);
       setTotalPaginas(data.totalPaginas ?? 1);
       setPagina(paginaNueva);
+      setUltimaUrl(url);
+      setUltimaRespuesta(data as unknown as Record<string, unknown>);
     } catch {
       setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
     } finally {
@@ -58,5 +65,5 @@ export function useHistorialLista<T>(
     }
   };
 
-  return { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar };
+  return { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaUrl, ultimaRespuesta };
 }

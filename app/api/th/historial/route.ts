@@ -59,7 +59,18 @@ export async function GET(req: Request) {
     ...filtroEstado,
   };
 
-  const [items, total, suma] = await Promise.all([
+  // Lo que imprime "Imprimir pagadas" (app/th/historial/imprimir): solo
+  // PAGADAS del rango (y del colaborador), sin el filtro de estado ni el
+  // de supervisor de la pantalla — mismo criterio, para habilitar el
+  // botón solo cuando la constancia no va a salir vacía.
+  const filtroImprimir = {
+    estado: "PAGADA" as const,
+    fecha: { gte: desdeFecha, lte: hastaFecha },
+    ...(sinRestriccion ? {} : { ruta: condicion }),
+    ...(colaboradorId ? { colaboradorId } : {}),
+  };
+
+  const [items, total, suma, pagadasImprimibles] = await Promise.all([
     db.solicitudPasaje.findMany({
       where: filtro,
       include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true } } },
@@ -69,6 +80,7 @@ export async function GET(req: Request) {
     }),
     db.solicitudPasaje.count({ where: filtro }),
     db.solicitudPasaje.aggregate({ where: filtro, _sum: { montoTotal: true } }),
+    db.solicitudPasaje.count({ where: filtroImprimir }),
   ]);
 
   return NextResponse.json({
@@ -84,6 +96,7 @@ export async function GET(req: Request) {
     total,
     totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),
     totalMonto: Number(suma._sum?.montoTotal ?? 0),
+    pagadasImprimibles,
     pagina,
   });
 }

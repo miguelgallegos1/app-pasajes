@@ -7,8 +7,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import ComboboxBuscable from "./ComboboxBuscable";
-import BarraFiltros, { CamposEmpresaSitioArea, chips, chipsEmpresaSitioArea } from "./BarraFiltros";
-import ToggleSwitch from "./ToggleSwitch";
+import BarraFiltros, { CampoEstadoActivo, CamposEmpresaSitioArea, chipEstadoActivo, chips, chipsEmpresaSitioArea, cumpleFiltroActivo, type FiltroActivo } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import Modal from "./Modal";
@@ -125,7 +124,9 @@ export default function PanelColaboradoresTH() {
   const [busqueda, setBusqueda] = useState(() =>
     typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("q") ?? ""
   );
-  const [soloActivos, setSoloActivos] = useState(true); // arranca mostrando solo Activos
+  // Activos por defecto; los inactivos se ven desde el panel de Filtros
+  // (hace falta verlos para poder reactivarlos).
+  const [estadoFiltro, setEstadoFiltro] = useState<FiltroActivo>("ACTIVO");
   const [paginaActual, setPaginaActual] = useState(1);
   const resetPagina = () => setPaginaActual(1);
 
@@ -135,7 +136,7 @@ export default function PanelColaboradoresTH() {
   const colaboradoresFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return colaboradores.filter((c) => {
-      if (soloActivos && c.estado !== "ACTIVO") return false;
+      if (!cumpleFiltroActivo(estadoFiltro, c.estado === "ACTIVO")) return false;
       if (empresaFiltro && c.empresaId !== empresaFiltro) return false;
       if (sitioFiltro && c.sitioId !== sitioFiltro) return false;
       if (areaFiltro && c.areaId !== areaFiltro) return false;
@@ -146,7 +147,7 @@ export default function PanelColaboradoresTH() {
         (c.codigoNomina ?? "").toLowerCase().includes(texto)
       );
     });
-  }, [colaboradores, busqueda, soloActivos, empresaFiltro, sitioFiltro, areaFiltro]);
+  }, [colaboradores, busqueda, estadoFiltro, empresaFiltro, sitioFiltro, areaFiltro]);
 
   const { orden, ordenar, itemsOrdenados: colaboradoresOrdenados } = useOrdenTabla<Colaborador, CampoOrden>(
     colaboradoresFiltrados,
@@ -165,8 +166,8 @@ export default function PanelColaboradoresTH() {
     setPaginaActual(1);
   };
 
-  const cambiarSoloActivos = (valor: boolean) => {
-    setSoloActivos(valor);
+  const cambiarEstadoFiltro = (v: FiltroActivo) => {
+    setEstadoFiltro(v);
     setPaginaActual(1);
   };
 
@@ -406,15 +407,14 @@ export default function PanelColaboradoresTH() {
       <>
       <BarraFiltros
         busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre, área o código..." }}
-        chips={chips(...chipsEmpresaSitioArea(empresas, filtroUbicacion))}
-        onLimpiar={() => cambiarEmpresaFiltro("")}
+        chips={chips(
+          chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO")),
+          ...chipsEmpresaSitioArea(empresas, filtroUbicacion)
+        )}
+        onLimpiar={() => { cambiarEmpresaFiltro(""); cambiarEstadoFiltro("ACTIVO"); }}
         resultados={colaboradoresFiltrados.length}
-        acciones={
-          <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
-            <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo activos" />
-          </div>
-        }
       >
+        <CampoEstadoActivo valor={estadoFiltro} onCambiar={cambiarEstadoFiltro} />
         <CamposEmpresaSitioArea empresas={empresas} filtro={filtroUbicacion} />
       </BarraFiltros>
 
@@ -482,8 +482,10 @@ export default function PanelColaboradoresTH() {
                       mensaje={
                         busqueda || empresaFiltro || sitioFiltro || areaFiltro
                           ? "Sin resultados para esos filtros"
-                          : soloActivos
+                          : estadoFiltro === "ACTIVO"
                           ? "No hay colaboradores activos"
+                          : estadoFiltro === "INACTIVO"
+                          ? "No hay colaboradores inactivos"
                           : "Aún no hay colaboradores registrados"
                       }
                     />

@@ -11,8 +11,6 @@ import { formatearMoneda } from "../lib/formato";
 import RangoFechasSelector from "./RangoFechasSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
-import { IconoRefrescar } from "./Icons";
-import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { fechaHoyTexto } from "../lib/fechas";
 import GraficoBarrasMensual, { type FilaMes } from "./GraficoBarrasMensual";
@@ -162,17 +160,6 @@ export default function PanelDashboard() {
         textoAplicar="Aplicar"
         destacado={
           <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
-        }
-        acciones={
-          <button
-            onClick={buscar}
-            disabled={cargando}
-            title="Volver a consultar con los mismos filtros"
-            className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm font-medium text-neutral-700 hover:border-orange-400 hover:text-orange-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 transition disabled:opacity-50"
-          >
-            {cargando ? <Spinner className="w-4 h-4" /> : <IconoRefrescar className="w-4 h-4" />}
-            Actualizar
-          </button>
         }
       >
         <CampoFiltro etiqueta="Empresa">

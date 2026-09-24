@@ -12,14 +12,13 @@ import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { useRouter } from "next/navigation";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
-import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import { IconoLupa, IconoDescargar, IconoCheck, IconoX, IconoRuta } from "./Icons";
-import BarraFiltros, { CamposEmpresaSitioArea, chips, chipsEmpresaSitioArea } from "./BarraFiltros";
+import BarraFiltros, { CampoEstadoActivo, CamposEmpresaSitioArea, chipEstadoActivo, chips, chipsEmpresaSitioArea, cumpleFiltroActivo, type FiltroActivo } from "./BarraFiltros";
 import { useAccionesHeader } from "../lib/accionesHeader";
 
 type Colaborador = {
@@ -61,7 +60,6 @@ export default function PanelAsignacionRutas({
   const toast = useToast();
 
   const [busqueda, setBusqueda] = useState("");
-  const [soloActivos, setSoloActivos] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
   const resetPagina = () => setPaginaActual(1);
 
@@ -69,12 +67,15 @@ export default function PanelAsignacionRutas({
   const { empresaFiltro, sitioFiltro, areaFiltro, cambiarEmpresaFiltro } = filtroUbicacion;
 
   const cambiarBusqueda = (v: string) => { setBusqueda(v); resetPagina(); };
-  const cambiarSoloActivos = (v: boolean) => { setSoloActivos(v); resetPagina(); };
+  // Activos por defecto (a un inactivo no se le asigna nada), pero se
+  // pueden ver los inactivos desde el panel de Filtros.
+  const [estadoFiltro, setEstadoFiltro] = useState<FiltroActivo>("ACTIVO");
+  const cambiarEstadoFiltro = (v: FiltroActivo) => { setEstadoFiltro(v); resetPagina(); };
 
   const colaboradoresFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return colaboradores.filter((c) => {
-      if (soloActivos && c.estado !== "ACTIVO") return false;
+      if (!cumpleFiltroActivo(estadoFiltro, c.estado === "ACTIVO")) return false;
       if (empresaFiltro && c.empresaId !== empresaFiltro) return false;
       if (sitioFiltro && c.sitioId !== sitioFiltro) return false;
       if (areaFiltro && c.areaId !== areaFiltro) return false;
@@ -84,7 +85,7 @@ export default function PanelAsignacionRutas({
         (c.codigoNomina ?? "").toLowerCase().includes(texto)
       );
     });
-  }, [colaboradores, busqueda, soloActivos, empresaFiltro, sitioFiltro, areaFiltro]);
+  }, [colaboradores, busqueda, estadoFiltro, empresaFiltro, sitioFiltro, areaFiltro]);
 
   const totalPaginas = Math.max(1, Math.ceil(colaboradoresFiltrados.length / POR_PAGINA));
   const colaboradoresPagina = useMemo(
@@ -177,7 +178,7 @@ export default function PanelAsignacionRutas({
     }
   };
 
-  // Mismos filtros de Empresa/Sitio/Área (y "Solo activos") que la lista
+  // Mismos filtros de Empresa/Sitio/Área (y Estado) que la lista
   // de la izquierda: sin ningún filtro puesto, exporta todo el alcance de
   // TH; con un filtro puesto, exporta solo eso — el Excel es exactamente
   // lo que se está viendo en pantalla.
@@ -186,7 +187,7 @@ export default function PanelAsignacionRutas({
     if (empresaFiltro) params.set("empresaId", empresaFiltro);
     if (sitioFiltro) params.set("sitioId", sitioFiltro);
     if (areaFiltro) params.set("areaId", areaFiltro);
-    if (!soloActivos) params.set("soloActivos", "0");
+    if (estadoFiltro !== "ACTIVO") params.set("estado", estadoFiltro || "TODOS");
     return `/api/th/rutas/asignaciones/exportar?${params.toString()}`;
   };
 
@@ -220,15 +221,14 @@ export default function PanelAsignacionRutas({
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
           <BarraFiltros
             busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre o código..." }}
-            chips={chips(...chipsEmpresaSitioArea(empresas, filtroUbicacion))}
-            onLimpiar={() => cambiarEmpresaFiltro("")}
+            chips={chips(
+              chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO")),
+              ...chipsEmpresaSitioArea(empresas, filtroUbicacion)
+            )}
+            onLimpiar={() => { cambiarEmpresaFiltro(""); cambiarEstadoFiltro("ACTIVO"); }}
             resultados={colaboradoresFiltrados.length}
-            acciones={
-              <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
-                <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo activos" />
-              </div>
-            }
           >
+            <CampoEstadoActivo valor={estadoFiltro} onCambiar={cambiarEstadoFiltro} />
             <CamposEmpresaSitioArea empresas={empresas} filtro={filtroUbicacion} />
           </BarraFiltros>
 

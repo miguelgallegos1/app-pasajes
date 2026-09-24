@@ -1,7 +1,7 @@
 // app/api/th/rutas/asignaciones/exportar/route.ts
 // GET: exporta a Excel, dentro del alcance de TH, qué rutas tiene
 // exclusivas cada colaborador — mismos filtros de Empresa/Sitio/Área y
-// "Solo activos" que la pantalla de Asignar rutas. Sin ningún filtro,
+// Estado (activos por defecto) que la pantalla de Asignar rutas. Sin ningún filtro,
 // exporta TODO lo que tiene asignado ese TH (todas sus Empresas/Sitios/
 // Áreas); con un filtro puesto, exporta solo eso — nunca más de lo que el
 // alcance de TH permite, sea cual sea el filtro.
@@ -22,7 +22,9 @@ export async function GET(req: Request) {
   const empresaId = searchParams.get("empresaId");
   const sitioId = searchParams.get("sitioId");
   const areaId = searchParams.get("areaId");
-  const soloActivos = searchParams.get("soloActivos") !== "0";
+  // Mismo filtro de Estado que la pantalla: ACTIVO por defecto, INACTIVO
+  // o TODOS. (soloActivos=0 se sigue aceptando como "TODOS".)
+  const estadoParam = searchParams.get("soloActivos") === "0" ? "TODOS" : searchParams.get("estado") ?? "ACTIVO";
 
   const { sinRestriccion, condicion } = await obtenerCondicionColaboradorTH(session.id, session.rol);
   if (!sinRestriccion && !condicion) {
@@ -36,7 +38,7 @@ export async function GET(req: Request) {
   if (areaId) filtro.areaId = areaId;
   else if (sitioId) filtro.sitioId = sitioId;
   else if (empresaId) filtro.sitio = { empresaId };
-  if (soloActivos) filtro.estado = "ACTIVO";
+  if (estadoParam === "ACTIVO" || estadoParam === "INACTIVO") filtro.estado = estadoParam;
 
   const colaboradores = await db.colaborador.findMany({
     where: filtro,

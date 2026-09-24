@@ -9,8 +9,7 @@ import { formatearMoneda } from "../lib/formato";
 import { IconoAlerta, IconoChevron, IconoEliminar } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import ComboboxBuscable from "./ComboboxBuscable";
-import BarraFiltros, { CamposEmpresaSitioArea, chips, chipsEmpresaSitioArea } from "./BarraFiltros";
-import ToggleSwitch from "./ToggleSwitch";
+import BarraFiltros, { CampoEstadoActivo, CamposEmpresaSitioArea, chipEstadoActivo, chips, chipsEmpresaSitioArea, cumpleFiltroActivo, type FiltroActivo } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
@@ -117,7 +116,9 @@ export default function PanelRutasTH() {
   }, []);
 
   const [busqueda, setBusqueda] = useState("");
-  const [soloActivas, setSoloActivas] = useState(true);
+  // Activos por defecto; los inactivos se ven desde el panel de Filtros
+  // (hace falta verlos para poder reactivarlos).
+  const [estadoFiltro, setEstadoFiltro] = useState<FiltroActivo>("ACTIVO");
   const [paginaActual, setPaginaActual] = useState(1);
   const resetPagina = () => setPaginaActual(1);
 
@@ -139,14 +140,14 @@ export default function PanelRutasTH() {
   const rutasFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return rutasVisiblesDeServidor.filter((r) => {
-      if (soloActivas && !r.activo) return false;
+      if (!cumpleFiltroActivo(estadoFiltro, r.activo)) return false;
       if (empresaFiltro && r.empresaId !== empresaFiltro) return false;
       if (sitioFiltro && r.sitioId !== sitioFiltro) return false;
       if (areaFiltro && r.areaId !== areaFiltro) return false;
       if (!texto) return true;
       return r.nombre.toLowerCase().includes(texto) || r.areaLabel.toLowerCase().includes(texto);
     });
-  }, [rutasVisiblesDeServidor, busqueda, soloActivas, empresaFiltro, sitioFiltro, areaFiltro]);
+  }, [rutasVisiblesDeServidor, busqueda, estadoFiltro, empresaFiltro, sitioFiltro, areaFiltro]);
 
   const { orden, ordenar, itemsOrdenados: rutasOrdenadas } = useOrdenTabla<Ruta, CampoOrden>(
     rutasFiltradas,
@@ -162,7 +163,10 @@ export default function PanelRutasTH() {
   );
 
   const cambiarBusqueda = (v: string) => { setBusqueda(v); setPaginaActual(1); };
-  const cambiarSoloActivas = (v: boolean) => { setSoloActivas(v); setPaginaActual(1); };
+  const cambiarEstadoFiltro = (v: FiltroActivo) => {
+    setEstadoFiltro(v);
+    setPaginaActual(1);
+  };
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -440,15 +444,14 @@ export default function PanelRutasTH() {
       <>
       <BarraFiltros
         busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre o área..." }}
-        chips={chips(...chipsEmpresaSitioArea(empresas, filtroUbicacion))}
-        onLimpiar={() => cambiarEmpresaFiltro("")}
+        chips={chips(
+          chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO"), true),
+          ...chipsEmpresaSitioArea(empresas, filtroUbicacion)
+        )}
+        onLimpiar={() => { cambiarEmpresaFiltro(""); cambiarEstadoFiltro("ACTIVO"); }}
         resultados={rutasFiltradas.length}
-        acciones={
-          <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
-            <ToggleSwitch checked={soloActivas} onChange={cambiarSoloActivas} label="Solo activas" />
-          </div>
-        }
       >
+        <CampoEstadoActivo valor={estadoFiltro} onCambiar={cambiarEstadoFiltro} femenino />
         <CamposEmpresaSitioArea empresas={empresas} filtro={filtroUbicacion} />
       </BarraFiltros>
 
@@ -548,8 +551,10 @@ export default function PanelRutasTH() {
                       mensaje={
                         busqueda || empresaFiltro || sitioFiltro || areaFiltro
                           ? "Sin resultados para esos filtros"
-                          : soloActivas
+                          : estadoFiltro === "ACTIVO"
                           ? "No hay rutas activas"
+                          : estadoFiltro === "INACTIVO"
+                          ? "No hay rutas inactivas"
                           : "Aún no hay rutas creadas"
                       }
                     />

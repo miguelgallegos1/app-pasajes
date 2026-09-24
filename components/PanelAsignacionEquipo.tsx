@@ -10,7 +10,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 import ComboboxBuscable from "./ComboboxBuscable";
-import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
@@ -19,7 +18,7 @@ import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import { IconoLupa, IconoPregunta, IconoCheck, IconoX, IconoPersonas, IconoUsuarioDisponible } from "./Icons";
-import BarraFiltros, { CamposEmpresaSitioArea, chips, chipsEmpresaSitioArea } from "./BarraFiltros";
+import BarraFiltros, { CampoEstadoActivo, CamposEmpresaSitioArea, chipEstadoActivo, chips, chipsEmpresaSitioArea, cumpleFiltroActivo, type FiltroActivo } from "./BarraFiltros";
 import { useAccionesHeader } from "../lib/accionesHeader";
 
 type Colaborador = {
@@ -108,7 +107,6 @@ export default function PanelAsignacionEquipo() {
   }, []);
 
   const [busqueda, setBusqueda] = useState("");
-  const [soloActivos, setSoloActivos] = useState(true);
   const [paginaActual, setPaginaActual] = useState(1);
   const resetPagina = () => setPaginaActual(1);
 
@@ -116,14 +114,17 @@ export default function PanelAsignacionEquipo() {
   const { empresaFiltro, sitioFiltro, areaFiltro, cambiarEmpresaFiltro } = filtroUbicacion;
 
   const cambiarBusqueda = (v: string) => { setBusqueda(v); resetPagina(); };
-  const cambiarSoloActivos = (v: boolean) => { setSoloActivos(v); resetPagina(); };
+  // Activos por defecto (a un inactivo no se le asigna nada), pero se
+  // pueden ver los inactivos desde el panel de Filtros.
+  const [estadoFiltro, setEstadoFiltro] = useState<FiltroActivo>("ACTIVO");
+  const cambiarEstadoFiltro = (v: FiltroActivo) => { setEstadoFiltro(v); resetPagina(); };
 
   const supervisores = useMemo(() => colaboradores.filter((c) => c.esSupervisor), [colaboradores]);
 
   const supervisoresFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return supervisores.filter((c) => {
-      if (soloActivos && c.estado !== "ACTIVO") return false;
+      if (!cumpleFiltroActivo(estadoFiltro, c.estado === "ACTIVO")) return false;
       if (empresaFiltro && c.empresaId !== empresaFiltro) return false;
       if (sitioFiltro && c.sitioId !== sitioFiltro) return false;
       if (areaFiltro && c.areaId !== areaFiltro) return false;
@@ -133,7 +134,7 @@ export default function PanelAsignacionEquipo() {
         (c.codigoNomina ?? "").toLowerCase().includes(texto)
       );
     });
-  }, [supervisores, busqueda, soloActivos, empresaFiltro, sitioFiltro, areaFiltro]);
+  }, [supervisores, busqueda, estadoFiltro, empresaFiltro, sitioFiltro, areaFiltro]);
 
   const totalPaginas = Math.max(1, Math.ceil(supervisoresFiltrados.length / POR_PAGINA));
   const supervisoresPagina = useMemo(
@@ -370,15 +371,14 @@ export default function PanelAsignacionEquipo() {
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
           <BarraFiltros
             busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar supervisor por nombre o código..." }}
-            chips={chips(...chipsEmpresaSitioArea(empresas, filtroUbicacion))}
-            onLimpiar={() => cambiarEmpresaFiltro("")}
+            chips={chips(
+              chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO")),
+              ...chipsEmpresaSitioArea(empresas, filtroUbicacion)
+            )}
+            onLimpiar={() => { cambiarEmpresaFiltro(""); cambiarEstadoFiltro("ACTIVO"); }}
             resultados={supervisoresFiltrados.length}
-            acciones={
-              <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
-                <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo supervisores activos" />
-              </div>
-            }
           >
+            <CampoEstadoActivo valor={estadoFiltro} onCambiar={cambiarEstadoFiltro} />
             <CamposEmpresaSitioArea empresas={empresas} filtro={filtroUbicacion} />
           </BarraFiltros>
 
