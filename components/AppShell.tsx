@@ -412,7 +412,13 @@ export default function AppShell({
 
       <div className="flex-1 flex min-h-0">
         {/* ---------- Sidebar (solo escritorio) ---------- */}
-        <aside className="hidden md:flex md:flex-col w-60 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0">
+        {/* Sticky bajo el header y con el alto exacto del viewport restante:
+            el scroll de la ventana mueve solo el contenido de la pantalla, y
+            el menú no se estira con él — si sus propios ítems no caben, el
+            <nav> scrollea por dentro. Se mantiene el scroll de la ventana
+            (no un <main> con overflow propio) para no romper los
+            encabezados de tabla sticky que usan top-14/md:top-16. */}
+        <aside className="hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100dvh-4rem)] self-start w-60 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0">
           <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
             <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} />
           </nav>
