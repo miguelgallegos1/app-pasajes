@@ -10,6 +10,28 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const DURACION_SALIDA_MS = 180;
 
+// Bloqueo del scroll de la página mientras haya algún modal abierto: sin
+// esto, la barra de scroll de fondo seguía visible (y la página se movía
+// con la rueda) detrás del overlay. Contador para modales apilados (una
+// confirmación encima de un formulario): se desbloquea recién al cerrar
+// el último. El ancho de la barra se compensa con padding para que el
+// contenido de fondo no "salte" hacia la derecha al desaparecer.
+let modalesAbiertos = 0;
+function bloquearScroll() {
+  if (modalesAbiertos++ > 0) return;
+  const html = document.documentElement;
+  const anchoBarra = window.innerWidth - html.clientWidth;
+  html.style.overflow = "hidden";
+  if (anchoBarra > 0) html.style.paddingRight = `${anchoBarra}px`;
+}
+function desbloquearScroll() {
+  if (--modalesAbiertos > 0) return;
+  modalesAbiertos = 0;
+  const html = document.documentElement;
+  html.style.overflow = "";
+  html.style.paddingRight = "";
+}
+
 export default function Modal({
   abierto,
   variante = "hoja",
@@ -21,7 +43,9 @@ export default function Modal({
   abierto: boolean;
   // "hoja": aparece pegado abajo en móvil y centrado en desktop (formularios)
   // "centro": siempre centrado, overlay más oscuro (confirmaciones)
-  variante?: "hoja" | "centro";
+  // "lateral": hoja desde abajo en móvil y panel a todo el alto desde la
+  // derecha en desktop (filtros, ver BarraFiltros)
+  variante?: "hoja" | "centro" | "lateral";
   className?: string;
   // Opcional para no romper algún uso que ya maneje su propio cierre, pero
   // sin ella el modal no se puede cerrar con Escape ni tocando afuera —
@@ -114,12 +138,30 @@ export default function Modal({
     };
   }, [abierto]);
 
+  // Se bloquea mientras está montado (incluye la animación de salida),
+  // así el scroll no vuelve a aparecer a mitad del cierre.
+  useEffect(() => {
+    if (!montado) return;
+    bloquearScroll();
+    return desbloquearScroll;
+  }, [montado]);
+
   if (!montado) return null;
 
   const overlayBase =
     variante === "centro"
       ? "bg-black/80 flex items-center justify-center z-[60] p-4"
+      : variante === "lateral"
+      ? "bg-black/50 flex items-end sm:items-stretch justify-center sm:justify-end z-50"
       : "bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4";
+  const animacionPanel =
+    variante === "lateral"
+      ? cerrando
+        ? "animate-[lateral-out_0.18s_ease-in_forwards]"
+        : "animate-[lateral-in_0.28s_cubic-bezier(0.16,1,0.3,1)]"
+      : cerrando
+      ? "animate-[panel-out_0.18s_ease-in_forwards]"
+      : "animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]";
 
   return (
     <div
@@ -134,9 +176,7 @@ export default function Modal({
         aria-modal="true"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className={`outline-none ${className} ${
-          cerrando ? "animate-[panel-out_0.18s_ease-in_forwards]" : "animate-[panel-in_0.25s_cubic-bezier(0.16,1,0.3,1)]"
-        }`}
+        className={`outline-none ${className} ${animacionPanel}`}
       >
         {children}
       </div>

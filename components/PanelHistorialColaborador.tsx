@@ -12,6 +12,7 @@ import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
+import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import EstadoVacio from "./EstadoVacio";
@@ -38,6 +39,12 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
   montoTotal: (f) => f.montoTotal,
   estado: (f) => f.estado,
 };
+
+const OPCIONES_ESTADO = [
+  { value: "", label: "Todos" },
+  { value: "APROBADA", label: "Aprobada" },
+  { value: "PAGADA", label: "Pagada" },
+];
 
 export default function PanelHistorialColaborador() {
   const [esSupervisor, setEsSupervisor] = useState(false);
@@ -83,57 +90,52 @@ export default function PanelHistorialColaborador() {
     ...equipo.map((c) => ({ id: c.id, label: c.nombreCompleto })),
   ];
 
+  // Busca sola al entrar, al cambiar el rango de fechas y al quitar un
+  // chip; Estado (y Colaborador, si es supervisor) se aplican desde el
+  // panel. En un efecto porque buscar() arma la URL con el estado de ESTE
+  // render — recién el siguiente ve el cambio.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  useEffect(() => {
+    if (pedidoBusqueda) buscar(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoBusqueda]);
+  const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  const chipsFiltros = chips(
+    chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
+    esSupervisor && chipOpcion("Colaborador", opcionesColaborador, colaboradorId, () => { setColaboradorId(""); rebuscar(); })
+  );
+
+  const limpiarFiltros = () => {
+    setEstado("");
+    setColaboradorId("");
+    rebuscar();
+  };
+
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
 
-      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
-        <div className={`grid grid-cols-1 sm:grid-cols-2 ${esSupervisor ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-3`}>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
-            <div className="mt-1.5">
-              <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Estado</label>
-            <div className="mt-1.5">
-              <SelectorModerno
-                opciones={[
-                  { value: "", label: "Todos" },
-                  { value: "APROBADA", label: "Aprobada" },
-                  { value: "PAGADA", label: "Pagada" },
-                ]}
-                value={estado}
-                onChange={setEstado}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-          {esSupervisor && (
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
-              <div className="mt-1.5">
-                <ComboboxBuscable
-                  opciones={opcionesColaborador}
-                  value={colaboradorId}
-                  onChange={setColaboradorId}
-                  placeholder="Todos"
-                />
-              </div>
-            </div>
-          )}
-        </div>
+      <BarraFiltros
+        chips={chipsFiltros}
+        onLimpiar={limpiarFiltros}
+        onAplicar={() => buscar(1)}
+        aplicando={cargando}
+        textoAplicar="Aplicar"
+        destacado={
+          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+        }
+      >
+        <CampoFiltro etiqueta="Estado">
+          <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
+        </CampoFiltro>
+        {esSupervisor && (
+          <CampoFiltro etiqueta="Colaborador">
+            <ComboboxBuscable opciones={opcionesColaborador} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
+          </CampoFiltro>
+        )}
+      </BarraFiltros>
 
-        <button
-          onClick={() => buscar(1)}
-          disabled={cargando}
-          className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md disabled:opacity-50"
-        >
-          {cargando ? "Buscando..." : "Buscar"}
-        </button>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {cargando ? (
         <TablaEsqueleto columnas={esSupervisor ? 6 : 5} />

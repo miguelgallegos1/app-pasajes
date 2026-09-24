@@ -7,13 +7,14 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import ComboboxBuscable from "./ComboboxBuscable";
+import BarraFiltros, { CamposEmpresaSitioArea, chips, chipsEmpresaSitioArea } from "./BarraFiltros";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
-import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar, IconoLupa } from "./Icons";
+import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import MenuAcciones from "./MenuAcciones";
@@ -128,16 +129,8 @@ export default function PanelColaboradoresTH() {
   const [paginaActual, setPaginaActual] = useState(1);
   const resetPagina = () => setPaginaActual(1);
 
-  const {
-    empresaFiltro,
-    sitioFiltro,
-    areaFiltro,
-    sitiosFiltro,
-    areasFiltro,
-    cambiarEmpresaFiltro,
-    cambiarSitioFiltro,
-    cambiarAreaFiltro,
-  } = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
+  const filtroUbicacion = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
+  const { empresaFiltro, sitioFiltro, areaFiltro, cambiarEmpresaFiltro } = filtroUbicacion;
 
   const colaboradoresFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -411,50 +404,19 @@ export default function PanelColaboradoresTH() {
 
       {!cargandoInicial && (
       <>
-      {/* Barra de filtros: buscador + switch + Empresa/Sitio/Área */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-            <input
-              value={busqueda}
-              onChange={(e) => cambiarBusqueda(e.target.value)}
-              placeholder="Buscar por nombre, área o código..."
-              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-            />
-          </div>
+      <BarraFiltros
+        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre, área o código..." }}
+        chips={chips(...chipsEmpresaSitioArea(empresas, filtroUbicacion))}
+        onLimpiar={() => cambiarEmpresaFiltro("")}
+        resultados={colaboradoresFiltrados.length}
+        acciones={
           <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
             <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo activos" />
           </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 min-w-0">
-            <ComboboxBuscable
-              opciones={empresas}
-              value={empresaFiltro}
-              onChange={cambiarEmpresaFiltro}
-              placeholder="Todos"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <ComboboxBuscable
-              opciones={sitiosFiltro}
-              value={sitioFiltro}
-              onChange={cambiarSitioFiltro}
-              placeholder="Todos"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <ComboboxBuscable
-              opciones={areasFiltro}
-              value={areaFiltro}
-              onChange={cambiarAreaFiltro}
-              placeholder="Todos"
-            />
-          </div>
-        </div>
-      </div>
+        }
+      >
+        <CamposEmpresaSitioArea empresas={empresas} filtro={filtroUbicacion} />
+      </BarraFiltros>
 
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <div className="overflow-x-auto">

@@ -12,14 +12,14 @@ import { useState, useMemo } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { useRouter } from "next/navigation";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
-import ComboboxBuscable from "./ComboboxBuscable";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
-import { IconoLupa, IconoChevron, IconoDescargar, IconoCheck, IconoX, IconoRuta } from "./Icons";
+import { IconoLupa, IconoDescargar, IconoCheck, IconoX, IconoRuta } from "./Icons";
+import BarraFiltros, { CamposEmpresaSitioArea, chips, chipsEmpresaSitioArea } from "./BarraFiltros";
 import { useAccionesHeader } from "../lib/accionesHeader";
 
 type Colaborador = {
@@ -65,20 +65,8 @@ export default function PanelAsignacionRutas({
   const [paginaActual, setPaginaActual] = useState(1);
   const resetPagina = () => setPaginaActual(1);
 
-  const {
-    empresaFiltro,
-    sitioFiltro,
-    areaFiltro,
-    sitiosFiltro,
-    areasFiltro,
-    cambiarEmpresaFiltro,
-    cambiarSitioFiltro,
-    cambiarAreaFiltro,
-    cantidadFiltrosActivos,
-  } = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
-  // Colapsados por defecto: Empresa/Sitio/Área ocupan bastante espacio y
-  // no siempre hacen falta — se abren solo cuando el usuario los pide.
-  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const filtroUbicacion = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
+  const { empresaFiltro, sitioFiltro, areaFiltro, cambiarEmpresaFiltro } = filtroUbicacion;
 
   const cambiarBusqueda = (v: string) => { setBusqueda(v); resetPagina(); };
   const cambiarSoloActivos = (v: boolean) => { setSoloActivos(v); resetPagina(); };
@@ -230,64 +218,19 @@ export default function PanelAsignacionRutas({
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* Columna izquierda: filtros + lista de colaboradores */}
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
-          {/* overflow-hidden solo cuando está colapsado: para recortar el
-              botón a las esquinas redondeadas. Abierto, el desplegable de
-              cada ComboboxBuscable (position: absolute) necesita salirse
-              del recuadro para poder verse — con overflow-hidden puesto
-              quedaba invisible, cortado por este mismo contenedor. */}
-          <div className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl ${filtrosAbiertos ? "" : "overflow-hidden"}`}>
-            <button
-              type="button"
-              onClick={() => setFiltrosAbiertos((v) => !v)}
-              className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition ${filtrosAbiertos ? "rounded-t-xl" : "rounded-xl"}`}
-            >
-              <span className="flex items-center gap-2">
-                Filtrar por Empresa / Sitio / Área
-                {cantidadFiltrosActivos > 0 && (
-                  <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 px-1.5 py-0.5 rounded-full">
-                    {cantidadFiltrosActivos}
-                  </span>
-                )}
-              </span>
-              <IconoChevron className={`w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0 transition-transform ${filtrosAbiertos ? "rotate-90" : ""}`} />
-            </button>
-            {filtrosAbiertos && (
-              <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-neutral-100 dark:border-neutral-800">
-                <ComboboxBuscable
-                  opciones={empresas}
-                  value={empresaFiltro}
-                  onChange={cambiarEmpresaFiltro}
-                  placeholder="Todos"
-                />
-                <ComboboxBuscable
-                  opciones={sitiosFiltro}
-                  value={sitioFiltro}
-                  onChange={cambiarSitioFiltro}
-                  placeholder="Todos"
-                />
-                <ComboboxBuscable
-                  opciones={areasFiltro}
-                  value={areaFiltro}
-                  onChange={cambiarAreaFiltro}
-                  placeholder="Todos"
-                />
+          <BarraFiltros
+            busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre o código..." }}
+            chips={chips(...chipsEmpresaSitioArea(empresas, filtroUbicacion))}
+            onLimpiar={() => cambiarEmpresaFiltro("")}
+            resultados={colaboradoresFiltrados.length}
+            acciones={
+              <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
+                <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo activos" />
               </div>
-            )}
-          </div>
-
-          <div className="relative">
-            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-            <input
-              value={busqueda}
-              onChange={(e) => cambiarBusqueda(e.target.value)}
-              placeholder="Buscar por nombre o código..."
-              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
-            <ToggleSwitch checked={soloActivos} onChange={cambiarSoloActivos} label="Solo activos" />
-          </div>
+            }
+          >
+            <CamposEmpresaSitioArea empresas={empresas} filtro={filtroUbicacion} />
+          </BarraFiltros>
 
           <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <div className="max-h-[480px] overflow-y-auto divide-y divide-neutral-200/70">

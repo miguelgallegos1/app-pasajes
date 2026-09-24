@@ -12,6 +12,7 @@ import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
+import BarraFiltros, { CampoFiltro, chipOpcion, chips, CamposEmpresaSitioArea, chipsEmpresaSitioArea } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import EstadoVacio from "./EstadoVacio";
@@ -37,6 +38,15 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
   montoTotal: (f) => f.montoTotal,
   estado: (f) => f.estado,
 };
+
+const OPCIONES_ESTADO = [
+  { value: "", label: "Todos" },
+  { value: "PENDIENTE", label: "Pendiente" },
+  { value: "APROBADA", label: "Aprobada" },
+  { value: "RECHAZADA", label: "Rechazada" },
+  { value: "REVISADO", label: "Revisada" },
+  { value: "PAGADA", label: "Pagada" },
+];
 
 export default function PanelHistorialJefe() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
@@ -68,8 +78,8 @@ export default function PanelHistorialJefe() {
   // rango y los filtros (Empresa/Sitio/Área/Estado) elegidos, no la lista
   // completa de la empresa (que puede ser grande y no tiene relación con
   // la búsqueda).
-  const { empresaFiltro, sitioFiltro, areaFiltro, sitiosFiltro, areasFiltro, cambiarEmpresaFiltro, cambiarSitioFiltro, cambiarAreaFiltro } =
-    useFiltroEmpresaSitioArea(sitios, areas, () => setColaboradorId(""));
+  const filtroUbicacion = useFiltroEmpresaSitioArea(sitios, areas, () => setColaboradorId(""));
+  const { empresaFiltro, sitioFiltro, areaFiltro, cambiarEmpresaFiltro } = filtroUbicacion;
 
   const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
   useEffect(() => {
@@ -167,11 +177,39 @@ export default function PanelHistorialJefe() {
     }
   };
 
+  // Busca sola al entrar, al cambiar el rango de fechas o la vista y al
+  // quitar un chip; el resto de filtros se aplica junto desde el panel.
+  // En un efecto porque buscar() arma la URL con el estado de ESTE render
+  // — recién el siguiente ve el cambio.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara una consulta de red
+    if (pedidoBusqueda) buscar(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoBusqueda]);
+  const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  const empresasOpciones = useMemo(() => empresas.map((e) => ({ id: e.id, label: e.nombre })), [empresas]);
+
+  const chipsFiltros = chips(
+    chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
+    ...chipsEmpresaSitioArea(empresasOpciones, filtroUbicacion, rebuscar),
+    chipOpcion("Colaborador", colaboradoresOpciones, colaboradorId, () => { setColaboradorId(""); rebuscar(); })
+  );
+
+  const limpiarFiltros = () => {
+    setEstado("");
+    cambiarEmpresaFiltro("");
+    setColaboradorId("");
+    rebuscar();
+  };
+
   const cambiarVista = (v: "lista" | "colaborador") => {
     setVista(v);
     setItems(null);
     setFilasColaborador(null);
     setError("");
+    rebuscar();
   };
 
   // Detalle (código/fecha/ruta/valor/estado) de UN colaborador, pedido
@@ -195,75 +233,17 @@ export default function PanelHistorialJefe() {
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
 
-      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
-            <div className="mt-1.5">
-              <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Estado</label>
-            <div className="mt-1.5">
-              <SelectorModerno
-                opciones={[
-                  { value: "", label: "Todos" },
-                  { value: "PENDIENTE", label: "Pendiente" },
-                  { value: "APROBADA", label: "Aprobada" },
-                  { value: "RECHAZADA", label: "Rechazada" },
-                  { value: "REVISADO", label: "Revisada" },
-                  { value: "PAGADA", label: "Pagada" },
-                ]}
-                value={estado}
-                onChange={setEstado}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Empresa</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable
-                opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
-                value={empresaFiltro}
-                onChange={cambiarEmpresaFiltro}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sitio</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable opciones={sitiosFiltro} value={sitioFiltro} onChange={cambiarSitioFiltro} placeholder="Todos" />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable opciones={areasFiltro} value={areaFiltro} onChange={cambiarAreaFiltro} placeholder="Todos" />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable opciones={colaboradoresOpciones} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => buscar(1)}
-            disabled={cargando}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md disabled:opacity-50"
-          >
-            {cargando ? "Buscando..." : "Buscar"}
-          </button>
-
+      <BarraFiltros
+        chips={chipsFiltros}
+        onLimpiar={limpiarFiltros}
+        onAplicar={() => buscar(1)}
+        aplicando={cargando}
+        textoAplicar="Aplicar"
+        destacado={
+          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+        }
+        acciones={
+          <>
           <SelectorVista valor={vista} onCambiar={cambiarVista} />
 
           {puedeExportar ? (
@@ -281,10 +261,19 @@ export default function PanelHistorialJefe() {
               <IconoDescargar className="w-4 h-4" /> Exportar a Excel
             </span>
           )}
-        </div>
+          </>
+        }
+      >
+        <CampoFiltro etiqueta="Estado">
+          <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
+        </CampoFiltro>
+        <CamposEmpresaSitioArea empresas={empresasOpciones} filtro={filtroUbicacion} />
+        <CampoFiltro etiqueta="Colaborador">
+          <ComboboxBuscable opciones={colaboradoresOpciones} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
+        </CampoFiltro>
+      </BarraFiltros>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {cargando && <TablaEsqueleto columnas={vista === "lista" ? 6 : 3} />}
 

@@ -15,6 +15,7 @@ import Avatar from "./Avatar";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
+import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
@@ -40,6 +41,14 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
   montoTotal: (f) => f.montoTotal,
   estado: (f) => f.estado,
 };
+
+const OPCIONES_ESTADO = [
+  { value: "", label: "Todos" },
+  { value: "PENDIENTE", label: "Pendiente" },
+  { value: "APROBADA", label: "Aprobada" },
+  { value: "RECHAZADA", label: "Rechazada" },
+  { value: "PAGADA", label: "Pagada" },
+];
 
 const ESTILOS_ESTADO: Record<string, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800",
@@ -119,6 +128,37 @@ export default function PanelControlSolicitudes() {
     }
   };
 
+  // Busca sola al entrar, al cambiar el rango de fechas, al completar (o
+  // borrar) el código y al quitar un chip — Estado y Colaborador se eligen
+  // en el panel y se aplican juntos. En un efecto porque buscar() arma la
+  // URL con el estado de ESTE render; recién el siguiente ve el cambio.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara una consulta de red
+    if (pedidoBusqueda) buscar(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoBusqueda]);
+  const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  // Los códigos tienen 4 caracteres: se consulta al completarlo (o al
+  // vaciarlo), no con cada tecla.
+  const cambiarCodigo = (v: string) => {
+    const nuevo = v.toUpperCase().slice(0, 4);
+    setCodigo(nuevo);
+    if (nuevo.length === 4 || (nuevo.length === 0 && codigo.length > 0)) rebuscar();
+  };
+
+  const chipsFiltros = chips(
+    chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
+    chipOpcion("Colaborador", opcionesColaborador, colaboradorId, () => { setColaboradorId(""); rebuscar(); })
+  );
+
+  const limpiarFiltros = () => {
+    setEstado("");
+    setColaboradorId("");
+    rebuscar();
+  };
+
   // Optimista con deshacer: la fila desaparece al toque; el DELETE real
   // recién se manda si nadie tocó "Deshacer" en el toast.
   const eliminarConDeshacer = (s: Fila) => {
@@ -153,63 +193,26 @@ export default function PanelControlSolicitudes() {
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
 
-      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Código</label>
-            <input
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value.toUpperCase().slice(0, 4))}
-              placeholder="Ej: 7K3M"
-              className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm font-bold tracking-widest focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Estado</label>
-            <div className="mt-1.5">
-              <SelectorModerno
-                opciones={[
-                  { value: "", label: "Todos" },
-                  { value: "PENDIENTE", label: "Pendiente" },
-                  { value: "APROBADA", label: "Aprobada" },
-                  { value: "RECHAZADA", label: "Rechazada" },
-                  { value: "PAGADA", label: "Pagada" },
-                ]}
-                value={estado}
-                onChange={setEstado}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable
-                opciones={opcionesColaborador}
-                value={colaboradorId}
-                onChange={setColaboradorId}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
-            <div className="mt-1.5">
-              <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
-            </div>
-          </div>
-        </div>
+      <BarraFiltros
+        busqueda={{ valor: codigo, onCambiar: cambiarCodigo, placeholder: "Buscar por código (ej: 7K3M)", onEnter: rebuscar, className: "uppercase font-semibold tracking-widest placeholder:normal-case placeholder:font-normal placeholder:tracking-normal" }}
+        chips={chipsFiltros}
+        onLimpiar={limpiarFiltros}
+        onAplicar={() => buscar(1)}
+        aplicando={cargando}
+        textoAplicar="Aplicar"
+        destacado={
+          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+        }
+      >
+        <CampoFiltro etiqueta="Estado">
+          <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Colaborador">
+          <ComboboxBuscable opciones={opcionesColaborador} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
+        </CampoFiltro>
+      </BarraFiltros>
 
-        <button
-          onClick={() => buscar(1)}
-          disabled={cargando}
-          className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md disabled:opacity-50"
-        >
-          {cargando ? "Buscando..." : "Buscar"}
-        </button>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {!cargando && items && (
         <div className="bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">
@@ -220,7 +223,7 @@ export default function PanelControlSolicitudes() {
 
       {!items && !cargando && (
         <div className="bg-neutral-50 dark:bg-neutral-900 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl px-5 py-10 text-center text-sm text-neutral-500 dark:text-neutral-400">
-          Filtra por código, estado, colaborador o fecha y haz clic en &quot;Buscar&quot; para consultar las solicitudes.
+          Elige un rango de fechas o escribe un código para consultar las solicitudes.
         </div>
       )}
 

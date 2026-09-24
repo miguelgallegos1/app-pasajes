@@ -23,6 +23,7 @@ import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useHistorialLista } from "../lib/useHistorialLista";
 import { IconoImprimir, IconoDevolver } from "./Icons";
+import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 
 type Fila = {
   id: string;
@@ -46,6 +47,12 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
 // Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
 // id real de colaborador, así que no puede chocar con uno.
 const SIN_SUPERVISOR = "__sin_supervisor__";
+
+const OPCIONES_ESTADO = [
+  { value: "", label: "Todos" },
+  { value: "APROBADA", label: "Aprobada" },
+  { value: "PAGADA", label: "Pagada" },
+];
 
 export default function PanelHistorialTH() {
   const [desde, setDesde] = useState(fechaHoyTexto);
@@ -153,6 +160,31 @@ export default function PanelHistorialTH() {
     setColaboradorId("");
   };
 
+  // Busca sola al entrar, al cambiar el rango de fechas y al quitar un
+  // chip (o "Limpiar filtros"), igual que Aprobaciones — solo Estado,
+  // Supervisor y Colaborador se eligen en el panel y se aplican juntos.
+  // Va en un efecto porque buscar() arma la URL con el estado de ESTE
+  // render — recién en el siguiente ya ve el filtro cambiado.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  useEffect(() => {
+    if (pedidoBusqueda) buscar(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoBusqueda]);
+  const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  const chipsFiltros = chips(
+    chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
+    chipOpcion("Supervisor", supervisoresOpciones, supervisorId, () => { cambiarSupervisor(""); rebuscar(); }),
+    chipOpcion("Colaborador", opcionesColaborador, colaboradorId, () => { setColaboradorId(""); rebuscar(); })
+  );
+
+  const limpiarFiltros = () => {
+    setEstado("");
+    setSupervisorId("");
+    setColaboradorId("");
+    rebuscar();
+  };
+
   const abrirRevertir = (id: string) => {
     setIdARevertir(id);
     setMotivoRevertir("");
@@ -200,84 +232,56 @@ export default function PanelHistorialTH() {
         </div>
       )}
 
-      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
-            <div className="mt-1.5">
-              <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Estado</label>
-            <div className="mt-1.5">
-              <SelectorModerno
-                opciones={[
-                  { value: "", label: "Todos" },
-                  { value: "APROBADA", label: "Aprobada" },
-                  { value: "PAGADA", label: "Pagada" },
-                ]}
-                value={estado}
-                onChange={setEstado}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Supervisor</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable
-                opciones={[{ id: "", label: "Todos" }, ...supervisoresOpciones]}
-                value={supervisorId}
-                onChange={cambiarSupervisor}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable
-                opciones={opcionesColaborador}
-                value={colaboradorId}
-                onChange={setColaboradorId}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-        </div>
+      <BarraFiltros
+        chips={chipsFiltros}
+        onLimpiar={limpiarFiltros}
+        onAplicar={() => buscar(1)}
+        aplicando={cargando}
+        aplicarDeshabilitado={sinAsignaciones}
+        textoAplicar="Aplicar"
+        destacado={
+          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+        }
+        acciones={
+          <>
+            {!desde || !hasta || sinAsignaciones ? (
+              <span
+                title={sinAsignaciones ? "Sin áreas asignadas" : "Selecciona ambas fechas"}
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
+              >
+                <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
+              </span>
+            ) : (
+              <a
+                href={urlImprimir()}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Solo incluye solicitudes Pagadas, sin importar el filtro de Estado elegido"
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
+              >
+                <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
+              </a>
+            )}
+          </>
+        }
+      >
+        <CampoFiltro etiqueta="Estado">
+          <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Supervisor">
+          <ComboboxBuscable
+            opciones={[{ id: "", label: "Todos" }, ...supervisoresOpciones]}
+            value={supervisorId}
+            onChange={cambiarSupervisor}
+            placeholder="Todos"
+          />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Colaborador">
+          <ComboboxBuscable opciones={opcionesColaborador} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
+        </CampoFiltro>
+      </BarraFiltros>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => buscar(1)}
-            disabled={cargando || sinAsignaciones}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md disabled:opacity-50"
-          >
-            {cargando ? "Buscando..." : "Buscar"}
-          </button>
-
-          {!desde || !hasta || sinAsignaciones ? (
-            <span
-              title={sinAsignaciones ? "Sin áreas asignadas" : "Selecciona ambas fechas"}
-              className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
-            >
-              <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
-            </span>
-          ) : (
-            <a
-              href={urlImprimir()}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Solo incluye solicitudes Pagadas, sin importar el filtro de Estado elegido arriba"
-              className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
-            >
-              <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
-            </a>
-          )}
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {cargando ? (
         <TablaEsqueleto columnas={7} />

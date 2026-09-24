@@ -12,6 +12,7 @@ import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
 import ComboboxBuscable from "./ComboboxBuscable";
+import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import EstadoVacio from "./EstadoVacio";
@@ -44,6 +45,12 @@ const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
 // Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
 // id real de colaborador, así que no puede chocar con uno.
 const SIN_SUPERVISOR = "__sin_supervisor__";
+
+const OPCIONES_ESTADO = [
+  { value: "", label: "Todos" },
+  { value: "REVISADO", label: "Revisada" },
+  { value: "PAGADA", label: "Pagada" },
+];
 
 export default function PanelHistorialCoordinador() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
@@ -187,11 +194,39 @@ export default function PanelHistorialCoordinador() {
     }
   };
 
+  const supervisoresOpcionesTodos = [{ id: "", label: "Todos" }, ...supervisoresOpciones];
+
+  // Busca sola al entrar, al cambiar el rango de fechas o la vista y al
+  // quitar un chip; el resto de filtros se aplica junto desde el panel.
+  // En un efecto porque buscar() arma la URL con el estado de ESTE render
+  // — recién el siguiente ve el cambio.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara una consulta de red
+    if (pedidoBusqueda) buscar(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoBusqueda]);
+  const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  const chipsFiltros = chips(
+    chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
+    chipOpcion("Supervisor", supervisoresOpcionesTodos, supervisorId, () => { cambiarSupervisor(""); rebuscar(); }),
+    chipOpcion("Colaborador", opcionesColaborador, colaboradorId, () => { setColaboradorId(""); rebuscar(); })
+  );
+
+  const limpiarFiltros = () => {
+    setEstado("");
+    cambiarSupervisor("");
+    setColaboradorId("");
+    rebuscar();
+  };
+
   const cambiarVista = (v: "lista" | "colaborador") => {
     setVista(v);
     setItems(null);
     setFilasColaborador(null);
     setError("");
+    rebuscar();
   };
 
   // Detalle (código/fecha/ruta/valor/estado) de UN colaborador, pedido
@@ -221,57 +256,18 @@ export default function PanelHistorialCoordinador() {
         </div>
       )}
 
-      <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
-            <div className="mt-1.5">
-              <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Estado</label>
-            <div className="mt-1.5">
-              <SelectorModerno
-                opciones={[
-                  { value: "", label: "Todos" },
-                  { value: "REVISADO", label: "Revisada" },
-                  { value: "PAGADA", label: "Pagada" },
-                ]}
-                value={estado}
-                onChange={setEstado}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Supervisor</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable
-                opciones={[{ id: "", label: "Todos" }, ...supervisoresOpciones]}
-                value={supervisorId}
-                onChange={cambiarSupervisor}
-                placeholder="Todos"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable opciones={opcionesColaborador} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => buscar(1)}
-            disabled={cargando || sinAsignaciones}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md disabled:opacity-50"
-          >
-            {cargando ? "Buscando..." : "Buscar"}
-          </button>
-
+      <BarraFiltros
+        chips={chipsFiltros}
+        onLimpiar={limpiarFiltros}
+        onAplicar={() => buscar(1)}
+        aplicando={cargando}
+        aplicarDeshabilitado={sinAsignaciones}
+        textoAplicar="Aplicar"
+        destacado={
+          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+        }
+        acciones={
+          <>
           <SelectorVista valor={vista} onCambiar={cambiarVista} />
 
           {puedeExportar ? (
@@ -289,10 +285,21 @@ export default function PanelHistorialCoordinador() {
               <IconoDescargar className="w-4 h-4" /> Exportar a Excel
             </span>
           )}
-        </div>
+          </>
+        }
+      >
+        <CampoFiltro etiqueta="Estado">
+          <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Supervisor">
+          <ComboboxBuscable opciones={supervisoresOpcionesTodos} value={supervisorId} onChange={cambiarSupervisor} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Colaborador">
+          <ComboboxBuscable opciones={opcionesColaborador} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
+        </CampoFiltro>
+      </BarraFiltros>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {cargando && <TablaEsqueleto columnas={vista === "lista" ? 6 : 3} />}
 

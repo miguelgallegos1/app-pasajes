@@ -10,6 +10,8 @@ import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import RangoFechasSelector from "./RangoFechasSelector";
 import ComboboxBuscable from "./ComboboxBuscable";
+import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
+import { IconoRefrescar } from "./Icons";
 import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { fechaHoyTexto } from "../lib/fechas";
@@ -126,6 +128,24 @@ export default function PanelDashboard() {
     }
   };
 
+  // Carga sola al entrar, al cambiar el rango de fechas y al quitar un
+  // chip — Empresa/Sitio/Área se aplican juntos desde el panel. En un
+  // efecto porque buscar() arma la URL con el estado de ESTE render.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara una consulta de red
+    if (pedidoBusqueda) buscar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoBusqueda]);
+  const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  const empresasOpciones = useMemo(() => empresas.map((e) => ({ id: e.id, label: e.nombre })), [empresas]);
+  const chipsFiltros = chips(
+    chipOpcion("Empresa", empresasOpciones, empresaId, () => { cambiarEmpresa(""); rebuscar(); }),
+    chipOpcion("Sitio", sitiosOpciones, sitioId, () => { cambiarSitio(""); rebuscar(); }),
+    chipOpcion("Área", areasOpciones, areaId, () => { setAreaId(""); rebuscar(); })
+  );
+
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
       {errorInicial && (
@@ -134,56 +154,42 @@ export default function PanelDashboard() {
 
       {!cargandoInicial && (
       <>
-      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
-        <div className="max-w-xs">
-          <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Rango de fechas</label>
-          <div className="mt-1.5">
-            <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); }} />
-          </div>
-        </div>
+      <BarraFiltros
+        chips={chipsFiltros}
+        onLimpiar={() => { cambiarEmpresa(""); rebuscar(); }}
+        onAplicar={buscar}
+        aplicando={cargando}
+        textoAplicar="Aplicar"
+        destacado={
+          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+        }
+        acciones={
+          <button
+            onClick={buscar}
+            disabled={cargando}
+            title="Volver a consultar con los mismos filtros"
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm font-medium text-neutral-700 hover:border-orange-400 hover:text-orange-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 transition disabled:opacity-50"
+          >
+            {cargando ? <Spinner className="w-4 h-4" /> : <IconoRefrescar className="w-4 h-4" />}
+            Actualizar
+          </button>
+        }
+      >
+        <CampoFiltro etiqueta="Empresa">
+          <ComboboxBuscable opciones={empresasOpciones} value={empresaId} onChange={cambiarEmpresa} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Sitio">
+          <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Área">
+          <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={setAreaId} placeholder="Todos" />
+        </CampoFiltro>
+      </BarraFiltros>
 
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400 mb-1.5">Filtrar por (opcional)</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Empresa</label>
-              <div className="mt-1">
-                <ComboboxBuscable
-                  opciones={empresas.map((e) => ({ id: e.id, label: e.nombre }))}
-                  value={empresaId}
-                  onChange={cambiarEmpresa}
-                  placeholder="Todos"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Sitio</label>
-              <div className="mt-1">
-                <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
-              </div>
-            </div>
-            <div>
-              <label className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">Área</label>
-              <div className="mt-1">
-                <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={setAreaId} placeholder="Todos" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={buscar}
-          disabled={cargando}
-          className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl transition shadow-sm hover:shadow-md disabled:opacity-50 flex items-center gap-2"
-        >
-          {cargando && <Spinner className="w-4 h-4" />}
-          {cargando ? "Cargando..." : "Actualizar"}
-        </button>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {!datos && !error && (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Elige un rango de fechas y presiona Actualizar para ver los datos.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Elige un rango de fechas para ver los datos.</p>
       )}
 
       {datos && (

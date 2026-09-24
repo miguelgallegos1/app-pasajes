@@ -8,11 +8,12 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoDinero, IconoLupa, IconoDevolver } from "./Icons";
+import { IconoDinero, IconoDevolver } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import SelectorVista from "./SelectorVista";
 import ComboboxBuscable from "./ComboboxBuscable";
+import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
@@ -395,46 +396,31 @@ export default function PanelNomina() {
 
       {!cargandoInicial && (
       <>
-      <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Empresa</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable opciones={empresasOpciones} value={empresaId} onChange={cambiarEmpresa} placeholder="Todos" />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Sitio</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Área</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todos" />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Colaborador</label>
-            <div className="mt-1.5">
-              <ComboboxBuscable opciones={colaboradoresOpciones} value={colaboradorId} onChange={cambiarColaborador} placeholder="Todos" />
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="relative w-full max-w-sm">
-            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-            <input
-              value={busqueda}
-              onChange={(e) => cambiarBusqueda(e.target.value)}
-              placeholder="Buscar por código, colaborador o ruta..."
-              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-            />
-          </div>
-          <SelectorVista valor={vista} onCambiar={setVista} className="self-start" />
-        </div>
-      </div>
+      <BarraFiltros
+        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por código, colaborador o ruta..." }}
+        chips={chips(
+          chipOpcion("Empresa", empresasOpciones, empresaId, () => cambiarEmpresa("")),
+          chipOpcion("Sitio", sitiosOpciones, sitioId, () => cambiarSitio("")),
+          chipOpcion("Área", areasOpciones, areaId, () => cambiarArea("")),
+          chipOpcion("Colaborador", colaboradoresOpciones, colaboradorId, () => cambiarColaborador(""))
+        )}
+        onLimpiar={() => cambiarEmpresa("")}
+        resultados={revisadasFiltradas.length}
+        acciones={<SelectorVista valor={vista} onCambiar={setVista} />}
+      >
+        <CampoFiltro etiqueta="Empresa">
+          <ComboboxBuscable opciones={empresasOpciones} value={empresaId} onChange={cambiarEmpresa} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Sitio">
+          <ComboboxBuscable opciones={sitiosOpciones} value={sitioId} onChange={cambiarSitio} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Área">
+          <ComboboxBuscable opciones={areasOpciones} value={areaId} onChange={cambiarArea} placeholder="Todos" />
+        </CampoFiltro>
+        <CampoFiltro etiqueta="Colaborador">
+          <ComboboxBuscable opciones={colaboradoresOpciones} value={colaboradorId} onChange={cambiarColaborador} placeholder="Todos" />
+        </CampoFiltro>
+      </BarraFiltros>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">

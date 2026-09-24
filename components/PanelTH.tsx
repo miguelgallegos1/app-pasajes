@@ -7,7 +7,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoCheck, IconoLupa, IconoDevolver, IconoX } from "./Icons";
+import { IconoCheck, IconoDevolver } from "./Icons";
+import BarraFiltros, { CampoFiltro, type ChipFiltro } from "./BarraFiltros";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import Paginacion from "./Paginacion";
@@ -155,6 +156,28 @@ export default function PanelTH() {
     setPaginaActual(1);
   };
 
+  // Chips de lo que está filtrado (la búsqueda de texto ya se ve en su
+  // propio input, así que no se repite acá).
+  const chipsFiltros: ChipFiltro[] = [];
+  if (supervisorId) {
+    const etiqueta = supervisoresOpciones.find((o) => o.id === supervisorId)?.label ?? "";
+    chipsFiltros.push({ id: "supervisor", etiqueta: `Supervisor: ${etiqueta}`, onQuitar: () => cambiarSupervisor("") });
+  }
+  if (desde && hasta) {
+    chipsFiltros.push({
+      id: "fecha",
+      etiqueta: desde === hasta ? `Fecha: ${formatearFecha(desde)}` : `Fecha: ${formatearFecha(desde)} — ${formatearFecha(hasta)}`,
+      onQuitar: () => cambiarFechas("", ""),
+    });
+  }
+
+  const limpiarFiltros = () => {
+    setSupervisorId("");
+    setDesde("");
+    setHasta("");
+    setPaginaActual(1);
+  };
+
   const { orden, ordenar, itemsOrdenados: pendientesOrdenadas } = useOrdenTabla<Pendiente, CampoOrden>(
     pendientesFiltradas,
     (p, campo) => VALOR_ORDEN[campo](p),
@@ -198,6 +221,10 @@ export default function PanelTH() {
   const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const todasEnPaginaSeleccionadas =
     pendientesPagina.length > 0 && pendientesPagina.every((s) => seleccionadas.has(s.id));
+  const totalSeleccionado = useMemo(
+    () => pendientes.filter((s) => seleccionadas.has(s.id)).reduce((acc, s) => acc + s.montoTotal, 0),
+    [pendientes, seleccionadas]
+  );
 
   const alternarSeleccion = (id: string) => {
     setSeleccionadas((prev) => {
@@ -397,26 +424,6 @@ export default function PanelTH() {
   return (
     <div className="flex flex-col">
       <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
-        {seleccionadas.size > 0 && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => setConfirmandoLoteDevolver(true)}
-                title="Devolver para corrección"
-                className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
-              >
-                <IconoDevolver className="w-4 h-4 shrink-0" /> Devolver ({seleccionadas.size})
-              </button>
-              <button
-                onClick={() => setConfirmandoLote(true)}
-                className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
-              >
-                Aprobar ({seleccionadas.size})
-              </button>
-            </div>
-          </div>
-        )}
-
         {errorInicial && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{errorInicial}</div>
         )}
@@ -430,51 +437,58 @@ export default function PanelTH() {
 
         {!cargandoInicial && (
         <>
-        <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Supervisor</label>
-              <div className="mt-1.5">
-                <ComboboxBuscable
-                  opciones={[{ id: "", label: "Todos" }, ...supervisoresOpciones]}
-                  value={supervisorId}
-                  onChange={cambiarSupervisor}
-                  placeholder="Todos"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Fecha</label>
-              <div className="mt-1.5 flex items-center gap-1">
-                <div className="flex-1 min-w-0">
-                  <RangoFechasSelector desde={desde} hasta={hasta} onChange={cambiarFechas} />
-                </div>
-                {(desde || hasta) && (
-                  <button
-                    type="button"
-                    onClick={() => cambiarFechas("", "")}
-                    title="Quitar filtro de fecha"
-                    className="shrink-0 text-neutral-400 hover:text-neutral-700 dark:text-neutral-500 dark:hover:text-neutral-200 p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-                  >
-                    <IconoX className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+        <BarraFiltros
+          busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por código, colaborador, ruta u observación..." }}
+          chips={chipsFiltros}
+          onLimpiar={limpiarFiltros}
+          resultados={pendientesFiltradas.length}
+          acciones={<SelectorVista valor={vista} onCambiar={setVista} />}
+        >
+          <CampoFiltro etiqueta="Supervisor">
+            <ComboboxBuscable
+              opciones={[{ id: "", label: "Todos" }, ...supervisoresOpciones]}
+              value={supervisorId}
+              onChange={cambiarSupervisor}
+              placeholder="Todos"
+            />
+          </CampoFiltro>
+          <CampoFiltro etiqueta="Fecha">
+            <RangoFechasSelector desde={desde} hasta={hasta} onChange={cambiarFechas} />
+          </CampoFiltro>
+        </BarraFiltros>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-            <div className="relative w-full max-w-sm">
-              <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-              <input
-                value={busqueda}
-                onChange={(e) => cambiarBusqueda(e.target.value)}
-                placeholder="Buscar por código, colaborador, ruta u observación..."
-                className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
-              />
-            </div>
-            <SelectorVista valor={vista} onCambiar={setVista} className="self-start" />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Mostrando</p>
+            <p className="text-lg font-bold text-neutral-900 dark:text-white">
+              {pendientesFiltradas.length} {pendientesFiltradas.length === 1 ? "solicitud" : "solicitudes"} · {formatearMoneda(totalGeneral)}
+            </p>
           </div>
+          {seleccionadas.size > 0 && (
+            <div className="flex-1 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-[dropdown-in_0.15s_ease-out]">
+              <div>
+                <p className="text-[11px] text-green-700 dark:text-green-400 uppercase tracking-wide">Seleccionadas</p>
+                <p className="text-lg font-bold text-green-800 dark:text-green-300">
+                  {seleccionadas.size} · {formatearMoneda(totalSeleccionado)}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => setConfirmandoLoteDevolver(true)}
+                  title="Devolver para corrección"
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 px-3 py-2 rounded-lg transition"
+                >
+                  <IconoDevolver className="w-4 h-4 shrink-0" /> Devolver ({seleccionadas.size})
+                </button>
+                <button
+                  onClick={() => setConfirmandoLote(true)}
+                  className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+                >
+                  Aprobar ({seleccionadas.size})
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {vista === "colaborador" ? (
@@ -674,6 +688,7 @@ export default function PanelTH() {
       <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={confirmarAprobarLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Aprobar {seleccionadas.size} solicitudes?</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Total: {formatearMoneda(totalSeleccionado)}</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
               <button

@@ -6,9 +6,10 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoAlerta, IconoLupa, IconoChevron, IconoEliminar } from "./Icons";
+import { IconoAlerta, IconoChevron, IconoEliminar } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import ComboboxBuscable from "./ComboboxBuscable";
+import BarraFiltros, { CamposEmpresaSitioArea, chips, chipsEmpresaSitioArea } from "./BarraFiltros";
 import ToggleSwitch from "./ToggleSwitch";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
@@ -132,16 +133,8 @@ export default function PanelRutasTH() {
     [rutas, idsOcultos]
   );
 
-  const {
-    empresaFiltro,
-    sitioFiltro,
-    areaFiltro,
-    sitiosFiltro,
-    areasFiltro,
-    cambiarEmpresaFiltro,
-    cambiarSitioFiltro,
-    cambiarAreaFiltro,
-  } = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
+  const filtroUbicacion = useFiltroEmpresaSitioArea(sitios, areas, resetPagina);
+  const { empresaFiltro, sitioFiltro, areaFiltro, cambiarEmpresaFiltro } = filtroUbicacion;
 
   const rutasFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -445,49 +438,19 @@ export default function PanelRutasTH() {
 
       {!cargandoInicial && (
       <>
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-            <input
-              value={busqueda}
-              onChange={(e) => cambiarBusqueda(e.target.value)}
-              placeholder="Buscar por nombre o área..."
-              className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-            />
-          </div>
+      <BarraFiltros
+        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre o área..." }}
+        chips={chips(...chipsEmpresaSitioArea(empresas, filtroUbicacion))}
+        onLimpiar={() => cambiarEmpresaFiltro("")}
+        resultados={rutasFiltradas.length}
+        acciones={
           <div className="flex items-center gap-2 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-3.5 py-2.5">
             <ToggleSwitch checked={soloActivas} onChange={cambiarSoloActivas} label="Solo activas" />
           </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 min-w-0">
-            <ComboboxBuscable
-              opciones={empresas}
-              value={empresaFiltro}
-              onChange={cambiarEmpresaFiltro}
-              placeholder="Todos"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <ComboboxBuscable
-              opciones={sitiosFiltro}
-              value={sitioFiltro}
-              onChange={cambiarSitioFiltro}
-              placeholder="Todos"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <ComboboxBuscable
-              opciones={areasFiltro}
-              value={areaFiltro}
-              onChange={cambiarAreaFiltro}
-              placeholder="Todos"
-            />
-          </div>
-        </div>
-      </div>
+        }
+      >
+        <CamposEmpresaSitioArea empresas={empresas} filtro={filtroUbicacion} />
+      </BarraFiltros>
 
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <div className="overflow-x-auto">

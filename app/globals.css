@@ -167,6 +167,47 @@ select:focus-visible {
   }
 }
 
+/* Panel lateral de filtros (Modal variante "lateral", ver
+   components/BarraFiltros.tsx): en móvil sube desde abajo como una hoja,
+   y desde sm entra desde la derecha a todo el alto. */
+@keyframes lateral-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes lateral-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@media (min-width: 640px) {
+  @keyframes lateral-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes lateral-out {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+}
+
 /* Efecto de "presión" para que cualquier botón/acción de la app (menú,
    botones de acción, links con pinta de botón) se sienta físico al
    tocarlo: un tinte naranja (el mismo naranja de marca que ya usan los
