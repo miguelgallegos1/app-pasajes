@@ -370,7 +370,7 @@ export default function PanelAsignacionEquipo() {
         {/* Columna izquierda: filtros + lista de supervisores */}
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
           <BarraFiltros
-            busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar supervisor por nombre o código..." }}
+            busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar...", ayuda: "Busca supervisor por nombre o código" }}
             chips={chips(
               chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO")),
               ...chipsEmpresaSitioArea(empresas, filtroUbicacion)
@@ -448,7 +448,8 @@ export default function PanelAsignacionEquipo() {
                   <input
                     value={busquedaMiembro}
                     onChange={(e) => setBusquedaMiembro(e.target.value)}
-                    placeholder="Buscar colaborador..."
+                    placeholder="Buscar..."
+                    title="Busca colaborador"
                     className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                   />
                 </div>

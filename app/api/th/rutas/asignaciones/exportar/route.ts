@@ -23,8 +23,8 @@ export async function GET(req: Request) {
   const sitioId = searchParams.get("sitioId");
   const areaId = searchParams.get("areaId");
   // Mismo filtro de Estado que la pantalla: ACTIVO por defecto, INACTIVO
-  // o TODOS. (soloActivos=0 se sigue aceptando como "TODOS".)
-  const estadoParam = searchParams.get("soloActivos") === "0" ? "TODOS" : searchParams.get("estado") ?? "ACTIVO";
+  // o TODOS.
+  const estadoParam = searchParams.get("estado") ?? "ACTIVO";
 
   const { sinRestriccion, condicion } = await obtenerCondicionColaboradorTH(session.id, session.rol);
   if (!sinRestriccion && !condicion) {

@@ -1,6 +1,6 @@
 // components/PanelColaboradoresTH.tsx
 // CRUD de Colaboradores: crear, editar (con Estado incluido), buscador,
-// switch "Solo activos" (encendido por defecto), paginación, y modal
+// filtro de Estado (Activos por defecto), paginación, y modal
 // de "Gestionar" (Desactivar/Reactivar + Eliminar permanente).
 
 "use client";
@@ -406,7 +406,7 @@ export default function PanelColaboradoresTH() {
       {!cargandoInicial && (
       <>
       <BarraFiltros
-        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre, área o código..." }}
+        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar...", ayuda: "Busca por nombre, área o código" }}
         chips={chips(
           chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO")),
           ...chipsEmpresaSitioArea(empresas, filtroUbicacion)

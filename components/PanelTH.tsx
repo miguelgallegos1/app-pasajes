@@ -438,7 +438,7 @@ export default function PanelTH() {
         {!cargandoInicial && (
         <>
         <BarraFiltros
-          busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por código, colaborador, ruta u observación..." }}
+          busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar...", ayuda: "Busca por código, colaborador, ruta u observación" }}
           chips={chipsFiltros}
           onLimpiar={limpiarFiltros}
           resultados={pendientesFiltradas.length}

@@ -175,10 +175,6 @@ export default function PanelDashboard() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {!datos && !error && (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Elige un rango de fechas para ver los datos.</p>
-      )}
-
       {datos && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

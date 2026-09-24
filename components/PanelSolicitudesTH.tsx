@@ -238,7 +238,7 @@ export default function PanelSolicitudesTH() {
         {/* Columna izquierda: filtros + lista de colaboradores */}
         <div className="w-full lg:w-[380px] shrink-0 space-y-3">
           <BarraFiltros
-            busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre o código..." }}
+            busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar...", ayuda: "Busca por nombre o código" }}
             chips={chips(
               chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO")),
               ...chipsEmpresaSitioArea(empresas, filtroUbicacion)

@@ -85,7 +85,8 @@ export default function PanelControlSolicitudes() {
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
-  const [cargando, setCargando] = useState(false);
+  // true de entrada: la primera búsqueda sale sola al montar.
+  const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
 
   const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(
@@ -194,7 +195,7 @@ export default function PanelControlSolicitudes() {
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
 
       <BarraFiltros
-        busqueda={{ valor: codigo, onCambiar: cambiarCodigo, placeholder: "Buscar por código (ej: 7K3M)", onEnter: rebuscar, className: "uppercase font-semibold tracking-widest placeholder:normal-case placeholder:font-normal placeholder:tracking-normal" }}
+        busqueda={{ valor: codigo, onCambiar: cambiarCodigo, placeholder: "Buscar...", ayuda: "Busca por código (ej: 7K3M)", onEnter: rebuscar, className: "uppercase font-semibold tracking-widest placeholder:normal-case placeholder:font-normal placeholder:tracking-normal" }}
         chips={chipsFiltros}
         onLimpiar={limpiarFiltros}
         onAplicar={() => buscar(1)}
@@ -218,12 +219,6 @@ export default function PanelControlSolicitudes() {
         <div className="bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">
           <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Total con estos filtros</p>
           <p className="text-lg font-bold text-neutral-900 dark:text-white">{total} {total === 1 ? "solicitud" : "solicitudes"}</p>
-        </div>
-      )}
-
-      {!items && !cargando && (
-        <div className="bg-neutral-50 dark:bg-neutral-900 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-2xl px-5 py-10 text-center text-sm text-neutral-500 dark:text-neutral-400">
-          Elige un rango de fechas o escribe un código para consultar las solicitudes.
         </div>
       )}
 

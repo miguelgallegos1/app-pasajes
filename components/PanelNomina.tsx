@@ -397,7 +397,7 @@ export default function PanelNomina() {
       {!cargandoInicial && (
       <>
       <BarraFiltros
-        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por código, colaborador o ruta..." }}
+        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar...", ayuda: "Busca por código, colaborador o ruta" }}
         chips={chips(
           chipOpcion("Empresa", empresasOpciones, empresaId, () => cambiarEmpresa("")),
           chipOpcion("Sitio", sitiosOpciones, sitioId, () => cambiarSitio("")),

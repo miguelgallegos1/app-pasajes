@@ -22,7 +22,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Modal from "./Modal";
 import { IconoFiltro, IconoLupa, IconoX } from "./Icons";
-import { formatearFecha } from "../lib/fechas";
 import ComboboxBuscable from "./ComboboxBuscable";
 import SelectorModerno from "./SelectorModerno";
 import type { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
@@ -49,13 +48,7 @@ export function chipOpcion(
   return { id: nombre, etiqueta: etiqueta ? `${nombre}: ${etiqueta}` : nombre, onQuitar };
 }
 
-export function chipRangoFechas(desde: string, hasta: string, onQuitar?: () => void, nombre = "Fecha"): ChipFiltro | null {
-  if (!desde || !hasta) return null;
-  const texto = desde === hasta ? formatearFecha(desde) : `${formatearFecha(desde)} — ${formatearFecha(hasta)}`;
-  return { id: nombre, etiqueta: `${nombre}: ${texto}`, onQuitar };
-}
-
-// Arma la lista final descartando los null de chipOpcion/chipRangoFechas.
+// Arma la lista final descartando los null (ej. de chipOpcion).
 export function chips(...lista: (ChipFiltro | null | false | undefined)[]): ChipFiltro[] {
   return lista.filter((c): c is ChipFiltro => !!c);
 }
@@ -162,7 +155,9 @@ export default function BarraFiltros({
   children,
 }: {
   // onEnter: para búsquedas que consultan al servidor (no filtran en vivo).
-  busqueda?: { valor: string; onCambiar: (v: string) => void; placeholder: string; onEnter?: () => void; className?: string };
+  // placeholder corto ("Buscar...") para que no se corte en pantallas
+  // angostas; el detalle de qué campos busca va en "ayuda" (tooltip).
+  busqueda?: { valor: string; onCambiar: (v: string) => void; placeholder: string; ayuda?: string; onEnter?: () => void; className?: string };
   chips: ChipFiltro[];
   onLimpiar: () => void;
   onAplicar?: () => void;
@@ -245,6 +240,8 @@ export default function BarraFiltros({
                 }
               }}
               placeholder={busqueda.placeholder}
+              title={busqueda.ayuda}
+              aria-label={busqueda.ayuda ?? busqueda.placeholder}
               className={`${busqueda.className ?? ""} w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white`}
             />
           </div>

@@ -53,7 +53,6 @@ export function useFiltroEmpresaSitioArea<S extends SitioConEmpresa, A extends A
     alCambiar?.();
   };
 
-  const cantidadFiltrosActivos = [empresaFiltro, sitioFiltro, areaFiltro].filter(Boolean).length;
 
   return {
     empresaFiltro,
@@ -64,6 +63,5 @@ export function useFiltroEmpresaSitioArea<S extends SitioConEmpresa, A extends A
     cambiarEmpresaFiltro,
     cambiarSitioFiltro,
     cambiarAreaFiltro,
-    cantidadFiltrosActivos,
   };
 }

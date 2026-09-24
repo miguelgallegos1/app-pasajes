@@ -443,7 +443,7 @@ export default function PanelRutasTH() {
       {!cargandoInicial && (
       <>
       <BarraFiltros
-        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar por nombre o área..." }}
+        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar...", ayuda: "Busca por nombre o área" }}
         chips={chips(
           chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO"), true),
           ...chipsEmpresaSitioArea(empresas, filtroUbicacion)

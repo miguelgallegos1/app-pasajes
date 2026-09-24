@@ -567,7 +567,8 @@ export default function PanelColaborador() {
             <input
               value={busqueda}
               onChange={(e) => cambiarBusqueda(e.target.value)}
-              placeholder="Buscar por código, colaborador, ruta u observación..."
+              placeholder="Buscar..."
+              title="Busca por código, colaborador, ruta u observación"
               className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
             />
           </div>
@@ -838,7 +839,8 @@ export default function PanelColaborador() {
                       <input
                         value={busquedaEquipoModal}
                         onChange={(e) => setBusquedaEquipoModal(e.target.value)}
-                        placeholder="Buscar colaborador..."
+                        placeholder="Buscar..."
+                        title="Busca colaborador"
                         className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white pl-10 pr-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                       />
                     </div>
