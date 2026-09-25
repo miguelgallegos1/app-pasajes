@@ -18,6 +18,8 @@ import Paginacion from "./Paginacion";
 import Modal from "./Modal";
 import { formatearFecha } from "../lib/fechas";
 import Spinner from "./Spinner";
+import { enviarEnTandas, resumenEnvio } from "../lib/enviarEnTandas";
+import BotonSeleccionarTodas from "./BotonSeleccionarTodas";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
@@ -56,8 +58,6 @@ const VALOR_ORDEN: Record<CampoOrden, (r: Revisada) => string | number> = {
 };
 
 const POR_PAGINA = 15;
-// Máximo por petición al pagar en bloque (= MAX_POR_LOTE en la API).
-const TANDA_PAGO = 500;
 
 function opcionesUnicas<T>(items: T[], idKey: keyof T, labelKey: keyof T) {
   const vistos = new Map<string, string>();
@@ -77,6 +77,8 @@ export default function PanelNomina() {
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
   useReportarCarga(cargandoInicial);
+  // Muestra "Seleccionar todas (N)" (Admin -> Parámetros, por pantalla).
+  const [seleccionTotalActiva, setSeleccionTotalActiva] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -89,6 +91,7 @@ export default function PanelNomina() {
         }
         const data = await res.json();
         setRevisadas(data.revisadas);
+        setSeleccionTotalActiva(!!data.seleccionTotal);
       })
       .catch(() => {
         if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -207,12 +210,6 @@ export default function PanelNomina() {
     });
   };
 
-  // "Seleccionar todas": marca TODAS las revisadas que cumplen los filtros
-  // (todas las páginas), no solo las 15 visibles, para pagar en un clic.
-  const todasFiltradasSeleccionadas =
-    revisadasFiltradas.length > 0 && revisadasFiltradas.every((a) => seleccionadas.has(a.id));
-  const alternarSeleccionarFiltradas = () => alternarGrupoSeleccion(revisadasFiltradas.map((a) => a.id));
-
   // --- Agrupación por colaborador (client-side: la cola de acción es un
   // conjunto acotado, ya está completa en memoria) ---
   const gruposPorColaborador = useMemo(() => {
@@ -300,57 +297,21 @@ export default function PanelNomina() {
   const confirmarPagoLote = async () => {
     setPagandoLote(true);
     setError("");
-    // Selecciones grandes se mandan en tandas de TANDA_PAGO, una tras otra:
-    // cada petición es liviana y la base nunca queda ocupada con un bloque
-    // enorme. Si una tanda falla, se conserva lo ya pagado en las anteriores.
     const todas = Array.from(seleccionadas);
-    const idsPagados = new Set<string>();
-    let fallo: string | null = null;
-    try {
-      for (let i = 0; i < todas.length; i += TANDA_PAGO) {
-        const res = await fetch(`/api/solicitudes/pagar-lote`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: todas.slice(i, i + TANDA_PAGO) }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          // "Ninguna válida" en una tanda no corta las siguientes.
-          if (res.status === 400 && data.error?.startsWith("Ninguna")) continue;
-          fallo = data.error ?? "No se pudo pagar el lote";
-          break;
-        }
-        (data.ids as string[]).forEach((id) => idsPagados.add(id));
-      }
-    } catch {
-      fallo = "No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.";
-    }
+    const { procesados, fallo } = await enviarEnTandas(`/api/solicitudes/pagar-lote`, todas, "No se pudo pagar el lote");
     setConfirmandoLote(false);
     setPagandoLote(false);
 
-    // Se quitan SOLO las que el servidor confirma pagadas: si alguna
-    // cambió de estado mientras tanto, sigue en la lista y se avisa, en
-    // vez de desaparecer como si se hubiera pagado.
-    if (idsPagados.size > 0) {
+    // Se quitan SOLO las que el servidor confirma procesadas: si alguna
+    // cambió de estado mientras tanto, sigue en la lista y se avisa.
+    if (procesados.size > 0) {
       avisarCambioPendientes();
-      setRevisadas((prev) => prev.filter((a) => !idsPagados.has(a.id)));
-      setSeleccionadas((prev) => new Set(Array.from(prev).filter((id) => !idsPagados.has(id))));
+      setRevisadas((prev) => prev.filter((s) => !procesados.has(s.id)));
+      setSeleccionadas((prev) => new Set(Array.from(prev).filter((id) => !procesados.has(id))));
     }
-    const noPagadas = todas.length - idsPagados.size;
-    if (fallo) {
-      const mensaje = idsPagados.size > 0 ? `Se pagaron ${idsPagados.size}, pero el resto falló: ${fallo}` : fallo;
-      setError(mensaje);
-      toast.error(mensaje);
-    } else if (idsPagados.size === 0) {
-      setError("Ninguna de las solicitudes es válida para pagar");
-      toast.error("Ninguna de las solicitudes es válida para pagar");
-    } else if (noPagadas > 0) {
-      toast.advertencia(
-        `Se pagaron ${idsPagados.size}. ${noPagadas} no se ${noPagadas === 1 ? "pudo" : "pudieron"} pagar porque cambiaron de estado — recarga la pantalla para verlas.`
-      );
-    } else {
-      toast.exito(`${idsPagados.size} ${idsPagados.size === 1 ? "solicitud marcada" : "solicitudes marcadas"} como pagadas`);
-    }
+    const { tipo, mensaje } = resumenEnvio(todas.length, procesados.size, fallo, "marcadas como pagadas");
+    if (tipo === "error") setError(mensaje);
+    toast[tipo](mensaje);
   };
 
   const abrirNovedad = (id: string) => {
@@ -477,15 +438,13 @@ export default function PanelNomina() {
               {revisadasFiltradas.length} {revisadasFiltradas.length === 1 ? "solicitud" : "solicitudes"} · {formatearMoneda(totalGeneral)}
             </p>
           </div>
-          {revisadasFiltradas.length > 0 && (
-            <button
-              onClick={alternarSeleccionarFiltradas}
-              title={todasFiltradasSeleccionadas ? "Quitar la selección" : "Selecciona todas las que cumplen los filtros, de todas las páginas"}
-              className="shrink-0 whitespace-nowrap text-xs sm:text-sm font-medium text-orange-600 dark:text-orange-400 border border-orange-500/40 hover:bg-orange-500/10 px-3 py-2 rounded-lg transition"
-            >
-              {todasFiltradasSeleccionadas ? "Quitar selección" : `Seleccionar todas (${revisadasFiltradas.length})`}
-            </button>
-          )}
+            {seleccionTotalActiva && (
+              <BotonSeleccionarTodas
+                cantidad={revisadasFiltradas.length}
+                todasSeleccionadas={revisadasFiltradas.length > 0 && revisadasFiltradas.every((s) => seleccionadas.has(s.id))}
+                onAlternar={() => alternarGrupoSeleccion(revisadasFiltradas.map((s) => s.id))}
+              />
+            )}
         </div>
         {seleccionadas.size > 0 && (
           <div className="flex-1 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">

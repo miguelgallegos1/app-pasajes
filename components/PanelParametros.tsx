@@ -1,8 +1,10 @@
 // components/PanelParametros.tsx
-// Parámetros generales del sistema. Por ahora hay uno solo: desde cuántos
-// días atrás se puede elegir una fecha en el calendario de nueva solicitud
-// (propia, la que crea TH en nombre de un colaborador, y "copiar rutas").
-// Antes estaba quemado en el código (-2 días); ahora lo decide Super Admin.
+// Parámetros generales del sistema:
+// - Desde cuántos días atrás se puede elegir una fecha en el calendario de
+//   nueva solicitud (propia, la que crea TH en nombre de un colaborador, y
+//   "copiar rutas"). Antes estaba quemado en el código (-2 días).
+// - En qué pantallas aparece "Seleccionar todas (N)" para procesar en
+//   bloque todo lo filtrado (no solo la página visible).
 
 "use client";
 
@@ -11,6 +13,14 @@ import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 
+type PantallaSeleccion = "aprobar" | "revisar" | "pagar";
+
+const PANTALLAS_SELECCION: { clave: PantallaSeleccion; etiqueta: string; detalle: string }[] = [
+  { clave: "aprobar", etiqueta: "Aprobaciones", detalle: "Talento Humano · Aprobar" },
+  { clave: "revisar", etiqueta: "Revisión", detalle: "Coordinación · Revisar" },
+  { clave: "pagar", etiqueta: "Pagos", detalle: "Nómina · Pagar" },
+];
+
 export default function PanelParametros() {
   const toast = useToast();
 
@@ -18,6 +28,8 @@ export default function PanelParametros() {
   const [errorInicial, setErrorInicial] = useState("");
   useReportarCarga(cargandoInicial);
   const [diasAtras, setDiasAtras] = useState("2");
+  const [seleccionTotal, setSeleccionTotal] = useState<Record<PantallaSeleccion, boolean>>({ aprobar: false, revisar: false, pagar: true });
+  const [guardandoSeleccion, setGuardandoSeleccion] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
@@ -32,6 +44,7 @@ export default function PanelParametros() {
         }
         const data = await res.json();
         setDiasAtras(String(data.diasAtrasSolicitud));
+        if (data.seleccionTotal) setSeleccionTotal(data.seleccionTotal);
       })
       .catch(() => {
         if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -70,6 +83,27 @@ export default function PanelParametros() {
       toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const guardarSeleccion = async () => {
+    setGuardandoSeleccion(true);
+    try {
+      const res = await fetch("/api/admin/parametros", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seleccionTotal }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "No se pudo guardar");
+        return;
+      }
+      toast.exito("Parámetro actualizado");
+    } catch {
+      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setGuardandoSeleccion(false);
     }
   };
 
@@ -120,6 +154,44 @@ export default function PanelParametros() {
               >
                 {guardando && <Spinner className="w-3.5 h-3.5" />}
                 {guardando ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 dark:ring-white/10 w-full sm:w-72 space-y-3">
+            <div>
+              <h2 className="font-semibold text-xs">Seleccionar todas (en bloque)</h2>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                Muestra el botón &quot;Seleccionar todas (N)&quot;, que marca todo lo filtrado (todas las páginas) para
+                procesarlo en un clic. Apagado, solo se puede marcar la página visible (15 filas).
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {PANTALLAS_SELECCION.map(({ clave, etiqueta, detalle }) => (
+                <label key={clave} className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={seleccionTotal[clave]}
+                    onChange={(e) => setSeleccionTotal((prev) => ({ ...prev, [clave]: e.target.checked }))}
+                    className="mt-0.5 w-4 h-4 accent-orange-500 rounded"
+                  />
+                  <span>
+                    <span className="block text-xs font-medium">{etiqueta}</span>
+                    <span className="block text-[10px] text-neutral-400 dark:text-neutral-500">{detalle}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={guardarSeleccion}
+                disabled={guardandoSeleccion}
+                className="px-4 py-1.5 text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg disabled:opacity-50 transition flex items-center justify-center gap-1.5"
+              >
+                {guardandoSeleccion && <Spinner className="w-3.5 h-3.5" />}
+                {guardandoSeleccion ? "Guardando..." : "Guardar"}
               </button>
             </div>
           </div>

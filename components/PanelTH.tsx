@@ -18,6 +18,8 @@ import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import { formatearFecha, fechaUTCATexto } from "../lib/fechas";
 import Spinner from "./Spinner";
+import { enviarEnTandas, resumenEnvio } from "../lib/enviarEnTandas";
+import BotonSeleccionarTodas from "./BotonSeleccionarTodas";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
@@ -67,6 +69,8 @@ export default function PanelTH() {
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
   useReportarCarga(cargandoInicial);
+  // Muestra "Seleccionar todas (N)" (Admin -> Parámetros, por pantalla).
+  const [seleccionTotalActiva, setSeleccionTotalActiva] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -80,6 +84,7 @@ export default function PanelTH() {
         const data = await res.json();
         setPendientes(data.pendientes);
         setSinAsignaciones(data.sinAsignaciones);
+        setSeleccionTotalActiva(!!data.seleccionTotal);
       })
       .catch(() => {
         if (!cancelado) setErrorInicial("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
@@ -313,32 +318,21 @@ export default function PanelTH() {
   const confirmarAprobarLote = async () => {
     setAprobandoLote(true);
     setError("");
-    try {
-      const res = await fetch(`/api/solicitudes/aprobar-lote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(seleccionadas) }),
-      });
-      setConfirmandoLote(false);
+    const todas = Array.from(seleccionadas);
+    const { procesados, fallo } = await enviarEnTandas(`/api/solicitudes/aprobar-lote`, todas, "No se pudo aprobar el lote");
+    setConfirmandoLote(false);
+    setAprobandoLote(false);
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "No se pudo aprobar el lote");
-        toast.error(data.error ?? "No se pudo aprobar el lote");
-        return;
-      }
-      toast.exito("Solicitudes aprobadas");
+    // Se quitan SOLO las que el servidor confirma procesadas: si alguna
+    // cambió de estado mientras tanto, sigue en la lista y se avisa.
+    if (procesados.size > 0) {
       avisarCambioPendientes();
-      const idsAprobados = new Set(seleccionadas);
-      setPendientes((prev) => prev.filter((p) => !idsAprobados.has(p.id)));
-      setSeleccionadas(new Set());
-    } catch {
-      setConfirmandoLote(false);
-      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-    } finally {
-      setAprobandoLote(false);
+      setPendientes((prev) => prev.filter((s) => !procesados.has(s.id)));
+      setSeleccionadas((prev) => new Set(Array.from(prev).filter((id) => !procesados.has(id))));
     }
+    const { tipo, mensaje } = resumenEnvio(todas.length, procesados.size, fallo, "aprobadas");
+    if (tipo === "error") setError(mensaje);
+    toast[tipo](mensaje);
   };
 
   const abrirModalDevolucion = (id: string) => {
@@ -460,11 +454,20 @@ export default function PanelTH() {
         </BarraFiltros>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">
-            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Mostrando</p>
-            <p className="text-lg font-bold text-neutral-900 dark:text-white">
-              {pendientesFiltradas.length} {pendientesFiltradas.length === 1 ? "solicitud" : "solicitudes"} · {formatearMoneda(totalGeneral)}
-            </p>
+          <div className="flex-1 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Mostrando</p>
+              <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                {pendientesFiltradas.length} {pendientesFiltradas.length === 1 ? "solicitud" : "solicitudes"} · {formatearMoneda(totalGeneral)}
+              </p>
+            </div>
+            {seleccionTotalActiva && (
+              <BotonSeleccionarTodas
+                cantidad={pendientesFiltradas.length}
+                todasSeleccionadas={pendientesFiltradas.length > 0 && pendientesFiltradas.every((s) => seleccionadas.has(s.id))}
+                onAlternar={() => alternarGrupoSeleccion(pendientesFiltradas.map((s) => s.id))}
+              />
+            )}
           </div>
           {seleccionadas.size > 0 && (
             <div className="flex-1 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-[dropdown-in_0.15s_ease-out]">

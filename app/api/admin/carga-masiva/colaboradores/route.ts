@@ -1,8 +1,13 @@
 // app/api/admin/carga-masiva/colaboradores/route.ts
 // POST: crea muchos colaboradores de una sola vez a partir de un .xlsx
-// (mismas reglas que crear uno por uno en /api/colaboradores, fila por
-// fila y en su propia transacción, para que una fila con error no tumbe
-// a las demás). Solo Super Admin: crea cuentas de acceso reales (con PIN).
+// (mismas reglas que crear uno por uno en /api/colaboradores). TODO O
+// NADA: primero se validan todas las filas sin escribir nada; si alguna
+// tiene error no se guarda ninguna (se devuelve la lista de errores para
+// corregir y volver a subir el mismo archivo), y si todas están bien se
+// crean juntas en una sola transacción. Antes se guardaban las filas
+// buenas y se saltaban las malas: al corregir y volver a subir, las ya
+// creadas fallaban por código repetido y sus PIN no se volvían a ver.
+// Solo Super Admin: crea cuentas de acceso reales (con PIN).
 
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -75,15 +80,21 @@ export async function POST(req: Request) {
     return null;
   }
 
-  const resultados: {
+  type ErrorFila = { fila: number; estado: "ERROR"; mensaje: string };
+  type FilaValida = {
     fila: number;
-    estado: "OK" | "ERROR";
-    mensaje: string;
-    pin?: string;
-    nombreCompleto?: string;
-    codigoNomina?: string;
-  }[] = [];
+    apellidos: string;
+    nombres: string;
+    codigoNomina: string;
+    esSupervisor: boolean;
+    sitioId: string;
+    areaId: string;
+    pin: string | null; // null = se genera después de validar todo
+  };
+  const errores: ErrorFila[] = [];
+  const validas: FilaValida[] = [];
 
+  // --- 1) Validar TODAS las filas, sin escribir nada ---
   for (let i = 0; i < filas.length; i++) {
     const fila = filas[i];
     const numeroFila = i + 2; // +1 por índice base 0, +1 por la fila de cabecera
@@ -101,13 +112,13 @@ export async function POST(req: Request) {
     }
 
     if (!apellidos || !nombres || !codigoNomina) {
-      resultados.push({ fila: numeroFila, estado: "ERROR", mensaje: "Apellidos, Nombres y Código de nómina son obligatorios" });
+      errores.push({ fila: numeroFila, estado: "ERROR", mensaje: "Apellidos, Nombres y Código de nómina son obligatorios" });
       continue;
     }
 
     const area = mapaAreas.get(clavearArea(empresaNombre, sitioNombre, areaNombre));
     if (!area) {
-      resultados.push({
+      errores.push({
         fila: numeroFila,
         estado: "ERROR",
         mensaje: `No existe el Área "${areaNombre}" en el Sitio "${sitioNombre}" de la Empresa "${empresaNombre}" (revisá la hoja "Áreas disponibles")`,
@@ -115,65 +126,106 @@ export async function POST(req: Request) {
       continue;
     }
 
-    if (codigosUsados.has(codigoNomina) || (await db.colaborador.findFirst({ where: { codigoNomina }, select: { id: true } }))) {
-      resultados.push({ fila: numeroFila, estado: "ERROR", mensaje: `El código de nómina "${codigoNomina}" ya está en uso` });
+    // codigosUsados = los que ya existen en la base + los de filas
+    // anteriores de este mismo archivo (detecta repetidos dentro del Excel).
+    if (codigosUsados.has(codigoNomina)) {
+      errores.push({ fila: numeroFila, estado: "ERROR", mensaje: `El código de nómina "${codigoNomina}" ya está en uso` });
       continue;
     }
+    codigosUsados.add(codigoNomina);
 
-    let pin = pinPropuesto;
-    if (pin) {
-      if (!/^\d{6}$/.test(pin)) {
-        resultados.push({ fila: numeroFila, estado: "ERROR", mensaje: "El PIN debe tener exactamente 6 dígitos" });
+    if (pinPropuesto) {
+      if (!/^\d{6}$/.test(pinPropuesto)) {
+        errores.push({ fila: numeroFila, estado: "ERROR", mensaje: "El PIN debe tener exactamente 6 dígitos" });
         continue;
       }
-      if (!(await pinDisponible(pin))) {
-        resultados.push({ fila: numeroFila, estado: "ERROR", mensaje: `El PIN "${pin}" ya está en uso` });
+      if (!(await pinDisponible(pinPropuesto))) {
+        errores.push({ fila: numeroFila, estado: "ERROR", mensaje: `El PIN "${pinPropuesto}" ya está en uso` });
         continue;
       }
-    } else {
-      const generado = await generarPinUnico();
-      if (!generado) {
-        resultados.push({ fila: numeroFila, estado: "ERROR", mensaje: "No se pudo generar un PIN único, intenta de nuevo" });
-        continue;
-      }
-      pin = generado;
+      pinLookupsUsados.add(calcularPinLookup(pinPropuesto));
     }
 
-    try {
-      const pinHash = await bcrypt.hash(pin, 10);
-      const pinLookup = calcularPinLookup(pin);
-      const nombreCompleto = `${apellidos} ${nombres}`;
-
-      await db.usuario.create({
-        data: {
-          nombre: nombreCompleto,
-          pinHash,
-          pinLookup,
-          rol: "COLABORADOR",
-          colaborador: {
-            create: {
-              nombreCompleto,
-              apellidos,
-              nombres,
-              codigoNomina,
-              sitioId: area.sitioId,
-              areaId: area.id,
-              esSupervisor,
-            },
-          },
-        },
-      });
-
-      codigosUsados.add(codigoNomina);
-      pinLookupsUsados.add(pinLookup);
-      resultados.push({ fila: numeroFila, estado: "OK", mensaje: "Creado", pin, nombreCompleto, codigoNomina });
-    } catch (e) {
-      const esConflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";
-      const mensaje = esConflicto ? "El código de nómina o el PIN ya están en uso" : "No se pudo crear";
-      resultados.push({ fila: numeroFila, estado: "ERROR", mensaje });
-    }
+    validas.push({
+      fila: numeroFila,
+      apellidos,
+      nombres,
+      codigoNomina,
+      esSupervisor,
+      sitioId: area.sitioId,
+      areaId: area.id,
+      pin: pinPropuesto || null,
+    });
   }
 
-  const creadas = resultados.filter((r) => r.estado === "OK").length;
-  return NextResponse.json({ creadas, total: resultados.length, resultados });
+  if (errores.length > 0) {
+    return NextResponse.json({ rechazado: true, creadas: 0, total: errores.length + validas.length, resultados: errores });
+  }
+  if (validas.length === 0) {
+    return NextResponse.json({ error: "El archivo no tiene filas para procesar" }, { status: 400 });
+  }
+
+  // --- 2) Generar los PIN que faltan y preparar los datos (sin escribir) ---
+  const preparadas: { fila: number; pin: string; pinHash: string; pinLookup: string; nombreCompleto: string; v: FilaValida }[] = [];
+  for (const v of validas) {
+    const pin = v.pin ?? (await generarPinUnico());
+    if (!pin) {
+      return NextResponse.json({
+        rechazado: true,
+        creadas: 0,
+        total: validas.length,
+        resultados: [{ fila: v.fila, estado: "ERROR", mensaje: "No se pudo generar un PIN único, intenta de nuevo" }],
+      });
+    }
+    const pinLookup = calcularPinLookup(pin);
+    pinLookupsUsados.add(pinLookup);
+    preparadas.push({ fila: v.fila, pin, pinHash: await bcrypt.hash(pin, 10), pinLookup, nombreCompleto: `${v.apellidos} ${v.nombres}`, v });
+  }
+
+  // --- 3) Crear todo junto: si una sola falla, no queda ninguna creada ---
+  try {
+    await db.$transaction(
+      preparadas.map((p) =>
+        db.usuario.create({
+          data: {
+            nombre: p.nombreCompleto,
+            pinHash: p.pinHash,
+            pinLookup: p.pinLookup,
+            rol: "COLABORADOR",
+            colaborador: {
+              create: {
+                nombreCompleto: p.nombreCompleto,
+                apellidos: p.v.apellidos,
+                nombres: p.v.nombres,
+                codigoNomina: p.v.codigoNomina,
+                sitioId: p.v.sitioId,
+                areaId: p.v.areaId,
+                esSupervisor: p.v.esSupervisor,
+              },
+            },
+          },
+        })
+      )
+    );
+  } catch (e) {
+    const esConflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";
+    return NextResponse.json(
+      {
+        error: esConflicto
+          ? "Un código de nómina o PIN se usó mientras se procesaba el archivo. No se guardó nada: vuelve a subirlo."
+          : "No se pudo crear los colaboradores. No se guardó nada: vuelve a intentarlo.",
+      },
+      { status: 409 }
+    );
+  }
+
+  const resultados = preparadas.map((p) => ({
+    fila: p.fila,
+    estado: "OK" as const,
+    mensaje: "Creado",
+    pin: p.pin,
+    nombreCompleto: p.nombreCompleto,
+    codigoNomina: p.v.codigoNomina,
+  }));
+  return NextResponse.json({ creadas: resultados.length, total: resultados.length, resultados });
 }

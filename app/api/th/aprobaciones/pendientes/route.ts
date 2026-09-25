@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { obtenerSeleccionTotal, SELECCION_TOTAL_DEFECTO } from "../../../../../lib/parametros";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 
 export async function GET() {
@@ -13,6 +14,9 @@ export async function GET() {
   if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
+  // Si esta pantalla muestra "Seleccionar todas (N)" (Admin -> Parámetros).
+  // Se pide en paralelo con la cola, no suma espera; si falla, valores por defecto.
+  const seleccionTotalPromesa = obtenerSeleccionTotal().catch(() => SELECCION_TOTAL_DEFECTO);
 
   const { sinRestriccion, condicion } = await obtenerCondicionRutaTH(session.id, session.rol);
   const sinAsignaciones = condicion === null;
@@ -53,5 +57,5 @@ export async function GET() {
     rutaLabel: s.ruta.nombre,
   }));
 
-  return NextResponse.json({ pendientes: pendientesSerializadas, sinAsignaciones });
+  return NextResponse.json({ pendientes: pendientesSerializadas, sinAsignaciones, seleccionTotal: (await seleccionTotalPromesa).aprobar });
 }

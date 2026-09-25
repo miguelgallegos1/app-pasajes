@@ -305,5 +305,12 @@ model Parametro {
   // de nueva solicitud (ver lib/parametros.ts). Antes era un "-2" fijo en
   // el código; ahora lo decide Super Admin.
   diasAtrasSolicitud   Int      @default(2)
+  // Botón "Seleccionar todas (N)" por pantalla: marca TODAS las
+  // solicitudes que cumplen los filtros (todas las páginas), no solo las
+  // 15 visibles, para procesarlas en un clic. Pagar arranca encendido
+  // porque Nómina ya lo usaba antes de volverse configurable.
+  seleccionTotalAprobar Boolean @default(false) // Aprobaciones (TH)
+  seleccionTotalRevisar Boolean @default(false) // Revisión (Coordinación)
+  seleccionTotalPagar   Boolean @default(true)  // Pagos (Nómina)
   actualizadoEn        DateTime @updatedAt
 }

@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { obtenerSeleccionTotal, SELECCION_TOTAL_DEFECTO } from "../../../../../lib/parametros";
 import { nombresDeUsuarios } from "../../../../../lib/nombresActores";
 
 export async function GET() {
@@ -13,6 +14,9 @@ export async function GET() {
   if (!session || !["NOMINA", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
+  // Si esta pantalla muestra "Seleccionar todas (N)" (Admin -> Parámetros).
+  // Se pide en paralelo con la cola, no suma espera; si falla, valores por defecto.
+  const seleccionTotalPromesa = obtenerSeleccionTotal().catch(() => SELECCION_TOTAL_DEFECTO);
 
   const revisadas = await db.solicitudPasaje.findMany({
     where: { estado: "REVISADO" },
@@ -45,5 +49,5 @@ export async function GET() {
     rutaNombre: s.ruta.nombre,
   }));
 
-  return NextResponse.json({ revisadas: revisadasSerializadas });
+  return NextResponse.json({ revisadas: revisadasSerializadas, seleccionTotal: (await seleccionTotalPromesa).pagar });
 }

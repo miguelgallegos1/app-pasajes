@@ -1,7 +1,8 @@
 // components/PanelCargaMasiva.tsx
 // Carga masiva por Excel de Colaboradores y Rutas (solo Super Admin):
-// descargar plantilla -> completarla -> subirla -> ver fila por fila qué
-// se creó y qué falló (y por qué), sin que un error tumbe al resto.
+// descargar plantilla -> completarla -> subirla. Todo o nada: si alguna
+// fila tiene error no se guarda ninguna y se listan los errores para
+// corregirlos y volver a subir el MISMO archivo completo.
 
 "use client";
 
@@ -18,7 +19,9 @@ type FilaResultado = {
   nombreCompleto?: string;
   codigoNomina?: string;
 };
-type Resultado = { creadas: number; total: number; resultados: FilaResultado[] };
+// rechazado = el archivo tenía errores y NO se guardó nada (resultados
+// trae solo las filas con error).
+type Resultado = { creadas: number; total: number; resultados: FilaResultado[]; rechazado?: boolean };
 
 function celdaCSV(valor: string): string {
   return `"${valor.replace(/"/g, '""')}"`;
@@ -86,7 +89,13 @@ function BloqueCarga({
         return;
       }
       setResultado(data);
-      toast.exito(`${data.creadas} de ${data.total} fila(s) creada(s) correctamente`);
+      if (data.rechazado) {
+        toast.error(`No se guardó nada: ${data.resultados.length} fila(s) con errores`);
+      } else {
+        toast.exito(`${data.creadas} fila(s) creada(s) correctamente`);
+      }
+      // Se limpia también si fue rechazado: así, al corregir el Excel y
+      // elegirlo de nuevo, el navegador lo vuelve a leer (aunque se llame igual).
       setArchivo(null);
       if (inputRef.current) inputRef.current.value = "";
     } catch {
@@ -134,12 +143,15 @@ function BloqueCarga({
       {resultado && (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              {resultado.creadas} de {resultado.total} fila(s) creada(s) correctamente
-              {resultado.creadas < resultado.total && (
-                <span className="text-red-600"> · {resultado.total - resultado.creadas} con errores</span>
-              )}
-            </p>
+            {resultado.rechazado ? (
+              <p className="text-sm font-medium text-red-600">
+                No se guardó nada: {resultado.resultados.length} de {resultado.total} fila(s) con errores. Corrígelas y vuelve a subir el archivo completo.
+              </p>
+            ) : (
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                {resultado.creadas} fila(s) creada(s) correctamente
+              </p>
+            )}
             <button
               type="button"
               onClick={() => descargarResultadosCSV(resultado, `resultado-carga-${titulo.toLowerCase()}.csv`, columnaPin)}

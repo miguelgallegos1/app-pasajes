@@ -9,6 +9,10 @@ import { getSession } from "../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
 import { notificarCambioEstadoLote } from "../../../../lib/webPush";
 
+// Tope por petición: la pantalla parte selecciones más grandes en tandas
+// (ver lib/enviarEnTandas.ts), así un bloque enorme no deja a la base ocupada.
+const MAX_POR_LOTE = 500;
+
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
@@ -19,44 +23,34 @@ export async function POST(req: Request) {
   if (!Array.isArray(ids) || ids.length === 0 || !ids.every((v) => typeof v === "string")) {
     return NextResponse.json({ error: "No se enviaron solicitudes" }, { status: 400 });
   }
+  if (ids.length > MAX_POR_LOTE) {
+    return NextResponse.json({ error: `Máximo ${MAX_POR_LOTE} solicitudes por bloque` }, { status: 400 });
+  }
 
   const { sinRestriccion, condicion } = await obtenerCondicionRutaTH(session.id, session.rol);
   if (condicion === null) {
     return NextResponse.json({ error: "No tienes áreas asignadas" }, { status: 403 });
   }
 
-  const solicitudesValidas = await db.solicitudPasaje.findMany({
+  // Una sola escritura atómica: el WHERE exige el estado y el alcance, así
+  // que cualquier id que cambió de estado o está fuera del alcance
+  // simplemente no se toca. Devuelve exactamente cuáles se procesaron,
+  // para que la pantalla quite solo esas y avise de las que no.
+  const aprobadas = await db.solicitudPasaje.updateManyAndReturn({
     where: {
       id: { in: ids },
       estado: "PENDIENTE",
       ...(sinRestriccion ? {} : { ruta: condicion }),
     },
-    select: { id: true },
+    data: { estado: "APROBADA", fechaAprobacion: new Date(), aprobadoPorId: session.id },
+    select: { id: true, colaboradorId: true, estado: true },
   });
 
-  const idsValidos = solicitudesValidas.map((s) => s.id);
-  if (idsValidos.length === 0) {
+  if (aprobadas.length === 0) {
     return NextResponse.json({ error: "Ninguna de las solicitudes es válida para aprobar" }, { status: 400 });
   }
 
-  // El estado se vuelve a exigir aquí (no solo en el findMany de arriba)
-  // para que la escritura sea atómica: si alguna de estas solicitudes
-  // cambió de estado entre el findMany y este updateMany (por otra
-  // petición concurrente), esa fila ya no calza en el WHERE y no se toca.
-  const resultado = await db.solicitudPasaje.updateMany({
-    where: { id: { in: idsValidos }, estado: "PENDIENTE" },
-    data: { estado: "APROBADA", fechaAprobacion: new Date(), aprobadoPorId: session.id },
-  });
+  after(() => notificarCambioEstadoLote(aprobadas, session.id));
 
-  // La relectura para saber a quién avisar tampoco hace esperar a quien
-  // aprueba: se hace dentro de after(), junto con el envío en sí.
-  after(async () => {
-    const aprobadas = await db.solicitudPasaje.findMany({
-      where: { id: { in: idsValidos }, estado: "APROBADA" },
-      select: { colaboradorId: true, estado: true },
-    });
-    await notificarCambioEstadoLote(aprobadas, session.id);
-  });
-
-  return NextResponse.json({ aprobadas: resultado.count });
+  return NextResponse.json({ aprobadas: aprobadas.length, ids: aprobadas.map((s) => s.id) });
 }
