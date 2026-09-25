@@ -16,7 +16,7 @@ import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
-import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
+import { formatearFecha, formatearFechaEcuador, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
 import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
@@ -273,7 +273,7 @@ export default function PanelHistorialNomina() {
                   <>
                     <p>{formatearFecha(s.fecha)}</p>
                     {s.fechaPago && (
-                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">Pagada {formatearFecha(s.fechaPago)}</p>
+                      <p className="text-[11px] text-neutral-400 dark:text-neutral-500">Pagada {formatearFechaEcuador(s.fechaPago)}</p>
                     )}
                   </>
                 ),
@@ -310,7 +310,7 @@ export default function PanelHistorialNomina() {
                       <p>{formatearFecha(s.fecha)}</p>
                       {s.fechaPago && (
                         <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                          Pagada: {formatearFecha(s.fechaPago)}
+                          Pagada: {formatearFechaEcuador(s.fechaPago)}
                         </p>
                       )}
                     </td>

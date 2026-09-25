@@ -41,21 +41,23 @@ async function enviarATodasLasSuscripciones(usuarioId: string, payload: string) 
   const suscripciones = await db.pushSubscription.findMany({ where: { usuarioId } });
   if (suscripciones.length === 0) return;
 
-  await Promise.all(
-    suscripciones.map(async (s) => {
-      try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
-      } catch (e) {
-        // 404/410 = el push service dice que esa suscripción ya no
-        // existe (el usuario desinstaló, revocó el permiso, etc.) — se
-        // borra para no seguir intentando en vano.
-        const status = (e as { statusCode?: number })?.statusCode;
-        if (status === 404 || status === 410) {
-          await db.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
-        }
-      }
-    })
-  );
+  await Promise.all(suscripciones.map((s) => enviarASuscripcion(s, payload)));
+}
+
+type Suscripcion = { id: string; endpoint: string; p256dh: string; auth: string };
+
+async function enviarASuscripcion(s: Suscripcion, payload: string) {
+  try {
+    await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
+  } catch (e) {
+    // 404/410 = el push service dice que esa suscripción ya no
+    // existe (el usuario desinstaló, revocó el permiso, etc.) — se
+    // borra para no seguir intentando en vano.
+    const status = (e as { statusCode?: number })?.statusCode;
+    if (status === 404 || status === 410) {
+      await db.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
+    }
+  }
 }
 
 // Nombre de quien hizo el cambio, para mostrarlo en el cuerpo del push
@@ -132,6 +134,13 @@ export async function notificarCambioEstado(
 // notificación por persona con el total, en vez de una por cada
 // solicitud (nómina pagando todo el período junto podría ser decenas de
 // una sola vez para el mismo colaborador).
+//
+// Pensado para lotes grandes sin cargar la base: son 2 consultas en total
+// (colaboradores + suscripciones, cada una con un único IN) sin importar
+// cuántos colaboradores haya, y los envíos salen de a TANDA_ENVIOS a la
+// vez en vez de todos juntos.
+const TANDA_ENVIOS = 20;
+
 export async function notificarCambioEstadoLote(
   items: { colaboradorId: string; estado: string }[],
   actorId?: string
@@ -143,28 +152,44 @@ export async function notificarCambioEstadoLote(
       cantidadPorColaborador.set(it.colaboradorId, (cantidadPorColaborador.get(it.colaboradorId) ?? 0) + 1);
     }
     const estado = items[0].estado;
-    const nombreActor = await nombreDeUsuario(actorId);
+    const [nombreActor, colaboradores] = await Promise.all([
+      nombreDeUsuario(actorId),
+      db.colaborador.findMany({
+        where: { id: { in: Array.from(cantidadPorColaborador.keys()) } },
+        select: { id: true, usuarioId: true, esSupervisor: true, nombreCompleto: true, supervisor: { select: { usuarioId: true } } },
+      }),
+    ]);
+    const cuerpo = nombreActor ? `Por ${nombreActor} · Revisa el detalle en Mis Pasajes` : "Revisa el detalle en Mis Pasajes";
 
-    await Promise.all(
-      Array.from(cantidadPorColaborador.entries()).map(async ([colaboradorId, cantidad]) => {
-        const colaborador = await db.colaborador.findUnique({
-          where: { id: colaboradorId },
-          select: { usuarioId: true, esSupervisor: true, nombreCompleto: true, supervisor: { select: { usuarioId: true } } },
-        });
-        if (!colaborador) return;
-
-        const cuerpo = nombreActor ? `Por ${nombreActor} · Revisa el detalle en Mis Pasajes` : "Revisa el detalle en Mis Pasajes";
-        const payload = JSON.stringify({
+    const avisos = colaboradores.map((colaborador) => {
+      const cantidad = cantidadPorColaborador.get(colaborador.id) ?? 1;
+      return {
+        usuarioId: usuarioDestino(colaborador),
+        payload: JSON.stringify({
           title:
             cantidad === 1
               ? (TITULOS_ESTADO[estado] ?? "Tu solicitud cambió de estado")
               : `${cantidad} ${TITULOS_ESTADO_PLURAL[estado] ?? "solicitudes cambiaron de estado"}`,
           body: conNombreSiEsParaSupervisor(colaborador, cuerpo),
           url: "/mis-pasajes",
-        });
-        await enviarATodasLasSuscripciones(usuarioDestino(colaborador), payload);
-      })
-    );
+        }),
+      };
+    });
+
+    const suscripciones = await db.pushSubscription.findMany({
+      where: { usuarioId: { in: Array.from(new Set(avisos.map((a) => a.usuarioId))) } },
+    });
+    const suscripcionesPorUsuario = new Map<string, typeof suscripciones>();
+    for (const s of suscripciones) {
+      const lista = suscripcionesPorUsuario.get(s.usuarioId) ?? [];
+      lista.push(s);
+      suscripcionesPorUsuario.set(s.usuarioId, lista);
+    }
+
+    const envios = avisos.flatMap((a) => (suscripcionesPorUsuario.get(a.usuarioId) ?? []).map((s) => ({ s, payload: a.payload })));
+    for (let i = 0; i < envios.length; i += TANDA_ENVIOS) {
+      await Promise.all(envios.slice(i, i + TANDA_ENVIOS).map(({ s, payload }) => enviarASuscripcion(s, payload)));
+    }
   } catch {
     // No bloquea la acción real si esto falla por cualquier otro motivo.
   }

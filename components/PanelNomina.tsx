@@ -56,6 +56,8 @@ const VALOR_ORDEN: Record<CampoOrden, (r: Revisada) => string | number> = {
 };
 
 const POR_PAGINA = 15;
+// Máximo por petición al pagar en bloque (= MAX_POR_LOTE en la API).
+const TANDA_PAGO = 500;
 
 function opcionesUnicas<T>(items: T[], idKey: keyof T, labelKey: keyof T) {
   const vistos = new Map<string, string>();
@@ -205,6 +207,12 @@ export default function PanelNomina() {
     });
   };
 
+  // "Seleccionar todas": marca TODAS las revisadas que cumplen los filtros
+  // (todas las páginas), no solo las 15 visibles, para pagar en un clic.
+  const todasFiltradasSeleccionadas =
+    revisadasFiltradas.length > 0 && revisadasFiltradas.every((a) => seleccionadas.has(a.id));
+  const alternarSeleccionarFiltradas = () => alternarGrupoSeleccion(revisadasFiltradas.map((a) => a.id));
+
   // --- Agrupación por colaborador (client-side: la cola de acción es un
   // conjunto acotado, ya está completa en memoria) ---
   const gruposPorColaborador = useMemo(() => {
@@ -233,6 +241,16 @@ export default function PanelNomina() {
   const [pagando, setPagando] = useState(false);
   const [confirmandoLote, setConfirmandoLote] = useState(false);
   const [pagandoLote, setPagandoLote] = useState(false);
+  // Mientras se registra un pago en bloque, el navegador pide confirmar
+  // antes de cerrar/recargar la pestaña: si se corta a mitad, el usuario
+  // no sabría qué quedó pagado (y un Excel bajado en ese momento saldría
+  // incompleto).
+  useEffect(() => {
+    if (!pagandoLote) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [pagandoLote]);
   const [idANovedad, setIdANovedad] = useState<string | null>(null);
   const [motivoNovedad, setMotivoNovedad] = useState("");
   const [enviandoNovedad, setEnviandoNovedad] = useState(false);
@@ -282,30 +300,56 @@ export default function PanelNomina() {
   const confirmarPagoLote = async () => {
     setPagandoLote(true);
     setError("");
+    // Selecciones grandes se mandan en tandas de TANDA_PAGO, una tras otra:
+    // cada petición es liviana y la base nunca queda ocupada con un bloque
+    // enorme. Si una tanda falla, se conserva lo ya pagado en las anteriores.
+    const todas = Array.from(seleccionadas);
+    const idsPagados = new Set<string>();
+    let fallo: string | null = null;
     try {
-      const res = await fetch(`/api/solicitudes/pagar-lote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(seleccionadas) }),
-      });
-      setConfirmandoLote(false);
-      if (!res.ok) {
+      for (let i = 0; i < todas.length; i += TANDA_PAGO) {
+        const res = await fetch(`/api/solicitudes/pagar-lote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: todas.slice(i, i + TANDA_PAGO) }),
+        });
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "No se pudo pagar el lote");
-        toast.error(data.error ?? "No se pudo pagar el lote");
-        return;
+        if (!res.ok) {
+          // "Ninguna válida" en una tanda no corta las siguientes.
+          if (res.status === 400 && data.error?.startsWith("Ninguna")) continue;
+          fallo = data.error ?? "No se pudo pagar el lote";
+          break;
+        }
+        (data.ids as string[]).forEach((id) => idsPagados.add(id));
       }
-      toast.exito("Solicitudes marcadas como pagadas");
-      avisarCambioPendientes();
-      const idsPagados = new Set(seleccionadas);
-      setRevisadas((prev) => prev.filter((a) => !idsPagados.has(a.id)));
-      setSeleccionadas(new Set());
     } catch {
-      setConfirmandoLote(false);
-      setError("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-      toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-    } finally {
-      setPagandoLote(false);
+      fallo = "No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.";
+    }
+    setConfirmandoLote(false);
+    setPagandoLote(false);
+
+    // Se quitan SOLO las que el servidor confirma pagadas: si alguna
+    // cambió de estado mientras tanto, sigue en la lista y se avisa, en
+    // vez de desaparecer como si se hubiera pagado.
+    if (idsPagados.size > 0) {
+      avisarCambioPendientes();
+      setRevisadas((prev) => prev.filter((a) => !idsPagados.has(a.id)));
+      setSeleccionadas((prev) => new Set(Array.from(prev).filter((id) => !idsPagados.has(id))));
+    }
+    const noPagadas = todas.length - idsPagados.size;
+    if (fallo) {
+      const mensaje = idsPagados.size > 0 ? `Se pagaron ${idsPagados.size}, pero el resto falló: ${fallo}` : fallo;
+      setError(mensaje);
+      toast.error(mensaje);
+    } else if (idsPagados.size === 0) {
+      setError("Ninguna de las solicitudes es válida para pagar");
+      toast.error("Ninguna de las solicitudes es válida para pagar");
+    } else if (noPagadas > 0) {
+      toast.advertencia(
+        `Se pagaron ${idsPagados.size}. ${noPagadas} no se ${noPagadas === 1 ? "pudo" : "pudieron"} pagar porque cambiaron de estado — recarga la pantalla para verlas.`
+      );
+    } else {
+      toast.exito(`${idsPagados.size} ${idsPagados.size === 1 ? "solicitud marcada" : "solicitudes marcadas"} como pagadas`);
     }
   };
 
@@ -426,11 +470,22 @@ export default function PanelNomina() {
       </BarraFiltros>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3">
-          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Mostrando</p>
-          <p className="text-lg font-bold text-neutral-900 dark:text-white">
-            {revisadasFiltradas.length} {revisadasFiltradas.length === 1 ? "solicitud" : "solicitudes"} · {formatearMoneda(totalGeneral)}
-          </p>
+        <div className="flex-1 bg-white border border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Mostrando</p>
+            <p className="text-lg font-bold text-neutral-900 dark:text-white">
+              {revisadasFiltradas.length} {revisadasFiltradas.length === 1 ? "solicitud" : "solicitudes"} · {formatearMoneda(totalGeneral)}
+            </p>
+          </div>
+          {revisadasFiltradas.length > 0 && (
+            <button
+              onClick={alternarSeleccionarFiltradas}
+              title={todasFiltradasSeleccionadas ? "Quitar la selección" : "Selecciona todas las que cumplen los filtros, de todas las páginas"}
+              className="shrink-0 whitespace-nowrap text-xs sm:text-sm font-medium text-orange-600 dark:text-orange-400 border border-orange-500/40 hover:bg-orange-500/10 px-3 py-2 rounded-lg transition"
+            >
+              {todasFiltradasSeleccionadas ? "Quitar selección" : `Seleccionar todas (${revisadasFiltradas.length})`}
+            </button>
+          )}
         </div>
         {seleccionadas.size > 0 && (
           <div className="flex-1 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">

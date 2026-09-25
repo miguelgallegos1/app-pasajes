@@ -6,6 +6,9 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { notificarCambioEstadoLote } from "../../../../lib/webPush";
 
+// Debe coincidir con TANDA_PAGO en components/PanelNomina.tsx.
+const MAX_POR_LOTE = 500;
+
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session || !["NOMINA", "SUPER_ADMIN"].includes(session.rol)) {
@@ -16,33 +19,27 @@ export async function POST(req: Request) {
   if (!Array.isArray(ids) || ids.length === 0 || !ids.every((v) => typeof v === "string")) {
     return NextResponse.json({ error: "No se enviaron solicitudes" }, { status: 400 });
   }
+  // Tope por petición para que un bloque enorme no deje a la base
+  // ocupada: la pantalla parte selecciones más grandes en tandas.
+  if (ids.length > MAX_POR_LOTE) {
+    return NextResponse.json({ error: `Máximo ${MAX_POR_LOTE} solicitudes por bloque` }, { status: 400 });
+  }
 
-  const validas = await db.solicitudPasaje.findMany({
+  // Una sola escritura atómica: el WHERE exige estado REVISADO, así que si
+  // alguna cambió de estado (otra persona la devolvió, o ya estaba pagada)
+  // simplemente no se toca. Devuelve exactamente cuáles se pagaron, para
+  // que la pantalla quite solo esas y avise de las que no.
+  const pagadas = await db.solicitudPasaje.updateManyAndReturn({
     where: { id: { in: ids }, estado: "REVISADO" },
-    select: { id: true },
+    data: { estado: "PAGADA", fechaPago: new Date(), pagadoPorId: session.id },
+    select: { id: true, colaboradorId: true, estado: true },
   });
-  const idsValidos = validas.map((s) => s.id);
 
-  if (idsValidos.length === 0) {
+  if (pagadas.length === 0) {
     return NextResponse.json({ error: "Ninguna de las solicitudes es válida para pagar" }, { status: 400 });
   }
 
-  // El estado se vuelve a exigir aquí (no solo en el findMany de arriba)
-  // para que la escritura sea atómica: si alguna de estas solicitudes
-  // cambió de estado entre el findMany y este updateMany (por otra
-  // petición concurrente), esa fila ya no calza en el WHERE y no se toca.
-  const resultado = await db.solicitudPasaje.updateMany({
-    where: { id: { in: idsValidos }, estado: "REVISADO" },
-    data: { estado: "PAGADA", fechaPago: new Date(), pagadoPorId: session.id },
-  });
+  after(() => notificarCambioEstadoLote(pagadas, session.id));
 
-  after(async () => {
-    const pagadas = await db.solicitudPasaje.findMany({
-      where: { id: { in: idsValidos }, estado: "PAGADA" },
-      select: { colaboradorId: true, estado: true },
-    });
-    await notificarCambioEstadoLote(pagadas, session.id);
-  });
-
-  return NextResponse.json({ pagadas: resultado.count });
+  return NextResponse.json({ pagadas: pagadas.length, ids: pagadas.map((s) => s.id) });
 }

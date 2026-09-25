@@ -1,20 +1,15 @@
 // app/api/nomina/historial/exportar/route.ts
-// GET: exporta a Excel el historial de PAGADAS con los mismos filtros que
-// la pantalla (desde, hasta, empresa/sitio/área/colaborador), sin paginar
-// (con un tope de filas para proteger el servidor).
+// GET: exporta a Excel lo PAGADO cuyo pasaje cae en el rango, con los
+// mismos filtros que la pantalla (empresa/sitio/área/colaborador),
+// CONSOLIDADO: una fila por colaborador con su valor total, sin rutas —
+// es lo que Nómina necesita para cargar el pago. La suma se hace en la
+// base de datos (groupBy), no trayendo cada solicitud.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { fechaValida } from "../../../../../lib/fechas";
-import {
-  construirLibroExcel,
-  limitarFilasExportacion,
-  filaHistorialExcel,
-  filaAvisoTruncadoHistorial,
-  nombreArchivoExcel,
-} from "../../../../../lib/exportarExcel";
-import { nombresDeUsuarios } from "../../../../../lib/nombresActores";
+import { construirLibroExcel, nombreArchivoExcel } from "../../../../../lib/exportarExcel";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -48,30 +43,51 @@ export async function GET(req: Request) {
   else if (sitioId) filtro.ruta = { sitioId };
   else if (empresaId) filtro.ruta = { empresaId };
 
-  const solicitudes = await db.solicitudPasaje.findMany({
+  const grupos = await db.solicitudPasaje.groupBy({
+    by: ["colaboradorId"],
     where: filtro,
-    include: {
-      colaborador: { select: { nombreCompleto: true, codigoNomina: true } },
-      ruta: {
+    _sum: { montoTotal: true },
+    _count: true,
+  });
+  const colaboradores = grupos.length
+    ? await db.colaborador.findMany({
+        where: { id: { in: grupos.map((g) => g.colaboradorId) } },
         select: {
-          nombre: true,
+          id: true,
+          nombreCompleto: true,
+          codigoNomina: true,
           area: { select: { nombre: true, sitio: { select: { nombre: true, empresa: { select: { nombre: true } } } } } },
         },
-      },
-    },
-    orderBy: { fechaPago: "desc" },
-  });
+      })
+    : [];
+  const colaboradorPorId = new Map(colaboradores.map((c) => [c.id, c]));
 
-  const nombrePorActorId = await nombresDeUsuarios(
-    solicitudes.flatMap((s) => [s.aprobadoPorId, s.revisadoPorId, s.pagadoPorId])
-  );
-  const { filas, truncado } = limitarFilasExportacion(solicitudes.map((s) => filaHistorialExcel(s, nombrePorActorId)));
-  // El tope de filas protege al servidor, pero si se aplicó hay que
-  // avisarlo dentro del propio Excel (el archivo se descarga con un link
-  // directo, no hay forma de mostrar un aviso en pantalla).
-  if (truncado) {
-    filas.push(filaAvisoTruncadoHistorial());
-  }
+  // Empresa/Sitio/Área son los del colaborador (sus rutas pagadas pueden
+  // ser de más de un área, y acá ya no hay detalle por ruta).
+  const filas = grupos
+    .map((g) => {
+      const c = colaboradorPorId.get(g.colaboradorId);
+      return {
+        Empresa: c?.area.sitio.empresa.nombre ?? "",
+        Sitio: c?.area.sitio.nombre ?? "",
+        Área: c?.area.nombre ?? "",
+        "Código colaborador": c?.codigoNomina ?? "",
+        Colaborador: c?.nombreCompleto ?? "Desconocido",
+        Pasajes: g._count,
+        Valor: Number(g._sum.montoTotal ?? 0),
+      };
+    })
+    .sort((a, b) => a.Colaborador.localeCompare(b.Colaborador));
+  filas.push({
+    Empresa: "TOTAL",
+    Sitio: "",
+    Área: "",
+    "Código colaborador": "",
+    Colaborador: "",
+    Pasajes: grupos.reduce((acc, g) => acc + g._count, 0),
+    // Redondeo a centavos: sumar decimales en coma flotante deja colas (…0000001).
+    Valor: Math.round(grupos.reduce((acc, g) => acc + Number(g._sum.montoTotal ?? 0), 0) * 100) / 100,
+  });
 
   const libro = construirLibroExcel(filas, "Historial de pagos");
   return new NextResponse(new Uint8Array(libro), {

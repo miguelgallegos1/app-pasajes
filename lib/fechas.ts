@@ -48,3 +48,11 @@ export function fechaUTCATexto(fecha: string | Date): string {
   const dia = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${dia}`;
 }
+
+// DD/MM/YYYY del día en hora de Ecuador, para columnas con HORA real
+// (ej. fechaPago). formatearFecha usa UTC y es solo para fechas-sin-hora:
+// con un pago hecho de noche mostraría el día siguiente.
+export function formatearFechaEcuador(fecha: string | Date): string {
+  const d = typeof fecha === "string" ? new Date(fecha) : fecha;
+  return d.toLocaleDateString("es-EC", { timeZone: "America/Guayaquil", day: "2-digit", month: "2-digit", year: "numeric" });
+}
