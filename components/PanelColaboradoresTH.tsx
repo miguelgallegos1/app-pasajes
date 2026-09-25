@@ -434,11 +434,11 @@ export default function PanelColaboradoresTH() {
             <tbody>
               {colaboradoresPagina.map((c, i) => (
                 <tr key={c.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
-                  <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">{c.numero}</td>
-                  <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400">
+                  <td className="px-4 py-2 text-neutral-400 dark:text-neutral-500">{c.numero}</td>
+                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
                     {c.codigoNomina ?? <span className="text-amber-600">Sin código</span>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2">
                     <div className="flex items-center gap-2.5">
                       <Avatar nombre={c.nombreCompleto} indice={i} className="w-7 h-7 text-[11px]" />
                       <span>
@@ -451,8 +451,8 @@ export default function PanelColaboradoresTH() {
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-neutral-500 dark:text-neutral-400">{c.supervisorNombre ?? "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{c.supervisorNombre ?? "—"}</td>
+                  <td className="px-4 py-2">
                     <span
                       className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${
                         c.estado === "ACTIVO" ? "bg-green-100 text-green-800" : "bg-neutral-200 text-neutral-600"
@@ -461,7 +461,7 @@ export default function PanelColaboradoresTH() {
                       {c.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-2 text-right">
                     <MenuAcciones
                       acciones={[
                         { label: "Editar", onClick: () => abrirEditar(c) },

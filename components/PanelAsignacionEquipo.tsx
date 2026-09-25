@@ -392,20 +392,20 @@ export default function PanelAsignacionEquipo() {
                     key={c.id}
                     type="button"
                     onClick={() => seleccionarSupervisor(c)}
-                    className={`w-full text-left px-4 py-3 transition ${
+                    className={`w-full text-left px-4 py-2.5 transition ${
                       activo ? "bg-orange-50 dark:bg-orange-500/10" : "hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60"
                     }`}
                   >
                     <div className="flex items-start gap-2.5">
-                      <Avatar nombre={c.nombreCompleto} indice={i} className="w-8 h-8 text-xs mt-0.5" />
+                      <Avatar nombre={c.nombreCompleto} indice={i} className="w-7 h-7 text-[11px] mt-0.5" />
                       <div className="min-w-0">
-                        <p className={`text-sm font-medium truncate ${activo ? "text-orange-700" : "text-neutral-800 dark:text-neutral-200"}`}>
+                        <p className={`text-xs font-medium truncate ${activo ? "text-orange-700" : "text-neutral-800 dark:text-neutral-200"}`}>
                           {c.nombreCompleto}
                         </p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
                           {c.codigoNomina ?? "Sin código"} · {c.areaNombre}
                         </p>
-                        <p className="text-[11px] font-semibold mt-1 text-neutral-400 dark:text-neutral-500">
+                        <p className="text-[10px] font-semibold mt-0.5 text-neutral-400 dark:text-neutral-500">
                           {cantidad} persona{cantidad === 1 ? "" : "s"} a cargo
                         </p>
                       </div>
