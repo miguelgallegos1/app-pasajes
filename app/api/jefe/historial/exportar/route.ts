@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { fechaValida, formatearFecha } from "../../../../../lib/fechas";
-import { construirLibroExcel, limitarFilasExportacion } from "../../../../../lib/exportarExcel";
+import { construirLibroExcel, limitarFilasExportacion, nombreArchivoExcel } from "../../../../../lib/exportarExcel";
 
 const ESTADOS_VALIDOS = ["PENDIENTE", "APROBADA", "RECHAZADA", "REVISADO", "PAGADA"] as const;
 
@@ -93,7 +93,7 @@ export async function GET(req: Request) {
   return new NextResponse(new Uint8Array(libro), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="historial-general-${desde}_a_${hasta}.xlsx"`,
+      "Content-Disposition": `attachment; filename="${nombreArchivoExcel(`historial-general-${desde}_a_${hasta}`)}"`,
     },
   });
 }

@@ -10,7 +10,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../../lib/db";
 import { getSession } from "../../../../../../lib/auth";
 import { obtenerCondicionColaboradorTH } from "../../../../../../lib/alcanceTH";
-import { construirLibroExcel, limitarFilasExportacion } from "../../../../../../lib/exportarExcel";
+import { construirLibroExcel, limitarFilasExportacion, nombreArchivoExcel } from "../../../../../../lib/exportarExcel";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -81,7 +81,7 @@ export async function GET(req: Request) {
   return new NextResponse(new Uint8Array(libro), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="asignacion-rutas.xlsx"`,
+      "Content-Disposition": `attachment; filename="${nombreArchivoExcel("asignacion-rutas")}"`,
     },
   });
 }

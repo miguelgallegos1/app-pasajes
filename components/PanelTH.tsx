@@ -35,6 +35,7 @@ type Pendiente = {
   observaciones: string | null;
   colaboradorId: string;
   nombreColaborador: string;
+  codigoNomina: string | null;
   supervisorId: string | null;
   supervisorNombre: string | null;
   rutaLabel: string;
@@ -42,7 +43,7 @@ type Pendiente = {
 
 type CampoOrden = "codigo" | "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal";
 const VALOR_ORDEN: Record<CampoOrden, (p: Pendiente) => string | number> = {
-  codigo: (p) => p.codigo,
+  codigo: (p) => p.codigoNomina ?? "",
   fecha: (p) => p.fecha,
   nombreColaborador: (p) => p.nombreColaborador,
   rutaLabel: (p) => p.rutaLabel,
@@ -128,6 +129,7 @@ export default function PanelTH() {
       if (!texto) return true;
       return (
         p.codigo.toLowerCase().includes(texto) ||
+        (p.codigoNomina ?? "").toLowerCase().includes(texto) ||
         p.nombreColaborador.toLowerCase().includes(texto) ||
         p.rutaLabel.toLowerCase().includes(texto) ||
         (p.observaciones ?? "").toLowerCase().includes(texto)
@@ -506,7 +508,7 @@ export default function PanelTH() {
               alternarGrupo: alternarGrupoSeleccion,
             }}
             columnas={[
-              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
               { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
               { encabezado: "Ruta", render: (s) => s.rutaLabel },
               { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
@@ -582,7 +584,7 @@ export default function PanelTH() {
                         className="w-4 h-4 accent-orange-500 rounded"
                       />
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(s.fecha)}</p>
                       <p className="text-[11px] text-neutral-400 dark:text-neutral-500">

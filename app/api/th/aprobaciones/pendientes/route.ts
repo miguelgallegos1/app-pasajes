@@ -29,6 +29,7 @@ export async function GET() {
           colaborador: {
             select: {
               nombreCompleto: true,
+              codigoNomina: true,
               supervisorId: true,
               supervisor: { select: { nombreCompleto: true } },
             },
@@ -46,6 +47,7 @@ export async function GET() {
     observaciones: s.observaciones,
     colaboradorId: s.colaboradorId,
     nombreColaborador: s.colaborador.nombreCompleto,
+    codigoNomina: s.colaborador.codigoNomina,
     supervisorId: s.colaborador.supervisorId,
     supervisorNombre: s.colaborador.supervisor?.nombreCompleto ?? null,
     rutaLabel: s.ruta.nombre,

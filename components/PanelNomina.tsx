@@ -34,6 +34,8 @@ type Revisada = {
   montoTotal: number;
   colaboradorId: string;
   nombreColaborador: string;
+  codigoNomina: string | null;
+  revisadoPor: string | null;
   empresaId: string;
   empresaNombre: string;
   sitioId: string;
@@ -46,7 +48,7 @@ type Revisada = {
 
 type CampoOrden = "codigo" | "fecha" | "nombreColaborador" | "rutaNombre" | "montoTotal";
 const VALOR_ORDEN: Record<CampoOrden, (r: Revisada) => string | number> = {
-  codigo: (r) => r.codigo,
+  codigo: (r) => r.codigoNomina ?? "",
   fecha: (r) => r.fecha,
   nombreColaborador: (r) => r.nombreColaborador,
   rutaNombre: (r) => r.rutaNombre,
@@ -141,6 +143,7 @@ export default function PanelNomina() {
       if (!texto) return true;
       return (
         a.codigo.toLowerCase().includes(texto) ||
+        (a.codigoNomina ?? "").toLowerCase().includes(texto) ||
         a.nombreColaborador.toLowerCase().includes(texto) ||
         a.rutaNombre.toLowerCase().includes(texto)
       );
@@ -471,10 +474,11 @@ export default function PanelNomina() {
             alternarGrupo: alternarGrupoSeleccion,
           }}
           columnas={[
-            { encabezado: "Código", render: (a) => <span className="font-mono">{a.codigo}</span> },
+            { encabezado: "Código", render: (a) => <span className="font-mono">{a.codigoNomina ?? "—"}</span> },
             { encabezado: "Fecha", render: (a) => formatearFecha(a.fecha) },
             { encabezado: "Ruta", render: (a) => a.rutaNombre },
             { encabezado: "Valor", render: (a) => formatearMoneda(a.montoTotal) },
+            { encabezado: "Revisado por", render: (a) => a.revisadoPor ?? "—" },
           ]}
           acciones={(a) => (
             <div className="flex gap-1.5">
@@ -518,9 +522,9 @@ export default function PanelNomina() {
                   <EncabezadoOrdenable campo="codigo" ordenActivo={orden} onOrdenar={ordenar}>Código</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="fecha" ordenActivo={orden} onOrdenar={ordenar}>Fecha del pasaje</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
-                  <th className="px-4 py-3 font-medium">Empresa · Sitio · Área</th>
                   <EncabezadoOrdenable campo="rutaNombre" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
+                  <th className="px-4 py-3 font-medium">Revisado por</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -541,7 +545,7 @@ export default function PanelNomina() {
                         className="w-4 h-4 accent-orange-500 rounded"
                       />
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{a.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{a.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(a.fecha)}</p>
                       {a.fechaRevision && (
@@ -558,9 +562,9 @@ export default function PanelNomina() {
                         <span>{a.nombreColaborador}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-neutral-600">{a.empresaNombre} · {a.sitioNombre} · {a.areaNombre}</td>
                     <td className="px-4 py-3">{a.rutaNombre}</td>
                     <td className="px-4 py-3">{formatearMoneda(a.montoTotal)}</td>
+                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{a.revisadoPor ?? "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5">
                         <button

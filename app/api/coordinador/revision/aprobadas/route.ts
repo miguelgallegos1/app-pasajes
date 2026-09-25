@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { nombresDeUsuarios } from "../../../../../lib/nombresActores";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 
 export async function GET() {
@@ -29,6 +30,7 @@ export async function GET() {
           colaborador: {
             select: {
               nombreCompleto: true,
+              codigoNomina: true,
               supervisorId: true,
               supervisor: { select: { nombreCompleto: true } },
             },
@@ -36,6 +38,8 @@ export async function GET() {
           ruta: { include: { area: { include: { sitio: { include: { empresa: true } } } } } },
         },
       });
+
+  const nombrePorActorId = await nombresDeUsuarios(aprobadas.map((s) => s.aprobadoPorId));
 
   const aprobadasSerializadas = aprobadas.map((s) => ({
     id: s.id,
@@ -45,6 +49,8 @@ export async function GET() {
     montoTotal: Number(s.montoTotal),
     colaboradorId: s.colaboradorId,
     nombreColaborador: s.colaborador.nombreCompleto,
+    codigoNomina: s.colaborador.codigoNomina,
+    aprobadoPor: s.aprobadoPorId ? (nombrePorActorId.get(s.aprobadoPorId) ?? null) : null,
     supervisorId: s.colaborador.supervisorId,
     supervisorNombre: s.colaborador.supervisor?.nombreCompleto ?? null,
     empresaId: s.ruta.area.sitio.empresaId,

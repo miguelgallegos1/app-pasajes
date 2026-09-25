@@ -40,7 +40,7 @@ export async function GET() {
       orderBy: { fecha: "desc" },
       include: {
         ruta: true, // ya no hace falta "area", usamos el nombre propio de la ruta
-        colaborador: { select: { nombreCompleto: true } },
+        colaborador: { select: { nombreCompleto: true, codigoNomina: true } },
       },
     }),
     db.ruta.findMany({
@@ -69,6 +69,7 @@ export async function GET() {
     observaciones: s.observaciones,
     rutaLabel: s.ruta.nombre,
     nombreColaborador: s.colaborador.nombreCompleto,
+    codigoNomina: s.colaborador.codigoNomina,
   }));
 
   return NextResponse.json({

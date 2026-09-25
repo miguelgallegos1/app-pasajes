@@ -12,6 +12,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips, CamposEmpresaSitioArea, chipsEmpresaSitioArea } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
@@ -24,7 +25,7 @@ import { IconoDescargar } from "./Icons";
 type Empresa = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; empresaId: string };
 type Area = { id: string; nombre: string; sitioId: string };
-type Fila = { id: string; codigo: string; fecha: string; fechaPago: string | null; montoTotal: number; nombreColaborador: string; rutaLabel: string };
+type Fila = { id: string; codigo: string; fecha: string; fechaPago: string | null; montoTotal: number; nombreColaborador: string; codigoNomina: string | null; pagadoPor: string | null; rutaLabel: string };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal";
 const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
@@ -92,6 +93,9 @@ export default function PanelHistorialNomina() {
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
+  // Cada búsqueda enciende la franja naranja de arriba, para que se note
+  // que está trabajando (la tabla de relleno sola pasaba desapercibida).
+  useReportarCarga(cargando);
   const [error, setError] = useState("");
 
   const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
@@ -252,7 +256,7 @@ export default function PanelHistorialNomina() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {cargando && <TablaEsqueleto columnas={vista === "lista" ? 5 : 3} />}
+      {cargando && <TablaEsqueleto columnas={vista === "lista" ? 6 : 3} />}
 
       {!cargando && vista === "colaborador" && filasColaborador && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
@@ -262,7 +266,7 @@ export default function PanelHistorialNomina() {
             clave={(s) => s.id}
             claveOrden="nomina-historial-colaborador"
             columnas={[
-              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
               {
                 encabezado: "Fecha",
                 render: (s) => (
@@ -276,6 +280,7 @@ export default function PanelHistorialNomina() {
               },
               { encabezado: "Ruta", render: (s) => s.rutaLabel },
               { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+              { encabezado: "Pagado por", render: (s) => s.pagadoPor ?? "—" },
             ]}
             vacio="No hay pagos registrados en ese rango"
           />
@@ -286,7 +291,7 @@ export default function PanelHistorialNomina() {
       {!cargando && vista === "lista" && items && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-xs">
+            <table className="w-full min-w-[820px] text-xs">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>
@@ -294,12 +299,13 @@ export default function PanelHistorialNomina() {
                   <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
+                  <th className="px-4 py-3 font-medium">Pagado por</th>
                 </tr>
               </thead>
               <tbody>
                 {itemsOrdenados.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">
                       <p>{formatearFecha(s.fecha)}</p>
                       {s.fechaPago && (
@@ -311,11 +317,12 @@ export default function PanelHistorialNomina() {
                     <td className="px-4 py-3">{s.nombreColaborador}</td>
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
                     <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
+                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{s.pagadoPor ?? "—"}</td>
                   </tr>
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10">
+                    <td colSpan={6} className="px-4 py-10">
                       <EstadoVacio mensaje="No hay pagos registrados en ese rango" />
                     </td>
                   </tr>
@@ -325,7 +332,7 @@ export default function PanelHistorialNomina() {
                 <tfoot>
                   <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 font-semibold">
                     <td className="px-4 py-3" colSpan={4}>Total del rango</td>
-                    <td className="px-4 py-3">{formatearMoneda(totalMonto)}</td>
+                    <td className="px-4 py-3" colSpan={2}>{formatearMoneda(totalMonto)}</td>
                   </tr>
                 </tfoot>
               )}

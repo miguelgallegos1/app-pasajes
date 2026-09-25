@@ -34,6 +34,8 @@ type Aprobada = {
   montoTotal: number;
   colaboradorId: string;
   nombreColaborador: string;
+  codigoNomina: string | null;
+  aprobadoPor: string | null;
   supervisorId: string | null;
   supervisorNombre: string | null;
   empresaId: string;
@@ -48,7 +50,7 @@ type Aprobada = {
 
 type CampoOrden = "codigo" | "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal";
 const VALOR_ORDEN: Record<CampoOrden, (a: Aprobada) => string | number> = {
-  codigo: (a) => a.codigo,
+  codigo: (a) => a.codigoNomina ?? "",
   fecha: (a) => a.fecha,
   nombreColaborador: (a) => a.nombreColaborador,
   rutaLabel: (a) => a.rutaLabel,
@@ -173,6 +175,7 @@ export default function PanelCoordinador() {
       if (!texto) return true;
       return (
         s.codigo.toLowerCase().includes(texto) ||
+        (s.codigoNomina ?? "").toLowerCase().includes(texto) ||
         s.nombreColaborador.toLowerCase().includes(texto) ||
         s.rutaLabel.toLowerCase().includes(texto)
       );
@@ -512,10 +515,11 @@ export default function PanelCoordinador() {
               alternarGrupo: alternarGrupoSeleccion,
             }}
             columnas={[
-              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
               { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
               { encabezado: "Ruta", render: (s) => s.rutaLabel },
               { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+              { encabezado: "Aprobado por", render: (s) => s.aprobadoPor ?? "—" },
             ]}
             acciones={(s) => (
               <div className="flex gap-1.5">
@@ -545,7 +549,7 @@ export default function PanelCoordinador() {
               onKeyDown={alPresionar}
               className="overflow-x-auto outline-none"
             >
-              <table className="w-full text-xs min-w-[680px]">
+              <table className="w-full text-xs min-w-[780px]">
                 <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                   <tr>
                     <th className="px-4 py-3 w-10">
@@ -561,6 +565,7 @@ export default function PanelCoordinador() {
                     <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
                     <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
                     <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
+                    <th className="px-4 py-3 font-medium">Aprobado por</th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
@@ -581,8 +586,17 @@ export default function PanelCoordinador() {
                           className="w-4 h-4 accent-orange-500 rounded"
                         />
                       </td>
-                      <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
-                      <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
+                      <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium">{formatearFecha(s.fecha)}</p>
+                        {s.fechaAprobacion && (
+                          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                            Aprobada: {new Date(s.fechaAprobacion).toLocaleString("es-EC", {
+                              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                            })}
+                          </p>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <Avatar nombre={s.nombreColaborador} indice={i} className="w-7 h-7 text-[11px]" />
@@ -591,6 +605,7 @@ export default function PanelCoordinador() {
                       </td>
                       <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
                       <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
+                      <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{s.aprobadoPor ?? "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1.5">
                           <button
@@ -612,7 +627,7 @@ export default function PanelCoordinador() {
                   ))}
                   {aprobadasFiltradas.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10">
+                      <td colSpan={8} className="px-4 py-10">
                         <EstadoVacio
                           mensaje={
                             busqueda

@@ -67,7 +67,7 @@ export async function GET(req: Request) {
   const [items, total, suma] = await Promise.all([
     db.solicitudPasaje.findMany({
       where: filtro,
-      include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true } } },
+      include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true, codigoNomina: true } } },
       orderBy: { fecha: "desc" },
       skip: (pagina - 1) * POR_PAGINA,
       take: POR_PAGINA,
@@ -85,6 +85,7 @@ export async function GET(req: Request) {
       estado: s.estado,
       rutaLabel: s.ruta.nombre,
       nombreColaborador: s.colaborador.nombreCompleto,
+      codigoNomina: s.colaborador.codigoNomina,
     })),
     total,
     totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),

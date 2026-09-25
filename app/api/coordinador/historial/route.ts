@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { nombresDeUsuarios } from "../../../../lib/nombresActores";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
 import { fechaValida } from "../../../../lib/fechas";
 
@@ -65,7 +66,7 @@ export async function GET(req: Request) {
   const [items, total, suma] = await Promise.all([
     db.solicitudPasaje.findMany({
       where: filtro,
-      include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true } } },
+      include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true, codigoNomina: true } } },
       orderBy: { fecha: "desc" },
       skip: (pagina - 1) * POR_PAGINA,
       take: POR_PAGINA,
@@ -73,6 +74,8 @@ export async function GET(req: Request) {
     db.solicitudPasaje.count({ where: filtro }),
     db.solicitudPasaje.aggregate({ where: filtro, _sum: { montoTotal: true } }),
   ]);
+
+  const nombrePorActorId = await nombresDeUsuarios(items.map((s) => s.revisadoPorId));
 
   return NextResponse.json({
     items: items.map((s) => ({
@@ -83,6 +86,8 @@ export async function GET(req: Request) {
       estado: s.estado,
       rutaLabel: s.ruta.nombre,
       nombreColaborador: s.colaborador.nombreCompleto,
+      codigoNomina: s.colaborador.codigoNomina,
+      revisadoPor: s.revisadoPorId ? (nombrePorActorId.get(s.revisadoPorId) ?? null) : null,
     })),
     total,
     totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),

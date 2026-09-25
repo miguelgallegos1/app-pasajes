@@ -78,6 +78,8 @@ export default function PanelDashboard() {
   const [areaId, setAreaId] = useState("");
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(false);
+  // Cada búsqueda de KPIs también enciende la franja naranja de arriba.
+  useReportarCarga(cargando);
   const [error, setError] = useState("");
   // Se le pasa como `key` a los gráficos para que remonten (y así
   // repitan su animación de entrada) cada vez que llegan datos nuevos.

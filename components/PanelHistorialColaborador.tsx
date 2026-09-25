@@ -29,6 +29,7 @@ type Fila = {
   estado: string;
   rutaLabel: string;
   nombreColaborador: string;
+  codigoNomina: string | null;
 };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
@@ -158,7 +159,7 @@ export default function PanelHistorialColaborador() {
               <tbody>
                 {itemsOrdenados.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
                     {esSupervisor && <td className="px-4 py-3">{s.nombreColaborador}</td>}
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>

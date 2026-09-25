@@ -18,6 +18,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useToast } from "./Toast";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
@@ -87,6 +88,9 @@ export default function PanelControlSolicitudes() {
   const [totalPaginas, setTotalPaginas] = useState(1);
   // true de entrada: la primera búsqueda sale sola al montar.
   const [cargando, setCargando] = useState(true);
+  // Cada búsqueda enciende la franja naranja de arriba, para que se note
+  // que está trabajando (la tabla de relleno sola pasaba desapercibida).
+  useReportarCarga(cargando);
   const [error, setError] = useState("");
 
   const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(

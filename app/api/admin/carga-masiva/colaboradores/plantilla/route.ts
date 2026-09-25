@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../../lib/auth";
-import { construirLibroExcelMultiHoja } from "../../../../../../lib/exportarExcel";
+import { construirLibroExcelMultiHoja, nombreArchivoExcel } from "../../../../../../lib/exportarExcel";
 import { obtenerFilasReferenciaAreas } from "../../../../../../lib/areasLookup";
 
 export async function GET() {
@@ -35,7 +35,7 @@ export async function GET() {
   return new NextResponse(new Uint8Array(libro), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="plantilla-colaboradores.xlsx"`,
+      "Content-Disposition": `attachment; filename="${nombreArchivoExcel("plantilla-colaboradores")}"`,
     },
   });
 }

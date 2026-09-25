@@ -15,6 +15,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips, CamposEmpresaSitioArea, chipsEmpresaSitioArea } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import SelectorVista from "./SelectorVista";
@@ -28,7 +29,7 @@ import { IconoDescargar } from "./Icons";
 type Empresa = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; empresaId: string };
 type Area = { id: string; nombre: string; sitioId: string };
-type Fila = { id: string; codigo: string; fecha: string; montoTotal: number; estado: string; rutaLabel: string; nombreColaborador: string };
+type Fila = { id: string; codigo: string; fecha: string; montoTotal: number; estado: string; rutaLabel: string; nombreColaborador: string; codigoNomina: string | null };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
 const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
@@ -108,6 +109,9 @@ export default function PanelHistorialJefe() {
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
+  // Cada búsqueda enciende la franja naranja de arriba, para que se note
+  // que está trabajando (la tabla de relleno sola pasaba desapercibida).
+  useReportarCarga(cargando);
   const [error, setError] = useState("");
 
   const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
@@ -285,7 +289,7 @@ export default function PanelHistorialJefe() {
             clave={(s) => s.id}
             claveOrden="jefe-historial-colaborador"
             columnas={[
-              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
               { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
               { encabezado: "Ruta", render: (s) => s.rutaLabel },
               { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
@@ -324,7 +328,7 @@ export default function PanelHistorialJefe() {
               <tbody>
                 {itemsOrdenados.map((s, i) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">

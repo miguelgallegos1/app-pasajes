@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { nombresDeUsuarios } from "../../../../../lib/nombresActores";
 
 export async function GET() {
   const session = await getSession();
@@ -17,10 +18,12 @@ export async function GET() {
     where: { estado: "REVISADO" },
     orderBy: { fechaRevision: "asc" },
     include: {
-      colaborador: { select: { nombreCompleto: true } },
+      colaborador: { select: { nombreCompleto: true, codigoNomina: true } },
       ruta: { include: { area: { include: { sitio: { include: { empresa: true } } } } } },
     },
   });
+
+  const nombrePorActorId = await nombresDeUsuarios(revisadas.map((s) => s.revisadoPorId));
 
   const revisadasSerializadas = revisadas.map((s) => ({
     id: s.id,
@@ -30,6 +33,8 @@ export async function GET() {
     montoTotal: Number(s.montoTotal),
     colaboradorId: s.colaboradorId,
     nombreColaborador: s.colaborador.nombreCompleto,
+    codigoNomina: s.colaborador.codigoNomina,
+    revisadoPor: s.revisadoPorId ? (nombrePorActorId.get(s.revisadoPorId) ?? null) : null,
     empresaId: s.ruta.area.sitio.empresaId,
     empresaNombre: s.ruta.area.sitio.empresa.nombre,
     sitioId: s.ruta.area.sitioId,

@@ -22,7 +22,7 @@ import { useToast } from "./Toast";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useHistorialLista } from "../lib/useHistorialLista";
-import { IconoImprimir, IconoDevolver } from "./Icons";
+import { IconoImprimir, IconoDevolver, IconoDescargar } from "./Icons";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 
 type Fila = {
@@ -33,6 +33,8 @@ type Fila = {
   estado: string;
   rutaLabel: string;
   nombreColaborador: string;
+  codigoNomina: string | null;
+  aprobadoPor: string | null;
 };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
@@ -160,6 +162,15 @@ export default function PanelHistorialTH() {
     return `/th/historial/imprimir?${params.toString()}`;
   };
 
+  // Exporta con los filtros de la ÚLTIMA búsqueda (sin paginar), y solo se
+  // habilita si esa búsqueda trajo resultados — evita un Excel vacío.
+  const urlExportar = () => {
+    const params = new URLSearchParams(ultimaUrl?.split("?")[1] ?? "");
+    params.delete("pagina");
+    return `/api/th/historial/exportar?${params.toString()}`;
+  };
+  const puedeExportar = !cargando && !sinAsignaciones && !!ultimaUrl && totalRegistros > 0;
+
   const cambiarSupervisor = (v: string) => {
     setSupervisorId(v);
     setColaboradorId("");
@@ -267,6 +278,21 @@ export default function PanelHistorialTH() {
                 <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
               </a>
             )}
+            {puedeExportar ? (
+              <a
+                href={urlExportar()}
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
+              >
+                <IconoDescargar className="w-4 h-4" /> Exportar a Excel
+              </a>
+            ) : (
+              <span
+                title={sinAsignaciones ? "Sin áreas asignadas" : cargando ? "Buscando..." : "Busca primero: no hay resultados para exportar"}
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
+              >
+                <IconoDescargar className="w-4 h-4" /> Exportar a Excel
+              </span>
+            )}
           </>
         }
       >
@@ -301,6 +327,7 @@ export default function PanelHistorialTH() {
                   <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
+                  <th className="px-4 py-3 font-medium">Aprobado por</th>
                   <EncabezadoOrdenable campo="estado" ordenActivo={orden} onOrdenar={ordenar}>Estado</EncabezadoOrdenable>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -308,7 +335,7 @@ export default function PanelHistorialTH() {
               <tbody>
                 {itemsOrdenados.map((s, i) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
@@ -318,6 +345,7 @@ export default function PanelHistorialTH() {
                     </td>
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
                     <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
+                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{s.aprobadoPor ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
                         {s.estado}
@@ -338,7 +366,7 @@ export default function PanelHistorialTH() {
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10">
+                    <td colSpan={8} className="px-4 py-10">
                       <EstadoVacio mensaje="Sin resultados para ese rango" />
                     </td>
                   </tr>
@@ -350,7 +378,7 @@ export default function PanelHistorialTH() {
                     <td className="px-4 py-3" colSpan={4}>
                       Total del rango <span className="font-normal text-neutral-500 dark:text-neutral-400">({totalRegistros} solicitud{totalRegistros === 1 ? "" : "es"})</span>
                     </td>
-                    <td className="px-4 py-3" colSpan={3}>{formatearMoneda(totalMonto)}</td>
+                    <td className="px-4 py-3" colSpan={4}>{formatearMoneda(totalMonto)}</td>
                   </tr>
                 </tfoot>
               )}

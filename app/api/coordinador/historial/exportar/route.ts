@@ -6,8 +6,15 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
-import { fechaValida, formatearFecha } from "../../../../../lib/fechas";
-import { construirLibroExcel, limitarFilasExportacion } from "../../../../../lib/exportarExcel";
+import { fechaValida } from "../../../../../lib/fechas";
+import {
+  construirLibroExcel,
+  limitarFilasExportacion,
+  filaHistorialExcel,
+  filaAvisoTruncadoHistorial,
+  nombreArchivoExcel,
+} from "../../../../../lib/exportarExcel";
+import { nombresDeUsuarios } from "../../../../../lib/nombresActores";
 
 // Debe coincidir con el mismo sentinel del combo "Supervisor" en el
 // cliente — no es un id real, así que no puede chocar con uno.
@@ -60,41 +67,33 @@ export async function GET(req: Request) {
   const solicitudes = await db.solicitudPasaje.findMany({
     where: filtro,
     include: {
-      colaborador: { select: { nombreCompleto: true } },
-      ruta: { select: { nombre: true } },
+      colaborador: { select: { nombreCompleto: true, codigoNomina: true } },
+      ruta: {
+        select: {
+          nombre: true,
+          area: { select: { nombre: true, sitio: { select: { nombre: true, empresa: { select: { nombre: true } } } } } },
+        },
+      },
     },
     orderBy: { fecha: "desc" },
   });
 
-  const { filas, truncado } = limitarFilasExportacion(
-    solicitudes.map((s) => ({
-      Código: s.codigo,
-      Colaborador: s.colaborador.nombreCompleto,
-      Ruta: s.ruta.nombre,
-      Estado: s.estado as string,
-      "Fecha del pasaje": formatearFecha(s.fecha),
-      Valor: Number(s.montoTotal),
-    }))
+  const nombrePorActorId = await nombresDeUsuarios(
+    solicitudes.flatMap((s) => [s.aprobadoPorId, s.revisadoPorId, s.pagadoPorId])
   );
+  const { filas, truncado } = limitarFilasExportacion(solicitudes.map((s) => filaHistorialExcel(s, nombrePorActorId)));
   // El tope de filas protege al servidor, pero si se aplicó hay que
   // avisarlo dentro del propio Excel (el archivo se descarga con un link
   // directo, no hay forma de mostrar un aviso en pantalla).
   if (truncado) {
-    filas.push({
-      Código: "Exportación limitada a 5000 filas. Acorta el rango de fechas para ver el resto.",
-      Colaborador: "",
-      Ruta: "",
-      Estado: "",
-      "Fecha del pasaje": "",
-      Valor: 0,
-    });
+    filas.push(filaAvisoTruncadoHistorial());
   }
 
   const libro = construirLibroExcel(filas, "Historial de revisión");
   return new NextResponse(new Uint8Array(libro), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="historial-revision-${desde}_a_${hasta}.xlsx"`,
+      "Content-Disposition": `attachment; filename="${nombreArchivoExcel(`historial-revision-${desde}_a_${hasta}`)}"`,
     },
   });
 }

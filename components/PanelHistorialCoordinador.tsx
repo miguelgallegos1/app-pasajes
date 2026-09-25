@@ -15,6 +15,7 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
+import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
@@ -31,6 +32,8 @@ type Fila = {
   estado: string;
   rutaLabel: string;
   nombreColaborador: string;
+  codigoNomina: string | null;
+  revisadoPor: string | null;
 };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
@@ -122,6 +125,9 @@ export default function PanelHistorialCoordinador() {
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
+  // Cada búsqueda enciende la franja naranja de arriba, para que se note
+  // que está trabajando (la tabla de relleno sola pasaba desapercibida).
+  useReportarCarga(cargando);
   const [error, setError] = useState("");
 
   const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
@@ -301,7 +307,7 @@ export default function PanelHistorialCoordinador() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {cargando && <TablaEsqueleto columnas={vista === "lista" ? 6 : 3} />}
+      {cargando && <TablaEsqueleto columnas={vista === "lista" ? 7 : 3} />}
 
       {!cargando && vista === "colaborador" && filasColaborador && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
@@ -311,10 +317,11 @@ export default function PanelHistorialCoordinador() {
             clave={(s) => s.id}
             claveOrden="coordinador-historial-colaborador"
             columnas={[
-              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+              { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
               { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
               { encabezado: "Ruta", render: (s) => s.rutaLabel },
               { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+              { encabezado: "Revisado por", render: (s) => s.revisadoPor ?? "—" },
               {
                 encabezado: "Estado",
                 render: (s) => (
@@ -336,7 +343,7 @@ export default function PanelHistorialCoordinador() {
       {!cargando && vista === "lista" && items && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-xs">
+            <table className="w-full min-w-[780px] text-xs">
               <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Código</th>
@@ -344,17 +351,19 @@ export default function PanelHistorialCoordinador() {
                   <EncabezadoOrdenable campo="nombreColaborador" ordenActivo={orden} onOrdenar={ordenar}>Colaborador</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="rutaLabel" ordenActivo={orden} onOrdenar={ordenar}>Ruta</EncabezadoOrdenable>
                   <EncabezadoOrdenable campo="montoTotal" ordenActivo={orden} onOrdenar={ordenar}>Valor</EncabezadoOrdenable>
+                  <th className="px-4 py-3 font-medium">Revisado por</th>
                   <EncabezadoOrdenable campo="estado" ordenActivo={orden} onOrdenar={ordenar}>Estado</EncabezadoOrdenable>
                 </tr>
               </thead>
               <tbody>
                 {itemsOrdenados.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>
                     <td className="px-4 py-3">{s.nombreColaborador}</td>
                     <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
                     <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
+                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{s.revisadoPor ?? "—"}</td>
                     <td className="px-4 py-3">
                       <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${ESTILOS_ESTADO[s.estado] ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"}`}>
                         {s.estado}
@@ -364,7 +373,7 @@ export default function PanelHistorialCoordinador() {
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10">
+                    <td colSpan={7} className="px-4 py-10">
                       <EstadoVacio mensaje="Sin resultados para ese rango" />
                     </td>
                   </tr>
@@ -374,7 +383,7 @@ export default function PanelHistorialCoordinador() {
                 <tfoot>
                   <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 font-semibold">
                     <td className="px-4 py-3" colSpan={4}>Total del rango</td>
-                    <td className="px-4 py-3" colSpan={2}>{formatearMoneda(totalMonto)}</td>
+                    <td className="px-4 py-3" colSpan={3}>{formatearMoneda(totalMonto)}</td>
                   </tr>
                 </tfoot>
               )}

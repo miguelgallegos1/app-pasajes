@@ -1,11 +1,11 @@
-// app/api/nomina/historial/exportar/route.ts
-// GET: exporta a Excel el historial de PAGADAS con los mismos filtros que
-// la pantalla (desde, hasta, empresa/sitio/área/colaborador), sin paginar
-// (con un tope de filas para proteger el servidor).
+// app/api/th/historial/exportar/route.ts
+// GET: exporta a Excel el historial (Aprobadas + Pagadas) dentro del
+// alcance del TH, con los mismos filtros que la pantalla.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
+import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 import { fechaValida } from "../../../../../lib/fechas";
 import {
   construirLibroExcel,
@@ -16,19 +16,22 @@ import {
 } from "../../../../../lib/exportarExcel";
 import { nombresDeUsuarios } from "../../../../../lib/nombresActores";
 
+// Debe coincidir con el mismo sentinel del combo "Supervisor" en el
+// cliente — no es un id real, así que no puede chocar con uno.
+const SIN_SUPERVISOR = "__sin_supervisor__";
+
 export async function GET(req: Request) {
   const session = await getSession();
-  if (!session || !["NOMINA", "SUPER_ADMIN"].includes(session.rol)) {
+  if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
-  const empresaId = searchParams.get("empresaId");
-  const sitioId = searchParams.get("sitioId");
-  const areaId = searchParams.get("areaId");
+  const estado = searchParams.get("estado");
   const colaboradorId = searchParams.get("colaboradorId");
+  const supervisorId = searchParams.get("supervisorId");
 
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
@@ -39,14 +42,27 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
   }
 
-  const filtro: Record<string, unknown> = {
-    estado: "PAGADA",
+  const { sinRestriccion, condicion } = await obtenerCondicionRutaTH(session.id, session.rol);
+  if (condicion === null) {
+    return NextResponse.json({ error: "No tienes áreas asignadas" }, { status: 403 });
+  }
+
+  const filtroEstado =
+    estado === "APROBADA" || estado === "PAGADA"
+      ? { estado: estado as "APROBADA" | "PAGADA" }
+      : { estado: { in: ["APROBADA", "PAGADA"] as Array<"APROBADA" | "PAGADA"> } };
+
+  const filtro = {
     fecha: { gte: desdeFecha, lte: hastaFecha },
+    ...(sinRestriccion ? {} : { ruta: condicion }),
+    ...(colaboradorId ? { colaboradorId } : {}),
+    ...(supervisorId === SIN_SUPERVISOR
+      ? { colaborador: { supervisorId: null } }
+      : supervisorId
+      ? { colaborador: { supervisorId } }
+      : {}),
+    ...filtroEstado,
   };
-  if (colaboradorId) filtro.colaboradorId = colaboradorId;
-  else if (areaId) filtro.ruta = { areaId };
-  else if (sitioId) filtro.ruta = { sitioId };
-  else if (empresaId) filtro.ruta = { empresaId };
 
   const solicitudes = await db.solicitudPasaje.findMany({
     where: filtro,
@@ -59,7 +75,7 @@ export async function GET(req: Request) {
         },
       },
     },
-    orderBy: { fechaPago: "desc" },
+    orderBy: { fecha: "desc" },
   });
 
   const nombrePorActorId = await nombresDeUsuarios(
@@ -73,11 +89,11 @@ export async function GET(req: Request) {
     filas.push(filaAvisoTruncadoHistorial());
   }
 
-  const libro = construirLibroExcel(filas, "Historial de pagos");
+  const libro = construirLibroExcel(filas, "Historial de aprobación");
   return new NextResponse(new Uint8Array(libro), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${nombreArchivoExcel(`historial-pagos-${desde}_a_${hasta}`)}"`,
+      "Content-Disposition": `attachment; filename="${nombreArchivoExcel(`historial-aprobacion-${desde}_a_${hasta}`)}"`,
     },
   });
 }

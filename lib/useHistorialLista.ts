@@ -7,6 +7,7 @@
 // según la vista, así que no encajan en este hook genérico).
 
 import { useState } from "react";
+import { useReportarCarga } from "./cargaGlobal";
 
 type RespuestaHistorial<T> = {
   items: T[];
@@ -34,6 +35,9 @@ export function useHistorialLista<T>(
   // filtros), no de lo que se está eligiendo todavía en pantalla.
   const [ultimaUrl, setUltimaUrl] = useState<string | null>(null);
   const [ultimaRespuesta, setUltimaRespuesta] = useState<Record<string, unknown> | null>(null);
+  // Cada búsqueda enciende la franja naranja de arriba (la misma de la
+  // navegación entre pantallas), para que se note que está trabajando.
+  useReportarCarga(cargando);
 
   const buscar = async (paginaNueva = 1) => {
     const url = construirUrl(paginaNueva);

@@ -41,13 +41,14 @@ type Solicitud = {
   observaciones: string | null;
   rutaLabel: string;
   nombreColaborador: string;
+  codigoNomina: string | null;
 };
 
 type MiembroEquipo = { id: string; nombreCompleto: string };
 
 type CampoOrden = "codigo" | "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
 const VALOR_ORDEN: Record<CampoOrden, (s: Solicitud) => string | number> = {
-  codigo: (s) => s.codigo,
+  codigo: (s) => s.codigoNomina ?? "",
   fecha: (s) => s.fecha,
   nombreColaborador: (s) => s.nombreColaborador,
   rutaLabel: (s) => s.rutaLabel,
@@ -156,6 +157,7 @@ export default function PanelColaborador() {
     return solicitudesVisibles.filter(
       (s) =>
         s.codigo.toLowerCase().includes(texto) ||
+        (s.codigoNomina ?? "").toLowerCase().includes(texto) ||
         s.rutaLabel.toLowerCase().includes(texto) ||
         s.nombreColaborador.toLowerCase().includes(texto) ||
         (s.observaciones ?? "").toLowerCase().includes(texto)
@@ -594,7 +596,7 @@ export default function PanelColaborador() {
               }}
               puedeSeleccionar={(s) => s.estado === "PENDIENTE" || s.estado === "RECHAZADA"}
               columnas={[
-                { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigo}</span> },
+                { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
                 { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
                 { encabezado: "Ruta", render: (s) => s.rutaLabel },
                 { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
@@ -659,7 +661,7 @@ export default function PanelColaborador() {
                         />
                       )}
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400">{s.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{formatearFecha(s.fecha)}</p>
                       <p className="text-[11px] text-neutral-400 dark:text-neutral-500">

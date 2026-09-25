@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { nombresDeUsuarios } from "../../../../lib/nombresActores";
 import { fechaValida } from "../../../../lib/fechas";
 
 const POR_PAGINA = 15;
@@ -51,7 +52,7 @@ export async function GET(req: Request) {
     db.solicitudPasaje.findMany({
       where: filtro,
       include: {
-        colaborador: { select: { nombreCompleto: true } },
+        colaborador: { select: { nombreCompleto: true, codigoNomina: true } },
         ruta: { select: { nombre: true } },
       },
       orderBy: { fechaPago: "desc" },
@@ -62,6 +63,8 @@ export async function GET(req: Request) {
     db.solicitudPasaje.aggregate({ where: filtro, _sum: { montoTotal: true } }),
   ]);
 
+  const nombrePorActorId = await nombresDeUsuarios(items.map((s) => s.pagadoPorId));
+
   return NextResponse.json({
     items: items.map((s) => ({
       id: s.id,
@@ -70,6 +73,8 @@ export async function GET(req: Request) {
       fechaPago: s.fechaPago?.toISOString() ?? null,
       montoTotal: Number(s.montoTotal),
       nombreColaborador: s.colaborador.nombreCompleto,
+      codigoNomina: s.colaborador.codigoNomina,
+      pagadoPor: s.pagadoPorId ? (nombrePorActorId.get(s.pagadoPorId) ?? null) : null,
       rutaLabel: s.ruta.nombre,
     })),
     total,

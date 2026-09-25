@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     db.solicitudPasaje.findMany({
       where: filtro,
       include: {
-        colaborador: { select: { nombreCompleto: true } },
+        colaborador: { select: { nombreCompleto: true, codigoNomina: true } },
         ruta: { select: { nombre: true } },
       },
       orderBy: { fecha: "desc" },
@@ -72,6 +72,7 @@ export async function GET(req: Request) {
       estado: s.estado,
       rutaLabel: s.ruta.nombre,
       nombreColaborador: s.colaborador.nombreCompleto,
+      codigoNomina: s.colaborador.codigoNomina,
     })),
     total,
     totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),
