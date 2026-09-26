@@ -233,8 +233,15 @@ select:focus-visible {
   --presion-color: rgb(194 65 12 / 55%);
 }
 
-:where(button:not(:disabled), a[class], [role="button"]) {
-  position: relative;
+/* En @layer base (no suelto): el CSS fuera de capas le gana SIEMPRE a las
+   utilidades de Tailwind, así que este position:relative pisaba el
+   `absolute`/`fixed` de cualquier botón o enlace (ej. la X de cerrar de
+   los avisos flotantes caía en el flujo en vez de ir a la esquina). En la
+   capa base, una clase de posición explícita en el botón gana. */
+@layer base {
+  :where(button:not(:disabled), a[class], [role="button"]) {
+    position: relative;
+  }
 }
 
 :where(button:not(:disabled), a[class], [role="button"])::after {
