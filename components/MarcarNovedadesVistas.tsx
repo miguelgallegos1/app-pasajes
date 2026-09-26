@@ -7,10 +7,10 @@
 import { useEffect } from "react";
 import { marcarNovedadesVistas } from "../lib/novedadesVistas";
 
-export default function MarcarNovedadesVistas({ ids }: { ids: string[] }) {
+export default function MarcarNovedadesVistas({ usuarioId, ids }: { usuarioId: string; ids: string[] }) {
   const clave = ids.join(",");
   useEffect(() => {
-    marcarNovedadesVistas(clave.split(",").filter(Boolean));
-  }, [clave]);
+    marcarNovedadesVistas(usuarioId, clave.split(",").filter(Boolean));
+  }, [usuarioId, clave]);
   return null;
 }

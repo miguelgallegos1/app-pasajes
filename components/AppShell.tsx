@@ -274,6 +274,7 @@ export default function AppShell({
   fotoUrl,
   esSupervisor = false,
   novedades = [],
+  usuarioId,
   children,
 }: {
   rol: string;
@@ -286,6 +287,8 @@ export default function AppShell({
   // Novedades vigentes para este rol (calculadas en el layout, sin base de
   // datos — ver lib/novedades.ts); el aviso flotante muestra las no vistas.
   novedades?: Novedad[];
+  // Para recordar por usuario (no por navegador) qué novedades ya vio.
+  usuarioId: string;
   children: React.ReactNode;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -527,7 +530,7 @@ export default function AppShell({
       )}
 
       {rol === "COLABORADOR" && <TarjetaActualizarDomicilio />}
-      <AvisoNovedades novedades={novedades} />
+      <AvisoNovedades novedades={novedades} usuarioId={usuarioId} />
 
       <Modal abierto={confirmandoSalir} onCerrar={() => setConfirmandoSalir(false)} onConfirmar={cerrarSesion} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">

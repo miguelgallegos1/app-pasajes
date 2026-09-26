@@ -14,8 +14,8 @@ import type { Novedad } from "../lib/novedades";
 import { marcarNovedadesVistas, useNovedadesVistas } from "../lib/novedadesVistas";
 import { IconoNovedad, IconoX } from "./Icons";
 
-export default function AvisoNovedades({ novedades }: { novedades: Novedad[] }) {
-  const vistas = useNovedadesVistas();
+export default function AvisoNovedades({ novedades, usuarioId }: { novedades: Novedad[]; usuarioId: string }) {
+  const vistas = useNovedadesVistas(usuarioId);
   const pathname = usePathname();
 
   if (vistas === null || pathname === "/novedades") return null;
@@ -23,7 +23,7 @@ export default function AvisoNovedades({ novedades }: { novedades: Novedad[] }) 
   if (pendientes.length === 0) return null;
 
   const [principal, ...resto] = pendientes;
-  const cerrar = () => marcarNovedadesVistas(pendientes.map((n) => n.id));
+  const cerrar = () => marcarNovedadesVistas(usuarioId, pendientes.map((n) => n.id));
 
   return (
     <div

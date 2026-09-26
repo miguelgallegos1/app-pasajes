@@ -33,7 +33,7 @@ export default async function NovedadesPage() {
 
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5">
-      <MarcarNovedadesVistas ids={novedades.map((n) => n.id)} />
+      <MarcarNovedadesVistas usuarioId={session.id} ids={novedades.map((n) => n.id)} />
 
       <div className="max-w-2xl space-y-3">
         {novedades.length === 0 ? (

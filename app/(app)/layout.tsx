@@ -19,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AppShell
       rol={session.rol}
+      usuarioId={session.id}
       nombreCompleto={perfil.nombre}
       nombreCorto={perfil.nombreCorto}
       fotoUrl={perfil.fotoUrl}
