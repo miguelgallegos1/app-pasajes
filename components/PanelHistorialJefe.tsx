@@ -21,9 +21,9 @@ import Avatar from "./Avatar";
 import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
-import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
-import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
+import TablaColaboradores, { type FilaColaborador, type CampoOrdenColaborador } from "./TablaColaboradores";
 import { IconoDescargar } from "./Icons";
 
 type Empresa = { id: string; nombre: string };
@@ -32,13 +32,6 @@ type Area = { id: string; nombre: string; sitioId: string };
 type Fila = { id: string; codigo: string; fecha: string; montoTotal: number; estado: string; rutaLabel: string; nombreColaborador: string; codigoNomina: string | null };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
-const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
-  fecha: (f) => f.fecha,
-  nombreColaborador: (f) => f.nombreColaborador,
-  rutaLabel: (f) => f.rutaLabel,
-  montoTotal: (f) => f.montoTotal,
-  estado: (f) => f.estado,
-};
 
 const OPCIONES_ESTADO = [
   { value: "", label: "Todos" },
@@ -118,11 +111,8 @@ export default function PanelHistorialJefe() {
   const [paginaColab, setPaginaColab] = useState(1);
   const [totalPaginasColab, setTotalPaginasColab] = useState(1);
 
-  const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(
-    items ?? [],
-    (f, campo) => VALOR_ORDEN[campo](f),
-    "historial-jefe"
-  );
+  const { orden, ordenar: ordenarLista } = useOrdenServidor<CampoOrden>("historial-jefe");
+  const { orden: ordenColab, ordenar: ordenarColabBase } = useOrdenServidor<CampoOrdenColaborador>("jefe-historial-colaborador");
 
   const colaboradoresOpciones = useMemo(
     () => colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
@@ -148,6 +138,7 @@ export default function PanelHistorialJefe() {
     setError("");
     const params = parametrosBase();
     params.set("pagina", String(paginaNueva));
+    agregarOrdenAParams(params, vista === "lista" ? orden : ordenColab);
 
     try {
       if (vista === "lista") {
@@ -192,6 +183,17 @@ export default function PanelHistorialJefe() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoBusqueda]);
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  // El orden lo aplica el servidor a TODO el rango: al cambiarlo se vuelve
+  // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
+  const ordenar = (campo: CampoOrden) => {
+    ordenarLista(campo);
+    rebuscar();
+  };
+  const ordenarColab = (campo: CampoOrdenColaborador) => {
+    ordenarColabBase(campo);
+    rebuscar();
+  };
 
   const empresasOpciones = useMemo(() => empresas.map((e) => ({ id: e.id, label: e.nombre })), [empresas]);
 
@@ -287,7 +289,7 @@ export default function PanelHistorialJefe() {
             filas={filasColaborador}
             cargarItems={cargarItemsColaborador}
             clave={(s) => s.id}
-            claveOrden="jefe-historial-colaborador"
+            ordenServidor={{ orden: ordenColab, ordenar: ordenarColab }}
             columnas={[
               { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
               { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
@@ -326,7 +328,7 @@ export default function PanelHistorialJefe() {
                 </tr>
               </thead>
               <tbody>
-                {itemsOrdenados.map((s, i) => (
+                {items.map((s, i) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>

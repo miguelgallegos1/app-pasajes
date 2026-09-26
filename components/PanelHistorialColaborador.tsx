@@ -18,7 +18,7 @@ import TablaEsqueleto from "./TablaEsqueleto";
 import EstadoVacio from "./EstadoVacio";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
-import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import { useHistorialLista } from "../lib/useHistorialLista";
 
 type Fila = {
@@ -33,13 +33,6 @@ type Fila = {
 };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
-const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
-  fecha: (f) => f.fecha,
-  nombreColaborador: (f) => f.nombreColaborador,
-  rutaLabel: (f) => f.rutaLabel,
-  montoTotal: (f) => f.montoTotal,
-  estado: (f) => f.estado,
-};
 
 const OPCIONES_ESTADO = [
   { value: "", label: "Todos" },
@@ -70,21 +63,18 @@ export default function PanelHistorialColaborador() {
   const [hasta, setHasta] = useState(fechaHoyTexto);
   const [estado, setEstado] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
+  const { orden, ordenar: ordenarBase } = useOrdenServidor<CampoOrden>("historial-colaborador");
   const { items, totalMonto, pagina, totalPaginas, cargando, error, buscar } = useHistorialLista<Fila>(
     (paginaNueva) => {
       if (!desde || !hasta) return null;
       const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
+      agregarOrdenAParams(params, orden);
       if (estado) params.set("estado", estado);
       if (colaboradorId) params.set("colaboradorId", colaboradorId);
       return `/api/solicitudes/historial?${params.toString()}`;
     }
   );
 
-  const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(
-    items ?? [],
-    (f, campo) => VALOR_ORDEN[campo](f),
-    "historial-colaborador"
-  );
 
   const opcionesColaborador = [
     { id: "", label: "Todos" },
@@ -101,6 +91,13 @@ export default function PanelHistorialColaborador() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoBusqueda]);
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  // El orden lo aplica el servidor a TODO el rango: al cambiarlo se vuelve
+  // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
+  const ordenar = (campo: CampoOrden) => {
+    ordenarBase(campo);
+    rebuscar();
+  };
 
   const chipsFiltros = chips(
     chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
@@ -157,7 +154,7 @@ export default function PanelHistorialColaborador() {
                 </tr>
               </thead>
               <tbody>
-                {itemsOrdenados.map((s) => (
+                {items.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>

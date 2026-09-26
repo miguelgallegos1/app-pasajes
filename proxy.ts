@@ -26,6 +26,7 @@ const RUTAS_POR_ROL: Record<string, string[]> = {
   "/jefe": ["JEFE", "SUPER_ADMIN"],
   "/admin": ["SUPER_ADMIN"],
   "/dashboard": ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"],
+  "/novedades": ["COLABORADOR", "ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"],
 };
 
 // Pedidos a /api que NO cuentan como actividad del usuario: el sondeo
@@ -111,6 +112,7 @@ export const config = {
     "/jefe/:path*",
     "/admin/:path*",
     "/dashboard/:path*",
+    "/novedades",
     "/api/:path*",
     "/login",
   ],

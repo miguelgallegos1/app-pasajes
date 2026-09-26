@@ -8,6 +8,7 @@
 import { redirect } from "next/navigation";
 import { getSession, obtenerPerfilSesion } from "../../lib/auth";
 import AppShell from "../../components/AppShell";
+import { novedadesVigentes } from "../../lib/novedades";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -22,6 +23,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       nombreCorto={perfil.nombreCorto}
       fotoUrl={perfil.fotoUrl}
       esSupervisor={perfil.esSupervisor}
+      // Solo filtra un array del código por rol y fecha: sin consultas.
+      novedades={novedadesVigentes(session.rol)}
     >
       {children}
     </AppShell>

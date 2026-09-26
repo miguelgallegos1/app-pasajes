@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/auth";
 import { fechaValida } from "../../../../../lib/fechas";
 import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
+import { ordenarColaboradores } from "../../../../../lib/ordenHistorial";
 
 const POR_PAGINA = 15;
 const ESTADOS_VALIDOS = ["PENDIENTE", "APROBADA", "RECHAZADA", "REVISADO", "PAGADA"] as const;
@@ -43,7 +44,9 @@ export async function GET(req: Request) {
   else if (empresaId) filtro.ruta = { empresaId };
   if (estadoParam && (ESTADOS_VALIDOS as readonly string[]).includes(estadoParam)) filtro.estado = estadoParam;
 
-  const todos = await agregarPorColaborador(filtro);
+  // Se ordena la lista COMPLETA (columna elegida en la tabla) antes de
+  // paginar, no solo la página visible.
+  const todos = ordenarColaboradores(await agregarPorColaborador(filtro), searchParams);
   const total = todos.length;
   const pagina_ = todos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 

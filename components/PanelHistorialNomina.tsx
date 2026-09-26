@@ -17,9 +17,9 @@ import EstadoVacio from "./EstadoVacio";
 import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, formatearFechaEcuador, fechaHoyTexto } from "../lib/fechas";
-import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
-import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
+import TablaColaboradores, { type FilaColaborador, type CampoOrdenColaborador } from "./TablaColaboradores";
 import { IconoDescargar } from "./Icons";
 
 type Empresa = { id: string; nombre: string };
@@ -28,12 +28,6 @@ type Area = { id: string; nombre: string; sitioId: string };
 type Fila = { id: string; codigo: string; fecha: string; fechaPago: string | null; montoTotal: number; nombreColaborador: string; codigoNomina: string | null; pagadoPor: string | null; rutaLabel: string };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal";
-const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
-  fecha: (f) => f.fecha,
-  nombreColaborador: (f) => f.nombreColaborador,
-  rutaLabel: (f) => f.rutaLabel,
-  montoTotal: (f) => f.montoTotal,
-};
 
 export default function PanelHistorialNomina() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
@@ -102,11 +96,8 @@ export default function PanelHistorialNomina() {
   const [paginaColab, setPaginaColab] = useState(1);
   const [totalPaginasColab, setTotalPaginasColab] = useState(1);
 
-  const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(
-    items ?? [],
-    (f, campo) => VALOR_ORDEN[campo](f),
-    "historial-nomina"
-  );
+  const { orden, ordenar: ordenarLista } = useOrdenServidor<CampoOrden>("historial-nomina");
+  const { orden: ordenColab, ordenar: ordenarColabBase } = useOrdenServidor<CampoOrdenColaborador>("nomina-historial-colaborador");
 
   const colaboradoresOpciones = useMemo(
     () => colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
@@ -131,6 +122,7 @@ export default function PanelHistorialNomina() {
     setError("");
     const params = parametrosBase();
     params.set("pagina", String(paginaNueva));
+    agregarOrdenAParams(params, vista === "lista" ? orden : ordenColab);
 
     try {
       if (vista === "lista") {
@@ -175,6 +167,17 @@ export default function PanelHistorialNomina() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoBusqueda]);
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  // El orden lo aplica el servidor a TODO el rango: al cambiarlo se vuelve
+  // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
+  const ordenar = (campo: CampoOrden) => {
+    ordenarLista(campo);
+    rebuscar();
+  };
+  const ordenarColab = (campo: CampoOrdenColaborador) => {
+    ordenarColabBase(campo);
+    rebuscar();
+  };
 
   const empresasOpciones = useMemo(() => empresas.map((e) => ({ id: e.id, label: e.nombre })), [empresas]);
 
@@ -264,7 +267,7 @@ export default function PanelHistorialNomina() {
             filas={filasColaborador}
             cargarItems={cargarItemsColaborador}
             clave={(s) => s.id}
-            claveOrden="nomina-historial-colaborador"
+            ordenServidor={{ orden: ordenColab, ordenar: ordenarColab }}
             columnas={[
               { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
               {
@@ -303,7 +306,7 @@ export default function PanelHistorialNomina() {
                 </tr>
               </thead>
               <tbody>
-                {itemsOrdenados.map((s) => (
+                {items.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">

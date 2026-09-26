@@ -1,8 +1,10 @@
 // lib/useOrdenTabla.ts
-// Orden de una tabla ya cargada en el cliente (asc/desc/original al tercer
-// clic). No vuelve a pedir datos al servidor — reordena en memoria el
-// array que ya se tiene, así que no afecta el rendimiento: son listas
-// paginadas de a lo sumo un puñado de filas.
+// Orden de tablas (asc/desc/original al tercer clic), recordado entre
+// visitas. Dos variantes:
+// - useOrdenTabla: la tabla ya tiene TODAS las filas en el cliente; se
+//   ordena el array completo en memoria y después se pagina.
+// - useOrdenServidor: la tabla trae de a una página (historiales); solo
+//   guarda la columna/dirección y la pantalla se la pide al servidor.
 
 "use client";
 
@@ -34,13 +36,12 @@ function guardarOrden<C extends string>(clave: string | undefined, orden: OrdenA
   }
 }
 
-export function useOrdenTabla<T, C extends string>(
-  items: T[],
-  obtenerValor: (item: T, campo: C) => string | number,
+// Solo el estado del orden (qué columna y en qué dirección, con el mismo
+// ciclo asc/desc/original y recordado entre visitas). Lo usan directo los
+// historiales, que ordenan en el SERVIDOR (ver lib/ordenHistorial.ts):
+// traen de a una página, así que ordenar en memoria solo reordenaba esa.
+export function useOrdenServidor<C extends string>(
   clave?: string,
-  // Con qué dirección arranca el primer clic de cada columna (por defecto
-  // "asc", como siempre). Útil para columnas de monto, donde lo esperable
-  // es ver primero el valor más alto en vez de tener que dar un clic extra.
   direccionInicial?: Partial<Record<C, "asc" | "desc">>
 ) {
   const [orden, setOrden] = useState<OrdenActivo<C>>(() => leerOrdenGuardado<C>(clave));
@@ -59,6 +60,29 @@ export function useOrdenTabla<T, C extends string>(
       return siguiente;
     });
   };
+
+  return { orden, ordenar };
+}
+
+// Agrega el orden elegido a los parámetros de la petición (`orden`/`dir`).
+export function agregarOrdenAParams<C extends string>(params: URLSearchParams, orden: OrdenActivo<C>) {
+  if (!orden) return;
+  params.set("orden", orden.campo);
+  params.set("dir", orden.direccion);
+}
+
+// Para tablas que ya tienen TODAS las filas en memoria (y paginan en el
+// cliente después de ordenar): ordena el array completo.
+export function useOrdenTabla<T, C extends string>(
+  items: T[],
+  obtenerValor: (item: T, campo: C) => string | number,
+  clave?: string,
+  // Con qué dirección arranca el primer clic de cada columna (por defecto
+  // "asc", como siempre). Útil para columnas de monto, donde lo esperable
+  // es ver primero el valor más alto en vez de tener que dar un clic extra.
+  direccionInicial?: Partial<Record<C, "asc" | "desc">>
+) {
+  const { orden, ordenar } = useOrdenServidor<C>(clave, direccionInicial);
 
   const itemsOrdenados = useMemo(() => {
     if (!orden) return items;

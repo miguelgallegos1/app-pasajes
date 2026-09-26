@@ -7,6 +7,7 @@ import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 import { fechaValida } from "../../../../../lib/fechas";
 import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
+import { ordenarColaboradores } from "../../../../../lib/ordenHistorial";
 
 const POR_PAGINA = 15;
 
@@ -57,7 +58,9 @@ export async function GET(req: Request) {
     ...filtroEstado,
   };
 
-  const todos = await agregarPorColaborador(filtro);
+  // Se ordena la lista COMPLETA (columna elegida en la tabla) antes de
+  // paginar, no solo la página visible.
+  const todos = ordenarColaboradores(await agregarPorColaborador(filtro), searchParams);
   const total = todos.length;
   const pagina_ = todos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 

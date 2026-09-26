@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { ordenSolicitudes } from "../../../../lib/ordenHistorial";
 import { nombresDeUsuarios } from "../../../../lib/nombresActores";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
 import { fechaValida } from "../../../../lib/fechas";
@@ -75,7 +76,9 @@ export async function GET(req: Request) {
     db.solicitudPasaje.findMany({
       where: filtro,
       include: { ruta: { select: { nombre: true } }, colaborador: { select: { nombreCompleto: true, codigoNomina: true } } },
-      orderBy: { fecha: "desc" },
+      // Ordena TODO el rango en la base (columna elegida en la tabla) y
+      // recién después pagina — no solo la página visible.
+      orderBy: ordenSolicitudes(searchParams, { fecha: "desc" }),
       skip: (pagina - 1) * POR_PAGINA,
       take: POR_PAGINA,
     }),

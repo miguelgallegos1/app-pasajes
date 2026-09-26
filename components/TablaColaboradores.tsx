@@ -19,11 +19,11 @@ import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import Spinner from "./Spinner";
 import Paginacion from "./Paginacion";
-import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useOrdenTabla, type OrdenActivo } from "../lib/useOrdenTabla";
 
 export type FilaColaborador = { id: string; nombre: string; cantidad: number; total: number };
 
-type CampoOrdenColaborador = "nombre" | "total";
+export type CampoOrdenColaborador = "nombre" | "total";
 const VALOR_ORDEN_COLABORADOR: Record<CampoOrdenColaborador, (f: FilaColaborador) => string | number> = {
   nombre: (f) => f.nombre,
   total: (f) => f.total,
@@ -67,6 +67,11 @@ type Props<T> = {
   // (ver useOrdenTabla). Sin ella, el orden igual funciona pero se resetea
   // cada vez que se navega a la pantalla.
   claveOrden?: string;
+  // Historiales (paginados en el servidor): el orden lo aplica el
+  // servidor a TODOS los colaboradores y `filas` ya llega ordenada; la
+  // tabla solo muestra la flecha y avisa el clic. Sin esto, ordenaría en
+  // memoria (bien cuando tiene todas las filas, no cuando tiene una página).
+  ordenServidor?: { orden: OrdenActivo<CampoOrdenColaborador>; ordenar: (campo: CampoOrdenColaborador) => void };
 };
 
 function CheckboxColaborador({
@@ -110,12 +115,16 @@ export default function TablaColaboradores<T>({
   vacioItems = "Sin solicitudes",
   porPagina,
   claveOrden,
+  ordenServidor,
 }: Props<T>) {
-  const { orden, ordenar, itemsOrdenados: filasOrdenadas } = useOrdenTabla<FilaColaborador, CampoOrdenColaborador>(
+  const ordenLocal = useOrdenTabla<FilaColaborador, CampoOrdenColaborador>(
     filas,
     (f, campo) => VALOR_ORDEN_COLABORADOR[campo](f),
-    claveOrden
+    ordenServidor ? undefined : claveOrden
   );
+  const orden = ordenServidor ? ordenServidor.orden : ordenLocal.orden;
+  const ordenar = ordenServidor ? ordenServidor.ordenar : ordenLocal.ordenar;
+  const filasOrdenadas = ordenServidor ? filas : ordenLocal.itemsOrdenados;
 
   const [pagina, setPagina] = useState(1);
   const totalPaginas = porPagina ? Math.max(1, Math.ceil(filasOrdenadas.length / porPagina)) : 1;

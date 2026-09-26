@@ -20,7 +20,7 @@ import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
-import { useOrdenTabla } from "../lib/useOrdenTabla";
+import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import { useHistorialLista } from "../lib/useHistorialLista";
 import { IconoImprimir, IconoDevolver, IconoDescargar } from "./Icons";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
@@ -38,13 +38,6 @@ type Fila = {
 };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
-const VALOR_ORDEN: Record<CampoOrden, (f: Fila) => string | number> = {
-  fecha: (f) => f.fecha,
-  nombreColaborador: (f) => f.nombreColaborador,
-  rutaLabel: (f) => f.rutaLabel,
-  montoTotal: (f) => f.montoTotal,
-  estado: (f) => f.estado,
-};
 
 // Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
 // id real de colaborador, así que no puede chocar con uno.
@@ -121,10 +114,12 @@ export default function PanelHistorialTH() {
       cancelado = true;
     };
   }, [desde, hasta, estado, supervisorId]);
+  const { orden, ordenar: ordenarBase } = useOrdenServidor<CampoOrden>("historial-th");
   const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaUrl, ultimaRespuesta } = useHistorialLista<Fila>(
     (paginaNueva) => {
       if (!desde || !hasta) return null;
       const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
+      agregarOrdenAParams(params, orden);
       if (estado) params.set("estado", estado);
       if (supervisorId) params.set("supervisorId", supervisorId);
       if (colaboradorId) params.set("colaboradorId", colaboradorId);
@@ -138,11 +133,6 @@ export default function PanelHistorialTH() {
   const [revirtiendo, setRevirtiendo] = useState(false);
   const [errorRevertir, setErrorRevertir] = useState("");
 
-  const { orden, ordenar, itemsOrdenados } = useOrdenTabla<Fila, CampoOrden>(
-    items ?? [],
-    (f, campo) => VALOR_ORDEN[campo](f),
-    "historial-th"
-  );
 
   const opcionesColaborador = [
     { id: "", label: "Todos" },
@@ -187,6 +177,13 @@ export default function PanelHistorialTH() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoBusqueda]);
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+
+  // El orden lo aplica el servidor a TODO el rango: al cambiarlo se vuelve
+  // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
+  const ordenar = (campo: CampoOrden) => {
+    ordenarBase(campo);
+    rebuscar();
+  };
 
   const chipsFiltros = chips(
     chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
@@ -333,7 +330,7 @@ export default function PanelHistorialTH() {
                 </tr>
               </thead>
               <tbody>
-                {itemsOrdenados.map((s, i) => (
+                {items.map((s, i) => (
                   <tr key={s.id} className="border-t border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3 font-mono font-semibold text-neutral-500 dark:text-neutral-400">{s.codigoNomina ?? "—"}</td>
                     <td className="px-4 py-3">{formatearFecha(s.fecha)}</td>

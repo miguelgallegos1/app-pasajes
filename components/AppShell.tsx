@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
-import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoAjustes } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoAjustes, IconoNovedad } from "./Icons";
 import BotonTema from "./BotonTema";
 import NotificacionesMenu from "./NotificacionesMenu";
 import NotificacionesColaborador from "./NotificacionesColaborador";
@@ -29,6 +29,8 @@ import { AccionesHeaderContext } from "../lib/accionesHeader";
 import { CargaGlobalContext } from "../lib/cargaGlobal";
 import BarraCarga from "./BarraCarga";
 import VigilanteSesion from "./VigilanteSesion";
+import AvisoNovedades from "./AvisoNovedades";
+import type { Novedad } from "../lib/novedades";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -51,6 +53,14 @@ function esGrupo(entrada: EntradaMenu): entrada is GrupoMenu {
 // tocar el componente.
 // El menú del colaborador se arma aparte (ver construirMenuColaborador) porque
 // depende de esSupervisor, no solo del rol.
+// Para todos los roles (ver lib/novedades.ts): funciones nuevas de la app.
+const NOVEDADES: ItemMenu = {
+  label: "Novedades",
+  href: "/novedades",
+  descripcion: "Funciones nuevas de la app (cada una se muestra durante un mes)",
+  icono: IconoNovedad,
+};
+
 const DASHBOARD: ItemMenu = {
   label: "Dashboard",
   href: "/dashboard",
@@ -101,10 +111,10 @@ const HISTORIAL_GENERAL: ItemMenu = {
 // El menú del colaborador se arma aparte (ver construirMenuColaborador) porque
 // depende de esSupervisor, no solo del rol.
 const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
-  ADMIN_TH: [DASHBOARD, MENU_TALENTO_HUMANO],
-  COORDINADOR: [DASHBOARD, MENU_COORDINACION],
-  NOMINA: [DASHBOARD, MENU_NOMINA],
-  JEFE: [DASHBOARD, HISTORIAL_GENERAL],
+  ADMIN_TH: [DASHBOARD, MENU_TALENTO_HUMANO, NOVEDADES],
+  COORDINADOR: [DASHBOARD, MENU_COORDINACION, NOVEDADES],
+  NOMINA: [DASHBOARD, MENU_NOMINA, NOVEDADES],
+  JEFE: [DASHBOARD, HISTORIAL_GENERAL, NOVEDADES],
   SUPER_ADMIN: [
     DASHBOARD,
     MENU_TALENTO_HUMANO,
@@ -121,6 +131,7 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Parámetros", href: "/admin/parametros", descripcion: "Valores generales del sistema, configurables sin tocar código", icono: IconoAjustes },
       ],
     },
+    NOVEDADES,
   ],
 };
 
@@ -137,6 +148,7 @@ function construirMenuColaborador(esSupervisor: boolean): EntradaMenu[] {
         { label: "Copiar rutas", href: "/mis-pasajes/copiar", descripcion: "Elige el día del que quieres copiar, marca las rutas y a qué día se repiten", icono: IconoRuta },
       ],
     },
+    NOVEDADES,
   ];
 }
 
@@ -261,6 +273,7 @@ export default function AppShell({
   nombreCorto,
   fotoUrl,
   esSupervisor = false,
+  novedades = [],
   children,
 }: {
   rol: string;
@@ -270,6 +283,9 @@ export default function AppShell({
   nombreCorto: string;
   fotoUrl?: string | null;
   esSupervisor?: boolean;
+  // Novedades vigentes para este rol (calculadas en el layout, sin base de
+  // datos — ver lib/novedades.ts); el aviso flotante muestra las no vistas.
+  novedades?: Novedad[];
   children: React.ReactNode;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -511,6 +527,7 @@ export default function AppShell({
       )}
 
       {rol === "COLABORADOR" && <TarjetaActualizarDomicilio />}
+      <AvisoNovedades novedades={novedades} />
 
       <Modal abierto={confirmandoSalir} onCerrar={() => setConfirmandoSalir(false)} onConfirmar={cerrarSesion} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
         <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">

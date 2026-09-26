@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
+import { ordenSolicitudes } from "../../../../lib/ordenHistorial";
 import { nombresDeUsuarios } from "../../../../lib/nombresActores";
 import { fechaValida } from "../../../../lib/fechas";
 
@@ -55,7 +56,9 @@ export async function GET(req: Request) {
         colaborador: { select: { nombreCompleto: true, codigoNomina: true } },
         ruta: { select: { nombre: true } },
       },
-      orderBy: { fechaPago: "desc" },
+      // Ordena TODO el rango en la base (columna elegida en la tabla) y
+      // recién después pagina — no solo la página visible.
+      orderBy: ordenSolicitudes(searchParams, { fechaPago: "desc" }),
       skip: (pagina - 1) * POR_PAGINA,
       take: POR_PAGINA,
     }),
