@@ -76,7 +76,7 @@ async function nombreDeUsuario(usuarioId: string | undefined): Promise<string | 
 // A quién le llega el aviso: si el colaborador está a cargo de un
 // supervisor (bloqueado del login individual — ver verificarAccesoColaborador
 // en lib/auth.ts), el propio colaborador nunca puede entrar a suscribirse
-// ni a ver la campanita, así que el aviso va para el supervisor, que es
+// ni a ver sus avisos, así que el aviso va para el supervisor, que es
 // quien realmente le gestiona los pasajes.
 type ColaboradorParaAviso = {
   usuarioId: string;

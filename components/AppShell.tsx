@@ -16,8 +16,6 @@ import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
 import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoAjustes, IconoNovedad } from "./Icons";
 import BotonTema from "./BotonTema";
-import NotificacionesMenu from "./NotificacionesMenu";
-import NotificacionesColaborador from "./NotificacionesColaborador";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import Footer from "./Footer";
@@ -32,6 +30,7 @@ import VigilanteSesion from "./VigilanteSesion";
 import AvisoNovedades from "./AvisoNovedades";
 import { ZonaAvisos } from "./ZonaAvisos";
 import type { Novedad } from "../lib/novedades";
+import { useContadorMenu, type ContadorMenu } from "../lib/useContadorMenu";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
 // primera vez que alguien abre el modal, no en cada página de la app.
@@ -194,7 +193,20 @@ function Avatar({ fotoUrl, nombreCompleto, iniciales }: { fotoUrl?: string | nul
   );
 }
 
-function ItemLink({ item, activo, onClick }: { item: ItemMenu; activo: boolean; onClick?: () => void }) {
+// Número de pendientes en el menú (reemplaza a la campanita), con el color
+// del estado de esa bandeja.
+function BadgeContador({ contador }: { contador: ContadorMenu }) {
+  return (
+    <span
+      title={`${contador.total} ${contador.texto}`}
+      className={`ml-auto min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold leading-none flex items-center justify-center shrink-0 tabular-nums ${contador.clase}`}
+    >
+      {contador.total > 99 ? "99+" : contador.total}
+    </span>
+  );
+}
+
+function ItemLink({ item, activo, onClick, contador }: { item: ItemMenu; activo: boolean; onClick?: () => void; contador?: ContadorMenu | null }) {
   const Icono = item.icono;
   return (
     <Link
@@ -216,6 +228,7 @@ function ItemLink({ item, activo, onClick }: { item: ItemMenu; activo: boolean; 
     >
       <Icono className="w-4 h-4 shrink-0" />
       {item.label}
+      {contador && contador.href === item.href && <BadgeContador contador={contador} />}
     </Link>
   );
 }
@@ -226,21 +239,25 @@ function ItemsMenu({
   gruposAbiertos,
   onAlternarGrupo,
   onClickItem,
+  contador,
 }: {
   entradas: EntradaMenu[];
   pathname: string;
   gruposAbiertos: Set<string>;
   onAlternarGrupo: (grupo: string) => void;
   onClickItem?: () => void;
+  contador: ContadorMenu | null;
 }) {
   return (
     <>
       {entradas.map((entrada) => {
         if (!esGrupo(entrada)) {
-          return <ItemLink key={entrada.href} item={entrada} activo={pathname === entrada.href} onClick={onClickItem} />;
+          return <ItemLink key={entrada.href} item={entrada} activo={pathname === entrada.href} onClick={onClickItem} contador={contador} />;
         }
         const abierto = gruposAbiertos.has(entrada.grupo);
         const tieneActivo = entrada.items.some((i) => i.href === pathname);
+        // Con el grupo cerrado, el número se ve en el título del grupo.
+        const contadorGrupo = !abierto && contador && entrada.items.some((i) => i.href === contador.href) ? contador : null;
         return (
           <div key={entrada.grupo}>
             <button
@@ -250,7 +267,10 @@ function ItemsMenu({
                 tieneActivo ? "text-orange-600 dark:text-orange-400" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
               }`}
             >
-              {entrada.grupo}
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                {entrada.grupo}
+                {contadorGrupo && <BadgeContador contador={contadorGrupo} />}
+              </span>
               <IconoChevron className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${abierto ? "rotate-90" : ""}`} />
             </button>
             {/* Truco de CSS grid (0fr -> 1fr) para animar a "altura automática"
@@ -266,7 +286,7 @@ function ItemsMenu({
                   className={`space-y-1 pb-1 transition-opacity duration-150 ${abierto ? "opacity-100 delay-75" : "opacity-0"}`}
                 >
                   {entrada.items.map((item) => (
-                    <ItemLink key={item.href} item={item} activo={pathname === item.href} onClick={onClickItem} />
+                    <ItemLink key={item.href} item={item} activo={pathname === item.href} onClick={onClickItem} contador={contador} />
                   ))}
                 </div>
               </div>
@@ -333,6 +353,7 @@ export default function AppShell({
   const pathname = usePathname();
   const items = rol === "COLABORADOR" ? construirMenuColaborador(esSupervisor) : MENU_POR_ROL[rol] ?? [];
   const itemsPaleta = aplanarMenu(items);
+  const contador = useContadorMenu(rol);
 
   useEffect(() => {
     const alPresionar = (e: KeyboardEvent) => {
@@ -406,12 +427,14 @@ export default function AppShell({
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setMenuAbierto(true)}
-            aria-label="Abrir menú"
-            className="md:hidden shrink-0 p-2 text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 shadow-md shadow-neutral-300/50 dark:text-neutral-300 dark:hover:text-white dark:bg-neutral-800/80 dark:hover:bg-neutral-800 dark:shadow-black/30 rounded-lg transition"
+            aria-label={contador ? `Abrir menú (${contador.total} ${contador.texto})` : "Abrir menú"}
+            className="relative md:hidden shrink-0 p-2 text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 shadow-md shadow-neutral-300/50 dark:text-neutral-300 dark:hover:text-white dark:bg-neutral-800/80 dark:hover:bg-neutral-800 dark:shadow-black/30 rounded-lg transition"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
             </svg>
+            {/* Celular: el menú está escondido, así que el aviso va en el botón. */}
+            {contador && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900" />}
           </button>
           {/* <img>, no <Image>: mismo motivo que en el Avatar de más abajo
               — /logo.png tiene su propio Cache-Control en next.config.ts. */}
@@ -433,7 +456,6 @@ export default function AppShell({
             <kbd className="text-[10px] font-semibold border border-neutral-300 dark:border-neutral-700 rounded px-1 py-0.5 ml-0.5">Ctrl K</kbd>
           </button>
           <span title={nombreCompleto} className="hidden md:block text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap mr-1">{nombreCorto}</span>
-          {rol === "COLABORADOR" ? <NotificacionesColaborador /> : <NotificacionesMenu rol={rol} />}
           <BotonTema />
           <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
         </div>
@@ -450,7 +472,7 @@ export default function AppShell({
             encabezados de tabla sticky que usan top-14/md:top-16. */}
         <aside className="hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100dvh-4rem)] self-start w-60 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0">
           <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-            <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} />
+            <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} contador={contador} />
           </nav>
           <div className="p-3 border-t border-neutral-200 dark:border-neutral-800/70 flex items-center justify-between gap-2">
             {rol === "COLABORADOR" ? (
@@ -508,6 +530,7 @@ export default function AppShell({
                 gruposAbiertos={gruposVisibles}
                 onAlternarGrupo={alternarGrupo}
                 onClickItem={() => setMenuAbierto(false)}
+                contador={contador}
               />
             </nav>
             {rol === "COLABORADOR" && (

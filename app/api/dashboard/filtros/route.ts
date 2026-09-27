@@ -4,9 +4,8 @@
 // esperando esto en el servidor, justo después del login) para que la
 // pantalla se muestre de inmediato con su propia carga.
 //
-// La alerta de pendientes ya NO se pide acá — vivía duplicada con la
-// campanita del header (NotificacionesMenu, que consulta
-// /api/dashboard/pendientes-accion), mostrando lo mismo dos veces.
+// La alerta de pendientes ya NO se pide acá: se ve como número en el menú
+// (lib/useContadorMenu.ts, que consulta /api/menu/pendientes).
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";

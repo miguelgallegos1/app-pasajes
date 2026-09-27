@@ -71,6 +71,6 @@ export async function POST(req: Request) {
   const count = resultados.reduce((acc, r) => acc + r.count, 0);
 
   // No se notifica al colaborador (ver [id]/devolver-revision/route.ts) —
-  // Coordinación ya ve esto solo, en su propia campanita de pendientes.
+  // Coordinación ya ve esto solo, en el número de pendientes de su menú.
   return NextResponse.json({ devueltas: count });
 }

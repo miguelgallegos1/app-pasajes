@@ -64,7 +64,7 @@ export async function PATCH(
   // No se notifica al colaborador: esto es trabajo interno (Coordinación
   // vuelve a corregir algo suyo, o Nómina encontró una novedad y se la
   // devuelve a Coordinación) — a Coordinación ya le llega solo, reflejado
-  // en su propia campanita de pendientes de revisar.
+  // en el número de pendientes de su menú (Bandeja de revisiones).
   const actualizada = await db.solicitudPasaje.findUnique({
     where: { id },
     include: { ruta: { select: { nombre: true } } },

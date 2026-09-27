@@ -30,9 +30,10 @@ const RUTAS_POR_ROL: Record<string, string[]> = {
 };
 
 // Pedidos a /api que NO cuentan como actividad del usuario: el sondeo
-// automático de la campanita (NotificacionesMenu.tsx) — si renovara, una
-// pestaña abierta nunca vencería. /api/auth/* maneja su propia cookie.
-const API_SIN_RENOVAR = ["/api/dashboard/pendientes-accion", "/api/auth/"];
+// automático del número de pendientes del menú (lib/useContadorMenu.ts) —
+// si renovara, una pestaña abierta nunca vencería. /api/auth/* maneja su
+// propia cookie.
+const API_SIN_RENOVAR = ["/api/menu/pendientes", "/api/auth/"];
 
 type Payload = { id: string; rol: string; exp?: number };
 

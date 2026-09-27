@@ -54,6 +54,6 @@ export async function POST(req: Request) {
   });
 
   // No se notifica al colaborador (ver [id]/revertir/route.ts) — TH ya ve
-  // esto solo, reflejado en su propia campanita de pendientes de aprobar.
+  // esto solo, reflejado en el número de pendientes de su menú.
   return NextResponse.json({ revertidas: resultado.count });
 }

@@ -65,7 +65,7 @@ export async function PATCH(
   // propia aprobación, o Coordinación reporta una discrepancia y se la
   // devuelve a TH) — el colaborador no tiene nada que hacer con esto. A
   // quien sí le compete (TH) ya lo ve solo: la solicitud vuelve a contar
-  // como "pendiente de aprobar" en su propia campanita/alerta.
+  // como "pendiente de aprobar" en el número de su menú.
   const actualizada = await db.solicitudPasaje.findUnique({
     where: { id },
     include: { ruta: { select: { nombre: true } } },

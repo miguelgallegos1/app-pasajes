@@ -23,6 +23,7 @@ import Avatar from "./Avatar";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import FilaRutasSeleccionables, { type RutaSimple } from "./FilaRutasSeleccionables";
 import NotificacionesPush from "./NotificacionesPush";
+import { publicarPendientes } from "../lib/avisoPendientes";
 import { IconoPregunta, IconoLupa, IconoAlerta, IconoChevron, IconoEliminar, IconoX } from "./Icons";
 import AvisoRechazadas from "./AvisoRechazadas";
 import { useAccionesHeader } from "../lib/accionesHeader";
@@ -173,6 +174,13 @@ export default function PanelColaborador({ modo = "colaborador" }: { modo?: "col
     // eslint-disable-next-line react-hooks/exhaustive-deps -- puedeGestionar depende de modo/colaboradorId
     [solicitudesVisibles, modo, colaboradorId]
   );
+
+  // Registrar ya sabe cuántas rechazadas hay por corregir: se lo pasa al
+  // número del menú directamente, sin otra consulta (solo colaborador; en
+  // modo TH el número del menú es el de la bandeja de aprobaciones).
+  useEffect(() => {
+    if (modo === "colaborador" && !cargandoInicial && !errorInicial) publicarPendientes(cantidadRechazadas);
+  }, [modo, cargandoInicial, errorInicial, cantidadRechazadas]);
 
   const solicitudesFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
