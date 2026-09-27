@@ -145,7 +145,10 @@ export async function POST(req: Request) {
         rutaId: ruta.id,
         montoTotal: ruta.valor,
         observaciones: item.observaciones,
-        creadoPorUsuarioId: !esUnoMismo ? session.id : null,
+        // null solo si la pide el propio colaborador desde SU cuenta. Si la
+        // registra TH (aunque sea para su ficha vinculada), queda a su nombre
+        // para que aparezca en su "Mis solicitudes".
+        creadoPorUsuarioId: miColaborador && colaboradorId === miColaborador.id ? null : session.id,
       });
     }
   }

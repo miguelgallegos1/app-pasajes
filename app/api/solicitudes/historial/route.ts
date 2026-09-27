@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
-import { getSession } from "../../../../lib/auth";
+import { getSession, obtenerFichaPropiaId } from "../../../../lib/auth";
 import { ordenSolicitudes, leerPagina } from "../../../../lib/ordenHistorial";
 import { fechaValida } from "../../../../lib/fechas";
 
@@ -36,7 +36,10 @@ export async function GET(req: Request) {
   const registradas = searchParams.get("registradas") === "1" && ["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol);
   let condicionDuenio: Record<string, unknown>;
   if (registradas) {
-    condicionDuenio = { creadoPorUsuarioId: session.id };
+    // Lo que registró + lo de su ficha propia (aunque lo pidiera desde su
+    // cuenta de colaborador).
+    const fichaPropiaId = await obtenerFichaPropiaId(session);
+    condicionDuenio = { OR: [{ creadoPorUsuarioId: session.id }, ...(fichaPropiaId ? [{ colaboradorId: fichaPropiaId }] : [])] };
   } else {
     const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
     if (!miColaborador) return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });

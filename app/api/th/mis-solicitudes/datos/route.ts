@@ -7,7 +7,7 @@
 // - equipo + rutas: los colaboradores ACTIVOS de sus áreas, para registrar
 //   por contingencia (misma consulta agrupada que usaba la pantalla
 //   anterior de TH, sin costo extra).
-// - solicitudes: lo que ÉL registró, solo Pendientes y Rechazadas
+// - solicitudes: lo que ÉL registró más las de su ficha, solo Pendientes y Rechazadas
 //   (aprobadas/revisadas/pagadas van a su Historial).
 
 import { NextResponse } from "next/server";
@@ -44,7 +44,12 @@ export async function GET() {
 
   const [solicitudes, rutasRaw] = await Promise.all([
     db.solicitudPasaje.findMany({
-      where: { creadoPorUsuarioId: session.id, estado: { in: ["PENDIENTE", "RECHAZADA"] } },
+      // Lo que él registró + todo lo de su ficha (aunque lo haya pedido
+      // desde su cuenta de colaborador).
+      where: {
+        OR: [{ creadoPorUsuarioId: session.id }, ...(ficha ? [{ colaboradorId: ficha.id }] : [])],
+        estado: { in: ["PENDIENTE", "RECHAZADA"] },
+      },
       orderBy: { fecha: "desc" },
       include: {
         ruta: { select: { nombre: true } },
