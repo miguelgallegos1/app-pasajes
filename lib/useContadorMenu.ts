@@ -1,13 +1,14 @@
 // lib/useContadorMenu.ts
-// Número pendiente del menú (reemplaza a la campanita): en qué pantalla va,
-// con qué color, y cuándo se vuelve a pedir. Mismo ritmo que tenía la
-// campanita, para no sumar consultas:
+// Números pendientes del menú (reemplazan a la campanita): en qué pantalla
+// va cada uno, con qué color, y cuándo se vuelven a pedir. Mismo ritmo que
+// tenía la campanita, para no sumar consultas:
 // - TH/Coordinación/Nómina: al entrar, al volver a la app y cada 5 min
 //   (lo que hacen OTRAS personas); lo propio se refleja al instante
 //   (avisarCambioPendientes en los paneles).
 // - Colaborador: al entrar, al volver a la app y cuando llega un push (un
-//   cambio de estado real) — nunca con sondeo. En Registrar la propia
-//   pantalla publica el número exacto (publicarPendientes), sin consulta.
+//   cambio de estado real) — nunca con sondeo.
+// En Registrar la propia pantalla publica el número exacto
+// (publicarPendientes), sin consulta.
 
 "use client";
 
@@ -20,32 +21,40 @@ export type ContadorMenu = { href: string; total: number; clase: string; texto: 
 // despierta todo el día con un sondeo corto es lo que más cuesta.
 const INTERVALO_SONDEO_MS = 5 * 60_000;
 
-// Colores de cada estado (los mismos de las bandejas).
-const DESTINO_POR_ROL: Record<string, { href: string; clase: string; texto: string; sondeo: boolean }> = {
-  ADMIN_TH: { href: "/th/aprobaciones", clase: "bg-amber-500 text-white", texto: "por aprobar", sondeo: true },
-  COORDINADOR: { href: "/coordinador/revision", clase: "bg-green-600 text-white", texto: "por revisar", sondeo: true },
-  NOMINA: { href: "/nomina/pagos", clase: "bg-sky-600 text-white", texto: "por pagar", sondeo: true },
-  COLABORADOR: { href: "/mis-pasajes", clase: "bg-red-500 text-white", texto: "rechazadas por corregir", sondeo: false },
+// Mismo color que el botón principal de cada bandeja (Aprobar verde,
+// Revisar celeste, Pagar naranja); rojo para las rechazadas por corregir.
+const ESTILO_POR_HREF: Record<string, { clase: string; texto: string }> = {
+  "/th/aprobaciones": { clase: "bg-green-600 text-white", texto: "por aprobar" },
+  "/coordinador/revision": { clase: "bg-sky-600 text-white", texto: "por revisar" },
+  "/nomina/pagos": { clase: "bg-orange-500 text-white", texto: "por pagar" },
+  "/th/mis-solicitudes": { clase: "bg-red-500 text-white", texto: "rechazadas por corregir" },
+  "/mis-pasajes": { clase: "bg-red-500 text-white", texto: "rechazadas por corregir" },
 };
 
-export function useContadorMenu(rol: string): ContadorMenu | null {
-  const destino = DESTINO_POR_ROL[rol];
-  const [total, setTotal] = useState(0);
+const ROLES_CON_SONDEO = new Set(["ADMIN_TH", "COORDINADOR", "NOMINA"]);
+const ROLES_CON_CONTADOR = new Set([...ROLES_CON_SONDEO, "COLABORADOR"]);
+
+const PREFIJO_TITULO = /^\(\d+\+?\) /;
+
+export function useContadorMenu(rol: string): ContadorMenu[] {
+  const activo = ROLES_CON_CONTADOR.has(rol);
+  const [totales, setTotales] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    if (!destino) return;
+    if (!activo) return;
+    const conSondeo = ROLES_CON_SONDEO.has(rol);
     let cancelado = false;
     const cargar = () => {
       fetch("/api/menu/pendientes", { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : null))
-        .then((data: { total: number } | null) => {
-          if (!cancelado && data) setTotal(data.total);
+        .then((data: { totales: Record<string, number> } | null) => {
+          if (!cancelado && data) setTotales(data.totales);
         })
         .catch(() => {});
     };
     cargar();
 
-    const intervalo = destino.sondeo
+    const intervalo = conSondeo
       ? setInterval(() => {
           if (document.visibilityState === "visible") cargar();
         }, INTERVALO_SONDEO_MS)
@@ -57,9 +66,11 @@ export function useContadorMenu(rol: string): ContadorMenu | null {
       if (e.data?.type === "push-recibido") cargar();
     };
     document.addEventListener("visibilitychange", alVolver);
-    if (!destino.sondeo) navigator.serviceWorker?.addEventListener("message", alPush);
+    if (!conSondeo) navigator.serviceWorker?.addEventListener("message", alPush);
     const quitarCambio = suscribirseACambioPendientes(cargar);
-    const quitarValor = suscribirseAValorPendientes((n) => setTotal(n));
+    const quitarValor = suscribirseAValorPendientes(({ href, total }) =>
+      setTotales((prev) => (prev[href] === total ? prev : { ...prev, [href]: total }))
+    );
     return () => {
       cancelado = true;
       if (intervalo) clearInterval(intervalo);
@@ -68,24 +79,29 @@ export function useContadorMenu(rol: string): ContadorMenu | null {
       quitarCambio();
       quitarValor();
     };
-  }, [destino]);
+  }, [activo, rol]);
+
+  const contadores = Object.entries(totales)
+    .filter(([href, total]) => total > 0 && ESTILO_POR_HREF[href])
+    .map(([href, total]) => ({ href, total, ...ESTILO_POR_HREF[href] }));
+  const suma = contadores.reduce((acc, c) => acc + c.total, 0);
 
   // Número en la pestaña del navegador: "(12) App Pasajes". Next cambia el
-  // título al navegar, así que se vuelve a poner en cada cambio de ruta.
+  // título al navegar, así que se vuelve a poner cuando lo reemplaza.
   useEffect(() => {
-    if (!destino) return;
+    if (!activo) return;
     const poner = () => {
-      const base = document.title.replace(/^\(\d+\+?\) /, "");
-      document.title = total > 0 ? `(${total > 99 ? "99+" : total}) ${base}` : base;
+      const base = document.title.replace(PREFIJO_TITULO, "");
+      document.title = suma > 0 ? `(${suma > 99 ? "99+" : suma}) ${base}` : base;
     };
     poner();
     const observador = new MutationObserver(() => {
-      if (total > 0 ? !/^\(\d+\+?\) /.test(document.title) : /^\(\d+\+?\) /.test(document.title)) poner();
+      if (suma > 0 ? !PREFIJO_TITULO.test(document.title) : PREFIJO_TITULO.test(document.title)) poner();
     });
     // Se observa el <head> entero: Next a veces reemplaza el <title> completo.
     observador.observe(document.head, { childList: true, characterData: true, subtree: true });
     return () => observador.disconnect();
-  }, [destino, total]);
+  }, [activo, suma]);
 
-  return destino && total > 0 ? { href: destino.href, total, clase: destino.clase, texto: destino.texto } : null;
+  return contadores;
 }

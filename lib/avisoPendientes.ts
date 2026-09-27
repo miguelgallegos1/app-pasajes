@@ -3,9 +3,9 @@
 // - avisarCambioPendientes(): la propia acción del usuario (aprobar/
 //   revisar/pagar/revertir, una o en lote) cambió su pendiente — el menú
 //   vuelve a pedir el número al instante, sin esperar al sondeo.
-// - publicarPendientes(n): la pantalla ya sabe el número exacto (Registrar
-//   cuenta sus rechazadas por corregir) — el menú lo toma tal cual, sin
-//   ninguna consulta.
+// - publicarPendientes(href, n): la pantalla ya sabe el número exacto
+//   (Registrar cuenta sus rechazadas por corregir) — el menú lo toma tal
+//   cual para esa pantalla, sin ninguna consulta.
 
 const EVENTO = "app-pasajes:pendientes-cambio";
 const EVENTO_VALOR = "app-pasajes:pendientes-valor";
@@ -20,13 +20,15 @@ export function suscribirseACambioPendientes(cb: () => void) {
   return () => window.removeEventListener(EVENTO, cb);
 }
 
-export function publicarPendientes(total: number) {
-  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(EVENTO_VALOR, { detail: total }));
+type ValorPendientes = { href: string; total: number };
+
+export function publicarPendientes(href: string, total: number) {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent<ValorPendientes>(EVENTO_VALOR, { detail: { href, total } }));
 }
 
-export function suscribirseAValorPendientes(cb: (total: number) => void) {
+export function suscribirseAValorPendientes(cb: (valor: ValorPendientes) => void) {
   if (typeof window === "undefined") return () => {};
-  const manejar = (e: Event) => cb((e as CustomEvent<number>).detail);
+  const manejar = (e: Event) => cb((e as CustomEvent<ValorPendientes>).detail);
   window.addEventListener(EVENTO_VALOR, manejar);
   return () => window.removeEventListener(EVENTO_VALOR, manejar);
 }

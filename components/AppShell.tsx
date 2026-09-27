@@ -206,7 +206,8 @@ function BadgeContador({ contador }: { contador: ContadorMenu }) {
   );
 }
 
-function ItemLink({ item, activo, onClick, contador }: { item: ItemMenu; activo: boolean; onClick?: () => void; contador?: ContadorMenu | null }) {
+function ItemLink({ item, activo, onClick, contadores }: { item: ItemMenu; activo: boolean; onClick?: () => void; contadores: ContadorMenu[] }) {
+  const contador = contadores.find((c) => c.href === item.href);
   const Icono = item.icono;
   return (
     <Link
@@ -228,7 +229,7 @@ function ItemLink({ item, activo, onClick, contador }: { item: ItemMenu; activo:
     >
       <Icono className="w-4 h-4 shrink-0" />
       {item.label}
-      {contador && contador.href === item.href && <BadgeContador contador={contador} />}
+      {contador && <BadgeContador contador={contador} />}
     </Link>
   );
 }
@@ -239,25 +240,25 @@ function ItemsMenu({
   gruposAbiertos,
   onAlternarGrupo,
   onClickItem,
-  contador,
+  contadores,
 }: {
   entradas: EntradaMenu[];
   pathname: string;
   gruposAbiertos: Set<string>;
   onAlternarGrupo: (grupo: string) => void;
   onClickItem?: () => void;
-  contador: ContadorMenu | null;
+  contadores: ContadorMenu[];
 }) {
   return (
     <>
       {entradas.map((entrada) => {
         if (!esGrupo(entrada)) {
-          return <ItemLink key={entrada.href} item={entrada} activo={pathname === entrada.href} onClick={onClickItem} contador={contador} />;
+          return <ItemLink key={entrada.href} item={entrada} activo={pathname === entrada.href} onClick={onClickItem} contadores={contadores} />;
         }
         const abierto = gruposAbiertos.has(entrada.grupo);
         const tieneActivo = entrada.items.some((i) => i.href === pathname);
-        // Con el grupo cerrado, el número se ve en el título del grupo.
-        const contadorGrupo = !abierto && contador && entrada.items.some((i) => i.href === contador.href) ? contador : null;
+        // Con el grupo cerrado, sus números se ven en el título del grupo.
+        const contadoresGrupo = abierto ? [] : contadores.filter((c) => entrada.items.some((i) => i.href === c.href));
         return (
           <div key={entrada.grupo}>
             <button
@@ -269,7 +270,9 @@ function ItemsMenu({
             >
               <span className="flex min-w-0 flex-1 items-center gap-2">
                 {entrada.grupo}
-                {contadorGrupo && <BadgeContador contador={contadorGrupo} />}
+                {contadoresGrupo.map((c) => (
+                  <BadgeContador key={c.href} contador={c} />
+                ))}
               </span>
               <IconoChevron className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${abierto ? "rotate-90" : ""}`} />
             </button>
@@ -286,7 +289,7 @@ function ItemsMenu({
                   className={`space-y-1 pb-1 transition-opacity duration-150 ${abierto ? "opacity-100 delay-75" : "opacity-0"}`}
                 >
                   {entrada.items.map((item) => (
-                    <ItemLink key={item.href} item={item} activo={pathname === item.href} onClick={onClickItem} contador={contador} />
+                    <ItemLink key={item.href} item={item} activo={pathname === item.href} onClick={onClickItem} contadores={contadores} />
                   ))}
                 </div>
               </div>
@@ -353,7 +356,8 @@ export default function AppShell({
   const pathname = usePathname();
   const items = rol === "COLABORADOR" ? construirMenuColaborador(esSupervisor) : MENU_POR_ROL[rol] ?? [];
   const itemsPaleta = aplanarMenu(items);
-  const contador = useContadorMenu(rol);
+  const contadores = useContadorMenu(rol);
+  const totalPendientes = contadores.reduce((acc, c) => acc + c.total, 0);
 
   useEffect(() => {
     const alPresionar = (e: KeyboardEvent) => {
@@ -427,14 +431,14 @@ export default function AppShell({
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setMenuAbierto(true)}
-            aria-label={contador ? `Abrir menú (${contador.total} ${contador.texto})` : "Abrir menú"}
+            aria-label={totalPendientes > 0 ? `Abrir menú (${totalPendientes} pendientes)` : "Abrir menú"}
             className="relative md:hidden shrink-0 p-2 text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 shadow-md shadow-neutral-300/50 dark:text-neutral-300 dark:hover:text-white dark:bg-neutral-800/80 dark:hover:bg-neutral-800 dark:shadow-black/30 rounded-lg transition"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
             </svg>
             {/* Celular: el menú está escondido, así que el aviso va en el botón. */}
-            {contador && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900" />}
+            {totalPendientes > 0 && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900" />}
           </button>
           {/* <img>, no <Image>: mismo motivo que en el Avatar de más abajo
               — /logo.png tiene su propio Cache-Control en next.config.ts. */}
@@ -472,7 +476,7 @@ export default function AppShell({
             encabezados de tabla sticky que usan top-14/md:top-16. */}
         <aside className="hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100dvh-4rem)] self-start w-60 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0">
           <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-            <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} contador={contador} />
+            <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} contadores={contadores} />
           </nav>
           <div className="p-3 border-t border-neutral-200 dark:border-neutral-800/70 flex items-center justify-between gap-2">
             {rol === "COLABORADOR" ? (
@@ -530,7 +534,7 @@ export default function AppShell({
                 gruposAbiertos={gruposVisibles}
                 onAlternarGrupo={alternarGrupo}
                 onClickItem={() => setMenuAbierto(false)}
-                contador={contador}
+                contadores={contadores}
               />
             </nav>
             {rol === "COLABORADOR" && (

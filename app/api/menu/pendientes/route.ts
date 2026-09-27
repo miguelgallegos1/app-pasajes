@@ -1,5 +1,5 @@
 // app/api/menu/pendientes/route.ts
-// GET: el número del menú (ver lib/contadorMenu.ts). Lo pide AppShell al
+// GET: los números del menú, por pantalla (ver lib/contadorMenu.ts). Lo pide AppShell al
 // entrar, al volver a la app y cada 5 minutos (solo TH/Coordinación/
 // Nómina) — no en cada cambio de pantalla.
 // No-store explícito: algunos navegadores móviles cachean de más y el
@@ -17,6 +17,6 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401, ...SIN_CACHE });
 
-  const total = await contarPendientesMenu(session);
-  return NextResponse.json({ total }, SIN_CACHE);
+  const totales = await contarPendientesMenu(session);
+  return NextResponse.json({ totales }, SIN_CACHE);
 }

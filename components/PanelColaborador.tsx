@@ -176,10 +176,9 @@ export default function PanelColaborador({ modo = "colaborador" }: { modo?: "col
   );
 
   // Registrar ya sabe cuántas rechazadas hay por corregir: se lo pasa al
-  // número del menú directamente, sin otra consulta (solo colaborador; en
-  // modo TH el número del menú es el de la bandeja de aprobaciones).
+  // número del menú directamente, sin otra consulta.
   useEffect(() => {
-    if (modo === "colaborador" && !cargandoInicial && !errorInicial) publicarPendientes(cantidadRechazadas);
+    if (!cargandoInicial && !errorInicial) publicarPendientes(modo === "th" ? "/th/mis-solicitudes" : "/mis-pasajes", cantidadRechazadas);
   }, [modo, cargandoInicial, errorInicial, cantidadRechazadas]);
 
   const solicitudesFiltradas = useMemo(() => {
