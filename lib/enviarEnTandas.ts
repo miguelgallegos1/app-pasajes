@@ -7,7 +7,7 @@
 // falla, se conserva lo ya procesado en las anteriores.
 
 // Debe coincidir con MAX_POR_LOTE de los endpoints aprobar/revisar/pagar-lote.
-export const TANDA_LOTE = 500;
+const TANDA_LOTE = 500;
 
 export async function enviarEnTandas(
   url: string,

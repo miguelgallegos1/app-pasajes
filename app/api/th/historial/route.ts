@@ -1,6 +1,7 @@
 // app/api/th/historial/route.ts
 // GET: historial de Aprobadas/Pagadas dentro del alcance del TH,
-// filtrable por fecha, estado y colaborador. Paginado.
+// filtrable por fecha, Empresa/Sitio/Área, estado, supervisor y
+// colaborador. Paginado y ordenado en el servidor.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
@@ -10,12 +11,9 @@ import { nombresDeUsuarios } from "../../../../lib/nombresActores";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
 import { ubicacionDesdeParams, condicionRuta } from "../../../../lib/filtroUbicacion";
 import { fechaValida } from "../../../../lib/fechas";
+import { SIN_SUPERVISOR } from "../../../../lib/sinSupervisor";
 
 const POR_PAGINA = 15;
-
-// Debe coincidir con el mismo sentinel del combo "Supervisor" en el
-// cliente — no es un id real, así que no puede chocar con uno.
-const SIN_SUPERVISOR = "__sin_supervisor__";
 
 export async function GET(req: Request) {
   const session = await getSession();

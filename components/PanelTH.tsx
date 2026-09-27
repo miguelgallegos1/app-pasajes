@@ -27,6 +27,7 @@ import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useNavegacionFilas } from "../lib/useNavegacionFilas";
 import { avisarCambioPendientes } from "../lib/avisoPendientes";
+import { SIN_SUPERVISOR } from "../lib/sinSupervisor";
 
 type Pendiente = {
   id: string;
@@ -53,10 +54,6 @@ const VALOR_ORDEN: Record<CampoOrden, (p: Pendiente) => string | number> = {
 };
 
 const POR_PAGINA = 15;
-
-// Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
-// id real de colaborador, así que no puede chocar con uno.
-const SIN_SUPERVISOR = "__sin_supervisor__";
 
 export default function PanelTH() {
   const toast = useToast();

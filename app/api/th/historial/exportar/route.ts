@@ -16,10 +16,7 @@ import {
   nombreArchivoExcel,
 } from "../../../../../lib/exportarExcel";
 import { nombresDeUsuarios } from "../../../../../lib/nombresActores";
-
-// Debe coincidir con el mismo sentinel del combo "Supervisor" en el
-// cliente — no es un id real, así que no puede chocar con uno.
-const SIN_SUPERVISOR = "__sin_supervisor__";
+import { SIN_SUPERVISOR } from "../../../../../lib/sinSupervisor";
 
 export async function GET(req: Request) {
   const session = await getSession();

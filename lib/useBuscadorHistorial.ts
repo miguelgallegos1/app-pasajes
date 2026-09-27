@@ -16,6 +16,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fechaHoyTexto } from "./fechas";
+import { SIN_SUPERVISOR } from "./sinSupervisor";
 
 export type OpcionBuscador = { id: string; label: string };
 type Estructura = {
@@ -31,8 +32,6 @@ type Personas = {
   haySinSupervisor: boolean;
 };
 
-// Debe coincidir con el sentinel de las APIs de historial (no es un id real).
-export const SIN_SUPERVISOR = "__sin_supervisor__";
 
 export function useBuscadorHistorial({ conSupervisor }: { conSupervisor: boolean }) {
   const [desde, setDesde] = useState(fechaHoyTexto);

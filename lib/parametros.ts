@@ -27,8 +27,8 @@ export async function actualizarDiasAtrasSolicitud(valor: number): Promise<void>
 // Botón "Seleccionar todas (N)" por pantalla (ver schema.prisma). Los
 // valores por defecto coinciden con los @default del esquema, para cuando
 // la fila "global" todavía no existe.
-export type PantallaSeleccionTotal = "aprobar" | "revisar" | "pagar";
-export type SeleccionTotal = Record<PantallaSeleccionTotal, boolean>;
+type PantallaSeleccionTotal = "aprobar" | "revisar" | "pagar";
+type SeleccionTotal = Record<PantallaSeleccionTotal, boolean>;
 
 export const SELECCION_TOTAL_DEFECTO: SeleccionTotal = { aprobar: false, revisar: false, pagar: true };
 

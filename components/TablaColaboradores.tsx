@@ -29,7 +29,7 @@ const VALOR_ORDEN_COLABORADOR: Record<CampoOrdenColaborador, (f: FilaColaborador
   total: (f) => f.total,
 };
 
-export type ColumnaItem<T> = {
+type ColumnaItem<T> = {
   encabezado: string;
   render: (item: T) => React.ReactNode;
   className?: string;

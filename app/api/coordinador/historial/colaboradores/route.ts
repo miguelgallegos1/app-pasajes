@@ -9,12 +9,9 @@ import { ubicacionDesdeParams, condicionRuta } from "../../../../../lib/filtroUb
 import { fechaValida } from "../../../../../lib/fechas";
 import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
 import { ordenarColaboradores } from "../../../../../lib/ordenHistorial";
+import { SIN_SUPERVISOR } from "../../../../../lib/sinSupervisor";
 
 const POR_PAGINA = 15;
-
-// Debe coincidir con el mismo sentinel del combo "Supervisor" en el
-// cliente — no es un id real, así que no puede chocar con uno.
-const SIN_SUPERVISOR = "__sin_supervisor__";
 
 export async function GET(req: Request) {
   const session = await getSession();

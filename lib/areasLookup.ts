@@ -5,7 +5,7 @@
 
 import { db } from "./db";
 
-export type AreaConHierarquia = { id: string; nombre: string; sitioId: string; empresaId: string };
+type AreaConHierarquia = { id: string; nombre: string; sitioId: string; empresaId: string };
 
 export function clavearArea(empresa: string, sitio: string, area: string): string {
   return `${empresa.trim().toLowerCase()}||${sitio.trim().toLowerCase()}||${area.trim().toLowerCase()}`;

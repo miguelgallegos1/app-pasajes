@@ -1,6 +1,7 @@
 // components/PanelHistorialTH.tsx
-// Historial completo para Talento Humano: filtros por fecha, estado y
-// colaborador, con total y paginación. Pantalla propia (no modal),
+// Historial completo para Talento Humano: buscador (fechas, Empresa/Sitio/
+// Área, estado, supervisor, colaborador), total, paginación, Excel y
+// constancia de pago. Pantalla propia (no modal),
 // pensada para escritorio y móvil por igual.
 
 "use client";

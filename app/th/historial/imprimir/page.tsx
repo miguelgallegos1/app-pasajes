@@ -16,11 +16,11 @@ import { ubicacionDesdeParams, condicionRuta } from "../../../../lib/filtroUbica
 import { fechaValida, formatearFecha } from "../../../../lib/fechas";
 import { formatearMoneda } from "../../../../lib/formato";
 import BotonImprimir from "../../../../components/BotonImprimir";
+import { SIN_SUPERVISOR } from "../../../../lib/sinSupervisor";
 
 // Mismo tope que las demás exportaciones: protege al servidor de un rango
 // gigantesco sin cortar de forma silenciosa (se avisa en la propia página).
 const TOPE_FILAS = 5000;
-const SIN_SUPERVISOR = "__sin_supervisor__";
 
 type Resumen = { id: string; area: string; nombre: string; pasajes: number; rutas: Set<string>; total: number };
 

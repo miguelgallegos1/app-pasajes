@@ -21,7 +21,7 @@ export type SesionUsuario = {
 // Crea un token firmado que se guarda en una cookie del navegador.
 // setIssuedAt() es necesario para que setExpirationTime() calcule el
 // vencimiento relativo a este momento.
-export async function crearToken(payload: SesionUsuario) {
+async function crearToken(payload: SesionUsuario) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()

@@ -15,7 +15,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { IconoMas } from "./Icons";
 
-export type AccionMenu = { label: string; onClick: () => void; tono?: "normal" | "peligro"; deshabilitado?: boolean };
+type AccionMenu = { label: string; onClick: () => void; tono?: "normal" | "peligro"; deshabilitado?: boolean };
 
 const ANCHO_MENU = 160; // w-40
 const MARGEN = 8;

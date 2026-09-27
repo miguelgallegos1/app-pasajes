@@ -1,8 +1,9 @@
 // components/PanelHistorialCoordinador.tsx
 // Historial de Revisadas + Pagadas dentro del alcance del Coordinador
 // (solo consulta, sin acciones — para actuar se usa la pantalla de
-// Revisión). Filtros por fecha, estado y colaborador, vista alterna
-// agrupada por colaborador, y exportación a Excel.
+// Revisión). Buscador (fechas, Empresa/Sitio/Área, estado, supervisor,
+// colaborador), vista alterna agrupada por colaborador, y exportación a
+// Excel.
 
 "use client";
 

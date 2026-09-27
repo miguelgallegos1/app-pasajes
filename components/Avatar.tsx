@@ -17,7 +17,7 @@ const COLORES = [
   "bg-fuchsia-500",
 ];
 
-export function colorPorIndice(indice: number): string {
+function colorPorIndice(indice: number): string {
   return COLORES[Math.abs(indice) % COLORES.length];
 }
 
@@ -33,7 +33,7 @@ export function colorDeValor(valor: number): string {
   return colorDeNombre(String(valor));
 }
 
-export function inicialesDeNombre(nombre: string): string {
+function inicialesDeNombre(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return "?";
   const primero = partes[0][0];
