@@ -11,6 +11,7 @@ import { APP_NOMBRE } from "../../lib/config";
 import Spinner from "../../components/Spinner";
 import { IconoHuella, IconoCheck } from "../../components/Icons";
 import { INICIO_POR_ROL as DESTINO_POR_ROL } from "../../lib/roles";
+import { COOKIE_TESTIGO_SESION } from "../../lib/cookieSesion";
 import BotonTema from "../../components/BotonTema";
 
 const TIEMPO_LIMITE_MS = 8000;
@@ -84,6 +85,14 @@ export default function LoginPage() {
     if (new URLSearchParams(window.location.search).get("expirada") === "1") {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setError("Tu sesión se cerró por inactividad. Ingresa de nuevo.");
+      return;
+    }
+    // Llegar al login con la cookie de sesión todavía puesta significa que
+    // el servidor la rechazó (usuario desactivado, rol cambiado...): se
+    // limpia para no arrastrarla y se avisa.
+    if (document.cookie.split("; ").some((c) => c.startsWith(`${COOKIE_TESTIGO_SESION}=`))) {
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+      setError("Tu sesión se cerró. Ingresa de nuevo.");
     }
   }, []);
 

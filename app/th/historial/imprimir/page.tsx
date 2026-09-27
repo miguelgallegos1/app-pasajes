@@ -22,7 +22,7 @@ import { SIN_SUPERVISOR } from "../../../../lib/sinSupervisor";
 // gigantesco sin cortar de forma silenciosa (se avisa en la propia página).
 const TOPE_FILAS = 5000;
 
-type Resumen = { id: string; area: string; nombre: string; pasajes: number; rutas: Set<string>; total: number };
+type Resumen = { id: string; empresa: string; sitio: string; area: string; nombre: string; pasajes: number; rutas: Set<string>; total: number };
 
 export default async function ImprimirHistorialTHPage({
   searchParams,
@@ -73,7 +73,13 @@ export default async function ImprimirHistorialTHPage({
       where: filtro,
       select: {
         montoTotal: true,
-        colaborador: { select: { id: true, nombreCompleto: true, area: { select: { nombre: true } } } },
+        colaborador: {
+          select: {
+            id: true,
+            nombreCompleto: true,
+            area: { select: { nombre: true, sitio: { select: { nombre: true, empresa: { select: { nombre: true } } } } } },
+          },
+        },
         ruta: { select: { nombre: true } },
       },
       take: TOPE_FILAS + 1,
@@ -89,7 +95,16 @@ export default async function ImprimirHistorialTHPage({
   const porColaborador = new Map<string, Resumen>();
   for (const s of filas) {
     const c = s.colaborador;
-    const r = porColaborador.get(c.id) ?? { id: c.id, area: c.area.nombre, nombre: c.nombreCompleto, pasajes: 0, rutas: new Set<string>(), total: 0 };
+    const r = porColaborador.get(c.id) ?? {
+      id: c.id,
+      empresa: c.area.sitio.empresa.nombre,
+      sitio: c.area.sitio.nombre,
+      area: c.area.nombre,
+      nombre: c.nombreCompleto,
+      pasajes: 0,
+      rutas: new Set<string>(),
+      total: 0,
+    };
     r.pasajes += 1;
     r.rutas.add(s.ruta.nombre);
     r.total += Number(s.montoTotal);
@@ -109,6 +124,12 @@ export default async function ImprimirHistorialTHPage({
   const areaEncabezado = area?.nombre ?? (areasDistintas.size === 1 ? Array.from(areasDistintas)[0] : null);
   const columnas = conColumnaArea ? 6 : 5;
 
+  // Encabezado con NOMBRES, nunca "Todas": lo elegido en el buscador o, si
+  // se buscó en todas, las empresas/sitios que realmente salieron.
+  const nombresDe = (valores: string[]) => Array.from(new Set(valores)).sort().join(", ");
+  const empresaEncabezado = empresa?.nombre ?? (nombresDe(resumen.map((r) => r.empresa)) || "—");
+  const sitioEncabezado = sitio?.nombre ?? (nombresDe(resumen.map((r) => r.sitio)) || "—");
+
   return (
     <div className="min-h-screen bg-white text-black px-6 py-8 print:p-0 text-xs">
       <div className="flex justify-end mb-3 print:hidden">
@@ -120,9 +141,9 @@ export default async function ImprimirHistorialTHPage({
       <div className="mt-4 mb-4 flex items-end justify-between gap-6">
         <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
           <dt className="font-semibold">Empresa:</dt>
-          <dd>{empresa?.nombre ?? "Todas"}</dd>
+          <dd>{empresaEncabezado}</dd>
           <dt className="font-semibold">Sitio:</dt>
-          <dd>{sitio?.nombre ?? "Todos"}</dd>
+          <dd>{sitioEncabezado}</dd>
           {areaEncabezado && (
             <>
               <dt className="font-semibold">Área:</dt>
@@ -142,8 +163,8 @@ export default async function ImprimirHistorialTHPage({
           <tr className="border-b-2 border-black text-left">
             {conColumnaArea && <th className="py-2 pr-3 font-semibold">Área</th>}
             <th className="py-2 pr-3 font-semibold">Colaborador</th>
-            <th className="py-2 pr-3 font-semibold text-center">N° pasajes</th>
             <th className="py-2 pr-3 font-semibold">Rutas</th>
+            <th className="py-2 pr-3 font-semibold text-center">N° pasajes</th>
             <th className="py-2 pr-3 font-semibold text-right">Valor total</th>
             <th className="py-2 pl-3 font-semibold w-56">Firma</th>
           </tr>
@@ -155,8 +176,8 @@ export default async function ImprimirHistorialTHPage({
             <tr key={r.id} className="border-b border-neutral-300 break-inside-avoid">
               {conColumnaArea && <td className="py-3 pr-3 align-top">{r.area}</td>}
               <td className="py-3 pr-3 align-top font-medium">{r.nombre}</td>
-              <td className="py-3 pr-3 align-top text-center">{r.pasajes}</td>
               <td className="py-3 pr-3 align-top">{Array.from(r.rutas).sort().join(", ")}</td>
+              <td className="py-3 pr-3 align-top text-center">{r.pasajes}</td>
               <td className="py-3 pr-3 align-top text-right">{formatearMoneda(r.total)}</td>
               <td className="py-3 pl-3 border-l border-neutral-300 h-12"></td>
             </tr>
@@ -173,11 +194,10 @@ export default async function ImprimirHistorialTHPage({
               debe salir solo al final, en la última hoja. */}
           {resumen.length > 0 && (
             <tr className="border-t-2 border-black font-bold break-inside-avoid">
-              <td colSpan={conColumnaArea ? 2 : 1} className="py-2 pr-3 text-right">
+              <td colSpan={conColumnaArea ? 3 : 2} className="py-2 pr-3 text-right">
                 Total ({resumen.length} {resumen.length === 1 ? "colaborador" : "colaboradores"})
               </td>
               <td className="py-2 pr-3 text-center">{totalPasajes}</td>
-              <td></td>
               <td className="py-2 pr-3 text-right">{formatearMoneda(totalValor)}</td>
               <td></td>
             </tr>

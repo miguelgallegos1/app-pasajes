@@ -82,10 +82,6 @@ export async function proxy(req: NextRequest) {
     return renovarSesion(NextResponse.next(), payload);
   }
 
-  if (pathname === "/login" && payload) {
-    return NextResponse.redirect(new URL(INICIO_POR_ROL[payload.rol] ?? "/login", req.url));
-  }
-
   const rutaProtegida = Object.keys(RUTAS_POR_ROL).find((r) => pathname.startsWith(r));
   if (!rutaProtegida) return NextResponse.next();
 
@@ -114,6 +110,5 @@ export const config = {
     "/dashboard/:path*",
     "/novedades",
     "/api/:path*",
-    "/login",
   ],
 };

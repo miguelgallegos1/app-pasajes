@@ -29,7 +29,41 @@ async function crearToken(payload: SesionUsuario) {
     .sign(secret);
 }
 
-// Lee la sesión actual desde la cookie (null si no hay sesión o expiró).
+// ¿El usuario de la sesión sigue habilitado? Sin esto, desactivar a
+// alguien (o cambiarle el rol) no afectaba la sesión que ya tenía abierta:
+// el JWT seguía siendo válido y se renovaba con cada acción. Se verifica
+// en la base (una lectura por id: activo + rol, y para el colaborador su
+// estado y si ahora lo gestiona un supervisor, igual que en el login) y
+// el resultado se guarda VIGENCIA_VERIFICACION_MS en memoria del servidor,
+// para no consultar en cada clic: una baja se aplica en ≤30 segundos.
+const VIGENCIA_VERIFICACION_MS = 30_000;
+const verificaciones = new Map<string, { habilitado: boolean; hasta: number }>();
+
+async function sesionHabilitada(sesion: SesionUsuario): Promise<boolean> {
+  const clave = `${sesion.id}|${sesion.rol}`;
+  const ahora = Date.now();
+  const guardada = verificaciones.get(clave);
+  if (guardada && guardada.hasta > ahora) return guardada.habilitado;
+
+  const usuario = await db.usuario.findUnique({
+    where: { id: sesion.id },
+    select: { activo: true, rol: true, colaborador: { select: { estado: true, esSupervisor: true, supervisorId: true } } },
+  });
+  const c = usuario?.colaborador;
+  const habilitado =
+    !!usuario &&
+    usuario.activo &&
+    usuario.rol === sesion.rol &&
+    (usuario.rol !== "COLABORADOR" || (!!c && c.estado === "ACTIVO" && (c.esSupervisor || !c.supervisorId)));
+
+  // Evita que el mapa crezca sin límite en una instancia de larga vida.
+  if (verificaciones.size > 5000) verificaciones.clear();
+  verificaciones.set(clave, { habilitado, hasta: ahora + VIGENCIA_VERIFICACION_MS });
+  return habilitado;
+}
+
+// Lee la sesión actual desde la cookie (null si no hay sesión, expiró, o
+// el usuario ya no está habilitado — ver sesionHabilitada).
 //
 // cache() de React memoiza por la duración de UNA sola petición: el layout
 // compartido de las pantallas internas ya llama a getSession(), y casi
@@ -40,13 +74,17 @@ export const getSession = cache(async (): Promise<SesionUsuario | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
   if (!token) return null;
+  let actual: SesionUsuario;
   try {
     const { payload } = await jwtVerify(token, secret);
     const sesion = payload as unknown as SesionUsuario;
-    return { id: sesion.id, rol: sesion.rol };
+    actual = { id: sesion.id, rol: sesion.rol };
   } catch {
     return null;
   }
+  // Fuera del try: si la base falla, que sea un error como cualquier otro
+  // (no "sin sesión", que mandaría a todos al login por un corte breve).
+  return (await sesionHabilitada(actual)) ? actual : null;
 });
 
 // "Primer nombre + primer apellido" para el saludo del header, que no
@@ -108,9 +146,9 @@ export async function establecerCookieSesion(res: NextResponse, usuario: SesionU
   ponerCookiesSesion(res, await crearToken(usuario));
 }
 
-// Si es un Colaborador (no Supervisor) con un supervisor asignado, sus
-// pasajes ahora los gestiona el supervisor y se le bloquea el acceso
-// individual. Devuelve el mensaje de error, o null si puede entrar.
+// Si es un Colaborador inactivo, o (no Supervisor) con un supervisor
+// asignado — sus pasajes ahora los gestiona el supervisor —, se le
+// bloquea el acceso individual. Devuelve el mensaje de error, o null si puede entrar.
 // Compartido entre el login por PIN y el login biométrico.
 export async function verificarAccesoColaborador(usuario: {
   id: string;
@@ -121,6 +159,11 @@ export async function verificarAccesoColaborador(usuario: {
     where: { usuarioId: usuario.id },
     include: { supervisor: { select: { nombreCompleto: true } } },
   });
+  // Desactivado desde TH -> Colaboradores -> Gestionar: antes solo se
+  // miraba usuario.activo, así que un colaborador Inactivo seguía entrando.
+  if (colaborador && colaborador.estado !== "ACTIVO") {
+    return "Tu usuario está inactivo. Comunícate con Talento Humano.";
+  }
   if (colaborador && !colaborador.esSupervisor && colaborador.supervisorId) {
     return `No puedes ingresar: tus pasajes ahora los gestiona tu supervisor, ${
       colaborador.supervisor?.nombreCompleto ?? "asignado"
