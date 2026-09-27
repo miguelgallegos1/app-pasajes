@@ -8,9 +8,7 @@
 import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
-import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
-import ComboboxBuscable from "./ComboboxBuscable";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import EstadoVacio from "./EstadoVacio";
@@ -19,11 +17,13 @@ import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import { useToast } from "./Toast";
-import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
+import { formatearFecha } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import { useHistorialLista } from "../lib/useHistorialLista";
+import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
+import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
+import { chipOpcion } from "./BarraFiltros";
 import { IconoImprimir, IconoDevolver, IconoDescargar } from "./Icons";
-import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 
 type Fila = {
   id: string;
@@ -39,90 +39,32 @@ type Fila = {
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
 
-// Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
-// id real de colaborador, así que no puede chocar con uno.
-const SIN_SUPERVISOR = "__sin_supervisor__";
-
 const OPCIONES_ESTADO = [
   { value: "", label: "Todos" },
   { value: "APROBADA", label: "Aprobada" },
   { value: "PAGADA", label: "Pagada" },
 ];
 
+const CLASE_ACCION =
+  "inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-xl transition";
+const CLASE_ACCION_OFF =
+  "inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3 py-2 rounded-xl cursor-not-allowed";
+
 export default function PanelHistorialTH() {
-  const [desde, setDesde] = useState(fechaHoyTexto);
-  const [hasta, setHasta] = useState(fechaHoyTexto);
+  // Filtros (fechas, Empresa/Sitio/Área, Supervisor, Colaborador): nada se
+  // busca hasta pulsar Buscar — ver lib/useBuscadorHistorial.ts.
+  const buscador = useBuscadorHistorial({ conSupervisor: true });
   const [estado, setEstado] = useState("");
-  const [supervisorId, setSupervisorId] = useState("");
-  const [colaboradorId, setColaboradorId] = useState("");
 
-  // "Sin áreas asignadas" se resuelve en el cliente (mismo chequeo que ya
-  // hace el backend al armar el combo de colaboradores, vía el 403 de esa
-  // misma consulta) para que la pantalla se muestre de inmediato en vez
-  // de esperar esa consulta antes de mostrar nada — el caso normal (sí
-  // tiene áreas) no debería pagar el costo del caso raro (no tiene).
-  const [sinAsignaciones, setSinAsignaciones] = useState(false);
-
-  // Opciones del combo "Supervisor": solo quienes tienen algo de su
-  // equipo con actividad en el rango/estado elegidos, más "Sin
-  // supervisor" para quienes solicitan directo con su propio PIN.
-  const [supervisoresOpciones, setSupervisoresOpciones] = useState<{ id: string; label: string }[]>([]);
-  useEffect(() => {
-    if (!desde || !hasta) return;
-    const params = new URLSearchParams({ desde, hasta });
-    if (estado) params.set("estado", estado);
-    let cancelado = false;
-    fetch(`/api/th/historial/supervisores-filtro?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { supervisores: { id: string; nombre: string }[]; haySinSupervisor: boolean } | null) => {
-        if (cancelado || !data) return;
-        const opciones = data.supervisores.map((s) => ({ id: s.id, label: s.nombre }));
-        if (data.haySinSupervisor) opciones.push({ id: SIN_SUPERVISOR, label: "Sin supervisor (solicita directo)" });
-        setSupervisoresOpciones(opciones);
-        setSupervisorId((actual) => (actual && !opciones.some((o) => o.id === actual) ? "" : actual));
-      })
-      .catch(() => {});
-    return () => {
-      cancelado = true;
-    };
-  }, [desde, hasta, estado]);
-
-  // Opciones del combo "Colaborador": solo quienes tienen actividad en el
-  // rango/estado/supervisor elegidos, no la lista completa de la empresa
-  // (que puede ser grande y no tiene relación con lo que se está por
-  // buscar).
-  const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
-  useEffect(() => {
-    if (!desde || !hasta) return;
-    const params = new URLSearchParams({ desde, hasta });
-    if (estado) params.set("estado", estado);
-    if (supervisorId) params.set("supervisorId", supervisorId);
-    let cancelado = false;
-    fetch(`/api/th/historial/colaboradores-filtro?${params.toString()}`)
-      .then((res) => {
-        if (cancelado) return null;
-        setSinAsignaciones(res.status === 403);
-        return res.ok ? res.json() : [];
-      })
-      .then((data) => {
-        if (cancelado || !data) return;
-        setColaboradores(data);
-        setColaboradorId((actual) => (actual && !data.some((c: { id: string }) => c.id === actual) ? "" : actual));
-      })
-      .catch(() => {});
-    return () => {
-      cancelado = true;
-    };
-  }, [desde, hasta, estado, supervisorId]);
   const { orden, ordenar: ordenarBase } = useOrdenServidor<CampoOrden>("historial-th");
   const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaUrl, ultimaRespuesta } = useHistorialLista<Fila>(
     (paginaNueva) => {
-      if (!desde || !hasta) return null;
-      const params = new URLSearchParams({ desde, hasta, pagina: String(paginaNueva) });
+      // Siempre con la foto de la última búsqueda (no lo que se está
+      // cambiando en pantalla).
+      if (!buscador.aplicados) return null;
+      const params = new URLSearchParams(buscador.aplicados);
+      params.set("pagina", String(paginaNueva));
       agregarOrdenAParams(params, orden);
-      if (estado) params.set("estado", estado);
-      if (supervisorId) params.set("supervisorId", supervisorId);
-      if (colaboradorId) params.set("colaboradorId", colaboradorId);
       return `/api/th/historial?${params.toString()}`;
     }
   );
@@ -133,22 +75,13 @@ export default function PanelHistorialTH() {
   const [revirtiendo, setRevirtiendo] = useState(false);
   const [errorRevertir, setErrorRevertir] = useState("");
 
-
-  const opcionesColaborador = [
-    { id: "", label: "Todos" },
-    ...colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
-  ];
-
-  // Siempre solo Pagadas (sin importar el filtro de Estado en pantalla):
-  // es la constancia que firma el colaborador al recibir su pago. Usa el
-  // rango/colaborador de la ÚLTIMA búsqueda, y solo se habilita si en
-  // ella había pagadas para imprimir (la API las cuenta aparte).
+  // Constancia: los MISMOS filtros de la última búsqueda, pero siempre solo
+  // pagadas (sin importar el Estado) — la firma el colaborador al recibir
+  // su pago. Solo se habilita si en esa búsqueda había pagadas.
   const pagadasImprimibles = Number(ultimaRespuesta?.pagadasImprimibles ?? 0);
   const urlImprimir = () => {
-    const buscado = new URLSearchParams(ultimaUrl?.split("?")[1] ?? "");
-    const params = new URLSearchParams({ desde: buscado.get("desde") ?? "", hasta: buscado.get("hasta") ?? "" });
-    const colaborador = buscado.get("colaboradorId");
-    if (colaborador) params.set("colaboradorId", colaborador);
+    const params = new URLSearchParams(buscador.aplicados ?? "");
+    params.delete("estado");
     return `/th/historial/imprimir?${params.toString()}`;
   };
 
@@ -159,43 +92,27 @@ export default function PanelHistorialTH() {
     params.delete("pagina");
     return `/api/th/historial/exportar?${params.toString()}`;
   };
-  const puedeExportar = !cargando && !sinAsignaciones && !!ultimaUrl && totalRegistros > 0;
+  const puedeExportar = !cargando && !!ultimaUrl && totalRegistros > 0;
+  const puedeImprimir = !cargando && pagadasImprimibles > 0;
 
-  const cambiarSupervisor = (v: string) => {
-    setSupervisorId(v);
-    setColaboradorId("");
-  };
-
-  // Busca sola al entrar, al cambiar el rango de fechas y al quitar un
-  // chip (o "Limpiar filtros"), igual que Aprobaciones — solo Estado,
-  // Supervisor y Colaborador se eligen en el panel y se aplican juntos.
-  // Va en un efecto porque buscar() arma la URL con el estado de ESTE
-  // render — recién en el siguiente ya ve el filtro cambiado.
-  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  // buscar() arma la URL con el estado de ESTE render: tras aplicar los
+  // filtros (o cambiar el orden), la consulta sale en el render siguiente.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(0);
   useEffect(() => {
     if (pedidoBusqueda) buscar(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoBusqueda]);
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
 
+  const buscarConFiltros = () => {
+    if (buscador.aplicar({ estado })) rebuscar();
+  };
+
   // El orden lo aplica el servidor a TODO el rango: al cambiarlo se vuelve
   // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
   const ordenar = (campo: CampoOrden) => {
     ordenarBase(campo);
-    rebuscar();
-  };
-
-  const chipsFiltros = chips(
-    chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
-    chipOpcion("Supervisor", supervisoresOpciones, supervisorId, () => { cambiarSupervisor(""); rebuscar(); }),
-    chipOpcion("Colaborador", opcionesColaborador, colaboradorId, () => { setColaboradorId(""); rebuscar(); })
-  );
-
-  const limpiarFiltros = () => {
-    setEstado("");
-    setSupervisorId("");
-    setColaboradorId("");
-    rebuscar();
+    if (buscador.aplicados) rebuscar();
   };
 
   const abrirRevertir = (id: string) => {
@@ -238,76 +155,49 @@ export default function PanelHistorialTH() {
 
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
-
-      {sinAsignaciones && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
-          No tienes ninguna Empresa/Sitio/Área asignada todavía.
-        </div>
-      )}
-
-      <BarraFiltros
-        chips={chipsFiltros}
-        onLimpiar={limpiarFiltros}
-        onAplicar={() => buscar(1)}
-        aplicando={cargando}
-        aplicarDeshabilitado={sinAsignaciones}
-        textoAplicar="Aplicar"
-        destacado={
-          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+      <BuscadorHistorial
+        buscador={buscador}
+        onBuscar={buscarConFiltros}
+        buscando={cargando}
+        extrasParams={{ estado }}
+        extrasChips={[chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => setEstado(""))]}
+        onLimpiarExtras={() => setEstado("")}
+        extras={
+          <Campo etiqueta="Estado">
+            <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
+          </Campo>
         }
         acciones={
           <>
-            {cargando || sinAsignaciones || pagadasImprimibles === 0 ? (
-              <span
-                title={sinAsignaciones ? "Sin áreas asignadas" : cargando ? "Buscando..." : "No hay solicitudes pagadas en este rango"}
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
-              >
-                <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
-              </span>
-            ) : (
+            {puedeImprimir ? (
               <a
                 href={urlImprimir()}
                 target="_blank"
                 rel="noopener noreferrer"
-                title={`Imprime ${pagadasImprimibles} ${pagadasImprimibles === 1 ? "solicitud pagada" : "solicitudes pagadas"} del rango, sin importar el filtro de Estado`}
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
+                title={`Imprime la constancia de ${pagadasImprimibles} ${pagadasImprimibles === 1 ? "solicitud pagada" : "solicitudes pagadas"} de esta búsqueda`}
+                className={CLASE_ACCION}
               >
                 <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
               </a>
+            ) : (
+              <span title={cargando ? "Buscando..." : "La búsqueda no tiene solicitudes pagadas"} className={CLASE_ACCION_OFF}>
+                <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
+              </span>
             )}
             {puedeExportar ? (
-              <a
-                href={urlExportar()}
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
-              >
+              <a href={urlExportar()} className={CLASE_ACCION}>
                 <IconoDescargar className="w-4 h-4" /> Exportar a Excel
               </a>
             ) : (
-              <span
-                title={sinAsignaciones ? "Sin áreas asignadas" : cargando ? "Buscando..." : "Busca primero: no hay resultados para exportar"}
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
-              >
+              <span title={cargando ? "Buscando..." : "Busca primero: no hay resultados para exportar"} className={CLASE_ACCION_OFF}>
                 <IconoDescargar className="w-4 h-4" /> Exportar a Excel
               </span>
             )}
           </>
         }
-      >
-        <CampoFiltro etiqueta="Estado">
-          <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
-        </CampoFiltro>
-        <CampoFiltro etiqueta="Supervisor">
-          <ComboboxBuscable
-            opciones={[{ id: "", label: "Todos" }, ...supervisoresOpciones]}
-            value={supervisorId}
-            onChange={cambiarSupervisor}
-            placeholder="Todos"
-          />
-        </CampoFiltro>
-        <CampoFiltro etiqueta="Colaborador">
-          <ComboboxBuscable opciones={opcionesColaborador} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
-        </CampoFiltro>
-      </BarraFiltros>
+      />
+
+      {!buscador.aplicados && !cargando && <AvisoSinBusqueda faltante={buscador.faltante} />}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

@@ -25,6 +25,22 @@ export type Novedad = {
 
 export const NOVEDADES: Novedad[] = [
   {
+    id: "2026-09-buscador-historiales",
+    fecha: "2026-09-26",
+    titulo: "Historiales: eliges primero, buscas después",
+    descripcion:
+      "En los historiales ahora eliges las fechas y, en Filtros, la empresa, el sitio (y si quieres área, estado, supervisor o colaborador) y recién al pulsar Buscar se traen los datos: solo lo que necesitas. Si tienes una sola empresa o sitio asignado, ya viene elegido.",
+    roles: ["ADMIN_TH", "COORDINADOR", "NOMINA"],
+  },
+  {
+    id: "2026-09-constancia-resumida",
+    fecha: "2026-09-26",
+    titulo: "Constancia de pago resumida por colaborador",
+    descripcion:
+      "\"Imprimir pagadas\" genera la Constancia de pago de pasajes con empresa, sitio y fechas en el encabezado, una fila por colaborador (pasajes, rutas y valor total) con espacio para la firma, y el total solo en la última hoja.",
+    roles: ["ADMIN_TH"],
+  },
+  {
     id: "2026-09-orden-historiales",
     fecha: "2026-09-26",
     titulo: "Ordenar en los historiales ahora ordena todo",

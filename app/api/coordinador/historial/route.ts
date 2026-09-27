@@ -9,6 +9,7 @@ import { getSession } from "../../../../lib/auth";
 import { ordenSolicitudes } from "../../../../lib/ordenHistorial";
 import { nombresDeUsuarios } from "../../../../lib/nombresActores";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
+import { ubicacionDesdeParams, condicionRuta } from "../../../../lib/filtroUbicacion";
 import { fechaValida } from "../../../../lib/fechas";
 
 const POR_PAGINA = 15;
@@ -24,6 +25,8 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
+  // Empresa/Sitio/Área elegidos en el buscador (se suman al alcance del usuario).
+  const ubicacion = ubicacionDesdeParams(searchParams);
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
   const estado = searchParams.get("estado");
@@ -53,7 +56,7 @@ export async function GET(req: Request) {
 
   const filtro = {
     fecha: { gte: desdeFecha, lte: hastaFecha },
-    ...(sinRestriccion ? {} : { ruta: condicion }),
+    ...condicionRuta(sinRestriccion, condicion, ubicacion),
     ...(colaboradorId ? { colaboradorId } : {}),
     ...(supervisorId === SIN_SUPERVISOR
       ? { colaborador: { supervisorId: null } }

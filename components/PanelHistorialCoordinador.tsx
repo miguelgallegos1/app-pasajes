@@ -9,17 +9,17 @@
 import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
-import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
-import ComboboxBuscable from "./ComboboxBuscable";
-import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
+import { chipOpcion } from "./BarraFiltros";
+import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
+import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import SelectorVista from "./SelectorVista";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
-import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
+import { formatearFecha } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import TablaColaboradores, { type FilaColaborador, type CampoOrdenColaborador } from "./TablaColaboradores";
 import { IconoDescargar } from "./Icons";
@@ -38,10 +38,6 @@ type Fila = {
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
 
-// Sentinel para el filtro "Sin supervisor (solicita directo)" — no es un
-// id real de colaborador, así que no puede chocar con uno.
-const SIN_SUPERVISOR = "__sin_supervisor__";
-
 const OPCIONES_ESTADO = [
   { value: "", label: "Todos" },
   { value: "REVISADO", label: "Revisada" },
@@ -50,69 +46,11 @@ const OPCIONES_ESTADO = [
 
 export default function PanelHistorialCoordinador() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
-  const [desde, setDesde] = useState(fechaHoyTexto);
-  const [hasta, setHasta] = useState(fechaHoyTexto);
+  // Filtros (fechas, Empresa/Sitio/Área, Supervisor, Colaborador): nada se
+  // busca hasta pulsar Buscar — ver lib/useBuscadorHistorial.ts.
+  const buscador = useBuscadorHistorial({ conSupervisor: true });
   const [estado, setEstado] = useState("");
-  const [supervisorId, setSupervisorId] = useState("");
-  const [colaboradorId, setColaboradorId] = useState("");
 
-  // "Sin áreas asignadas" se resuelve en el cliente (mismo chequeo que ya
-  // hace el backend al armar el combo de colaboradores, vía el 403 de esa
-  // misma consulta) para que la pantalla se muestre de inmediato en vez
-  // de esperar esa consulta antes de mostrar nada.
-  const [sinAsignaciones, setSinAsignaciones] = useState(false);
-
-  // Opciones del combo "Supervisor": solo quienes tienen algo de su
-  // equipo con actividad en el rango/estado elegidos, más "Sin
-  // supervisor" para quienes solicitan directo con su propio PIN.
-  const [supervisoresOpciones, setSupervisoresOpciones] = useState<{ id: string; label: string }[]>([]);
-  useEffect(() => {
-    if (!desde || !hasta) return;
-    const params = new URLSearchParams({ desde, hasta });
-    if (estado) params.set("estado", estado);
-    let cancelado = false;
-    fetch(`/api/coordinador/historial/supervisores-filtro?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { supervisores: { id: string; nombre: string }[]; haySinSupervisor: boolean } | null) => {
-        if (cancelado || !data) return;
-        const opciones = data.supervisores.map((s) => ({ id: s.id, label: s.nombre }));
-        if (data.haySinSupervisor) opciones.push({ id: SIN_SUPERVISOR, label: "Sin supervisor (solicita directo)" });
-        setSupervisoresOpciones(opciones);
-        setSupervisorId((actual) => (actual && !opciones.some((o) => o.id === actual) ? "" : actual));
-      })
-      .catch(() => {});
-    return () => {
-      cancelado = true;
-    };
-  }, [desde, hasta, estado]);
-
-  // Opciones del combo "Colaborador": solo quienes tienen actividad en el
-  // rango/estado/supervisor elegidos, no la lista completa dentro del
-  // alcance (que puede ser grande y no tiene relación con lo que se está
-  // por buscar).
-  const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
-  useEffect(() => {
-    if (!desde || !hasta) return;
-    const params = new URLSearchParams({ desde, hasta });
-    if (estado) params.set("estado", estado);
-    if (supervisorId) params.set("supervisorId", supervisorId);
-    let cancelado = false;
-    fetch(`/api/coordinador/historial/colaboradores-filtro?${params.toString()}`)
-      .then((res) => {
-        if (cancelado) return null;
-        setSinAsignaciones(res.status === 403);
-        return res.ok ? res.json() : [];
-      })
-      .then((data) => {
-        if (cancelado || !data) return;
-        setColaboradores(data);
-        setColaboradorId((actual) => (actual && !data.some((c: { id: string }) => c.id === actual) ? "" : actual));
-      })
-      .catch(() => {});
-    return () => {
-      cancelado = true;
-    };
-  }, [desde, hasta, estado, supervisorId]);
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -130,32 +68,14 @@ export default function PanelHistorialCoordinador() {
   const { orden, ordenar: ordenarLista } = useOrdenServidor<CampoOrden>("historial-coordinador");
   const { orden: ordenColab, ordenar: ordenarColabBase } = useOrdenServidor<CampoOrdenColaborador>("coordinador-historial-colaborador");
 
-  const opcionesColaborador = [
-    { id: "", label: "Todos" },
-    ...colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
-  ];
-
-  const parametrosBase = () => {
-    const params = new URLSearchParams({ desde, hasta });
-    if (estado) params.set("estado", estado);
-    if (supervisorId) params.set("supervisorId", supervisorId);
-    if (colaboradorId) params.set("colaboradorId", colaboradorId);
-    return params;
-  };
-
-  const cambiarSupervisor = (v: string) => {
-    setSupervisorId(v);
-    setColaboradorId("");
-  };
+  // Siempre con la foto de la última búsqueda (no lo que se está cambiando).
+  const parametrosAplicados = () => new URLSearchParams(buscador.aplicados ?? "");
 
   const buscar = async (paginaNueva = 1) => {
-    if (!desde || !hasta) {
-      setError("Selecciona ambas fechas");
-      return;
-    }
+    if (!buscador.aplicados) return;
     setCargando(true);
     setError("");
-    const params = parametrosBase();
+    const params = parametrosAplicados();
     params.set("pagina", String(paginaNueva));
     agregarOrdenAParams(params, vista === "lista" ? orden : ordenColab);
 
@@ -191,42 +111,28 @@ export default function PanelHistorialCoordinador() {
     }
   };
 
-  const supervisoresOpcionesTodos = [{ id: "", label: "Todos" }, ...supervisoresOpciones];
-
-  // Busca sola al entrar, al cambiar el rango de fechas o la vista y al
-  // quitar un chip; el resto de filtros se aplica junto desde el panel.
-  // En un efecto porque buscar() arma la URL con el estado de ESTE render
-  // — recién el siguiente ve el cambio.
-  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  // buscar() arma la URL con el estado de ESTE render: tras aplicar los
+  // filtros (o cambiar orden/vista), la consulta sale en el render siguiente.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(0);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara una consulta de red
     if (pedidoBusqueda) buscar(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoBusqueda]);
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+  const buscarConFiltros = () => {
+    if (buscador.aplicar({ estado })) rebuscar();
+  };
 
   // El orden lo aplica el servidor a TODO el rango: al cambiarlo se vuelve
   // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
   const ordenar = (campo: CampoOrden) => {
     ordenarLista(campo);
-    rebuscar();
+    if (buscador.aplicados) rebuscar();
   };
   const ordenarColab = (campo: CampoOrdenColaborador) => {
     ordenarColabBase(campo);
-    rebuscar();
-  };
-
-  const chipsFiltros = chips(
-    chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
-    chipOpcion("Supervisor", supervisoresOpcionesTodos, supervisorId, () => { cambiarSupervisor(""); rebuscar(); }),
-    chipOpcion("Colaborador", opcionesColaborador, colaboradorId, () => { setColaboradorId(""); rebuscar(); })
-  );
-
-  const limpiarFiltros = () => {
-    setEstado("");
-    cambiarSupervisor("");
-    setColaboradorId("");
-    rebuscar();
+    if (buscador.aplicados) rebuscar();
   };
 
   const cambiarVista = (v: "lista" | "colaborador") => {
@@ -234,78 +140,64 @@ export default function PanelHistorialCoordinador() {
     setItems(null);
     setFilasColaborador(null);
     setError("");
-    rebuscar();
+    if (buscador.aplicados) rebuscar();
   };
 
   // Detalle (código/fecha/ruta/valor/estado) de UN colaborador, pedido
   // solo cuando lo expande — no viaja con la lista completa.
   const cargarItemsColaborador = async (idColaborador: string): Promise<Fila[]> => {
-    const params = new URLSearchParams({ desde, hasta, colaboradorId: idColaborador, pagina: "1" });
-    if (estado) params.set("estado", estado);
+    const params = parametrosAplicados();
+    params.set("colaboradorId", idColaborador);
+    params.set("pagina", "1");
     const res = await fetch(`/api/coordinador/historial?${params.toString()}`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.items;
   };
 
-  const urlExportar = () => `/api/coordinador/historial/exportar?${parametrosBase().toString()}`;
-  // Exportar usa los mismos filtros que "Buscar", así que solo habilitamos
-  // el botón cuando esa búsqueda ya trajo resultados — evita generar un
-  // Excel vacío cuando el rango/filtro elegido no tiene datos.
+  const urlExportar = () => `/api/coordinador/historial/exportar?${parametrosAplicados().toString()}`;
+  // Exporta con los filtros de la última búsqueda, solo si trajo resultados
+  // — evita generar un Excel vacío.
   const hayDatos = vista === "lista" ? (items?.length ?? 0) > 0 : (filasColaborador?.length ?? 0) > 0;
-  const puedeExportar = !!desde && !!hasta && hayDatos;
+  const puedeExportar = !!buscador.aplicados && !cargando && hayDatos;
 
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
-
-      {sinAsignaciones && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
-          No tienes ninguna Empresa/Sitio/Área asignada todavía.
-        </div>
-      )}
-
-      <BarraFiltros
-        chips={chipsFiltros}
-        onLimpiar={limpiarFiltros}
-        onAplicar={() => buscar(1)}
-        aplicando={cargando}
-        aplicarDeshabilitado={sinAsignaciones}
-        textoAplicar="Aplicar"
-        destacado={
-          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+      <BuscadorHistorial
+        buscador={buscador}
+        onBuscar={buscarConFiltros}
+        buscando={cargando}
+        extrasParams={{ estado }}
+        extrasChips={[chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => setEstado(""))]}
+        onLimpiarExtras={() => setEstado("")}
+        extras={
+          <Campo etiqueta="Estado">
+            <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
+          </Campo>
         }
         acciones={
           <>
-          <SelectorVista valor={vista} onCambiar={cambiarVista} />
-
-          {puedeExportar ? (
-            <a
-              href={urlExportar()}
-              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
-            >
-              <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-            </a>
-          ) : (
-            <span
-              title={!desde || !hasta ? "Selecciona ambas fechas" : "Busca primero: no hay resultados para exportar"}
-              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
-            >
-              <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-            </span>
-          )}
+            <SelectorVista valor={vista} onCambiar={cambiarVista} />
+            {puedeExportar ? (
+              <a
+                href={urlExportar()}
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
+              >
+                <IconoDescargar className="w-4 h-4" /> Exportar a Excel
+              </a>
+            ) : (
+              <span
+                title="Busca primero: no hay resultados para exportar"
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
+              >
+                <IconoDescargar className="w-4 h-4" /> Exportar a Excel
+              </span>
+            )}
           </>
         }
-      >
-        <CampoFiltro etiqueta="Estado">
-          <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
-        </CampoFiltro>
-        <CampoFiltro etiqueta="Supervisor">
-          <ComboboxBuscable opciones={supervisoresOpcionesTodos} value={supervisorId} onChange={cambiarSupervisor} placeholder="Todos" />
-        </CampoFiltro>
-        <CampoFiltro etiqueta="Colaborador">
-          <ComboboxBuscable opciones={opcionesColaborador} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
-        </CampoFiltro>
-      </BarraFiltros>
+      />
+
+      {!buscador.aplicados && !cargando && <AvisoSinBusqueda faltante={buscador.faltante} />}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

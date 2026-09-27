@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
+import { ubicacionDesdeParams, condicionRuta } from "../../../../../lib/filtroUbicacion";
 import { fechaValida } from "../../../../../lib/fechas";
 import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
 import { ordenarColaboradores } from "../../../../../lib/ordenHistorial";
@@ -22,6 +23,8 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
+  // Empresa/Sitio/Área elegidos en el buscador (se suman al alcance del usuario).
+  const ubicacion = ubicacionDesdeParams(searchParams);
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
   const estado = searchParams.get("estado");
@@ -49,7 +52,7 @@ export async function GET(req: Request) {
 
   const filtro: Record<string, unknown> = {
     fecha: { gte: desdeFecha, lte: hastaFecha },
-    ...(sinRestriccion ? {} : { ruta: condicion }),
+    ...condicionRuta(sinRestriccion, condicion, ubicacion),
     ...(supervisorId === SIN_SUPERVISOR
       ? { colaborador: { supervisorId: null } }
       : supervisorId
