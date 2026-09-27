@@ -3,15 +3,15 @@
 // historiales, para los combos del buscador. Sale de la ESTRUCTURA
 // asignada (no de las solicitudes de un rango de fechas): así el usuario
 // elige el alcance antes de buscar, en vez de traer todo y filtrar después.
-// TH y Coordinación: sus áreas asignadas (AsignacionTH); Nómina y Super
-// Admin: todas.
+// TH y Coordinación: sus áreas asignadas (AsignacionTH); Nómina, Jefe y
+// Super Admin: todas.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerAreasPermitidasTH } from "../../../../lib/alcanceTH";
 
-const ROLES = ["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"];
+const ROLES = ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"];
 
 export async function GET() {
   const session = await getSession();
@@ -19,10 +19,10 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  // Nómina no tiene alcance restringido: ve toda la estructura (igual que
+  // Nómina y Jefe no tienen alcance restringido: ven toda la estructura (igual que
   // Super Admin, que obtenerAreasPermitidasTH ya resuelve como "todas").
   const areas =
-    session.rol === "NOMINA"
+    session.rol === "NOMINA" || session.rol === "JEFE"
       ? await db.area.findMany({
           select: { id: true, nombre: true, sitioId: true, sitio: { select: { nombre: true, empresa: { select: { id: true, nombre: true } } } } },
           orderBy: { nombre: "asc" },

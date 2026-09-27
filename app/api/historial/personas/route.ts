@@ -10,7 +10,7 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerAreasPermitidasTH } from "../../../../lib/alcanceTH";
 
-const ROLES = ["ADMIN_TH", "COORDINADOR", "NOMINA", "SUPER_ADMIN"];
+const ROLES = ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"];
 
 export async function GET(req: Request) {
   const session = await getSession();

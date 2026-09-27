@@ -1,35 +1,30 @@
 // components/PanelHistorialJefe.tsx
 // Historial completo (cualquier estado) para el rol Jefe — solo consulta,
-// sin restricción de alcance. Filtros en cascada Empresa -> Sitio -> Área
-// -> Colaborador más Estado, vista alterna agrupada por colaborador, y
-// exportación a Excel.
+// sin restricción de alcance. Mismo buscador que los demás historiales
+// (fechas, Empresa/Sitio/Área, Estado, Colaborador; nada se consulta hasta
+// pulsar Buscar), vista alterna agrupada por colaborador y Excel.
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
 import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
-import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorModerno from "./SelectorModerno";
-import ComboboxBuscable from "./ComboboxBuscable";
-import BarraFiltros, { CampoFiltro, chipOpcion, chips, CamposEmpresaSitioArea, chipsEmpresaSitioArea } from "./BarraFiltros";
+import { chipOpcion } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import SelectorVista from "./SelectorVista";
-import { GrupoSalidas, BotonSalida } from "./AccionesSalida";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
-import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
+import { formatearFecha } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
-import { useFiltroEmpresaSitioArea } from "../lib/useFiltroEmpresaSitioArea";
+import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
+import BuscadorHistorial, { Campo, AvisoSinBusqueda, ResumenResultado } from "./BuscadorHistorial";
 import TablaColaboradores, { type FilaColaborador, type CampoOrdenColaborador } from "./TablaColaboradores";
 import { IconoDescargar } from "./Icons";
 
-type Empresa = { id: string; nombre: string };
-type Sitio = { id: string; nombre: string; empresaId: string };
-type Area = { id: string; nombre: string; sitioId: string };
 type Fila = { id: string; codigo: string; fecha: string; montoTotal: number; estado: string; rutaLabel: string; nombreColaborador: string; codigoNomina: string | null };
 
 type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "estado";
@@ -45,61 +40,14 @@ const OPCIONES_ESTADO = [
 
 export default function PanelHistorialJefe() {
   const [vista, setVista] = useState<"lista" | "colaborador">("lista");
-  const [desde, setDesde] = useState(fechaHoyTexto);
-  const [hasta, setHasta] = useState(fechaHoyTexto);
+  // Filtros (fechas, Empresa/Sitio/Área, Colaborador): nada se busca hasta
+  // pulsar Buscar — ver lib/useBuscadorHistorial.ts.
+  const buscador = useBuscadorHistorial({ conSupervisor: false });
   const [estado, setEstado] = useState("");
-  const [colaboradorId, setColaboradorId] = useState("");
-
-  // Empresa/Sitio/Área para los combos de filtro: se piden al montar en
-  // vez de esperar a que el servidor las traiga antes de mostrar la
-  // pantalla — los controles aparecen de una, y los combos se llenan un
-  // instante después.
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [sitios, setSitios] = useState<Sitio[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
-  useEffect(() => {
-    fetch("/api/jefe/historial/filtros")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!data) return;
-        setEmpresas(data.empresas);
-        setSitios(data.sitios);
-        setAreas(data.areas);
-      })
-      .catch(() => {});
-  }, []);
-
-  // Opciones del combo "Colaborador": solo quienes tienen actividad en el
-  // rango y los filtros (Empresa/Sitio/Área/Estado) elegidos, no la lista
-  // completa de la empresa (que puede ser grande y no tiene relación con
-  // la búsqueda).
-  const filtroUbicacion = useFiltroEmpresaSitioArea(sitios, areas, () => setColaboradorId(""));
-  const { empresaFiltro, sitioFiltro, areaFiltro, cambiarEmpresaFiltro } = filtroUbicacion;
-
-  const [colaboradores, setColaboradores] = useState<{ id: string; nombreCompleto: string }[]>([]);
-  useEffect(() => {
-    if (!desde || !hasta) return;
-    const params = new URLSearchParams({ desde, hasta });
-    if (empresaFiltro) params.set("empresaId", empresaFiltro);
-    if (sitioFiltro) params.set("sitioId", sitioFiltro);
-    if (areaFiltro) params.set("areaId", areaFiltro);
-    if (estado) params.set("estado", estado);
-    let cancelado = false;
-    fetch(`/api/jefe/historial/colaboradores-filtro?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => {
-        if (cancelado) return;
-        setColaboradores(data);
-        setColaboradorId((actual) => (actual && !data.some((c: { id: string }) => c.id === actual) ? "" : actual));
-      })
-      .catch(() => {});
-    return () => {
-      cancelado = true;
-    };
-  }, [desde, hasta, empresaFiltro, sitioFiltro, areaFiltro, estado]);
 
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
+  const [totalRegistros, setTotalRegistros] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
@@ -111,33 +59,19 @@ export default function PanelHistorialJefe() {
   const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
   const [paginaColab, setPaginaColab] = useState(1);
   const [totalPaginasColab, setTotalPaginasColab] = useState(1);
+  const [totalColab, setTotalColab] = useState(0);
 
   const { orden, ordenar: ordenarLista } = useOrdenServidor<CampoOrden>("historial-jefe");
   const { orden: ordenColab, ordenar: ordenarColabBase } = useOrdenServidor<CampoOrdenColaborador>("jefe-historial-colaborador");
 
-  const colaboradoresOpciones = useMemo(
-    () => colaboradores.map((c) => ({ id: c.id, label: c.nombreCompleto })),
-    [colaboradores]
-  );
-
-  const parametrosBase = () => {
-    const params = new URLSearchParams({ desde, hasta });
-    if (estado) params.set("estado", estado);
-    if (empresaFiltro) params.set("empresaId", empresaFiltro);
-    if (sitioFiltro) params.set("sitioId", sitioFiltro);
-    if (areaFiltro) params.set("areaId", areaFiltro);
-    if (colaboradorId) params.set("colaboradorId", colaboradorId);
-    return params;
-  };
+  // Siempre con la foto de la última búsqueda (no lo que se está cambiando).
+  const parametrosAplicados = () => new URLSearchParams(buscador.aplicados ?? "");
 
   const buscar = async (paginaNueva = 1) => {
-    if (!desde || !hasta) {
-      setError("Selecciona ambas fechas");
-      return;
-    }
+    if (!buscador.aplicados) return;
     setCargando(true);
     setError("");
-    const params = parametrosBase();
+    const params = parametrosAplicados();
     params.set("pagina", String(paginaNueva));
     agregarOrdenAParams(params, vista === "lista" ? orden : ordenColab);
 
@@ -152,6 +86,7 @@ export default function PanelHistorialJefe() {
         const data = await res.json();
         setItems(data.items);
         setTotalMonto(data.totalMonto);
+        setTotalRegistros(data.total ?? 0);
         setTotalPaginas(data.totalPaginas);
         setPagina(paginaNueva);
       } else {
@@ -163,6 +98,7 @@ export default function PanelHistorialJefe() {
         }
         const data = await res.json();
         setFilasColaborador(data.items);
+        setTotalColab(data.total ?? 0);
         setTotalPaginasColab(data.totalPaginas);
         setPaginaColab(paginaNueva);
       }
@@ -173,42 +109,28 @@ export default function PanelHistorialJefe() {
     }
   };
 
-  // Busca sola al entrar, al cambiar el rango de fechas o la vista y al
-  // quitar un chip; el resto de filtros se aplica junto desde el panel.
-  // En un efecto porque buscar() arma la URL con el estado de ESTE render
-  // — recién el siguiente ve el cambio.
-  const [pedidoBusqueda, setPedidoBusqueda] = useState(1);
+  // buscar() arma la URL con el estado de ESTE render: tras aplicar los
+  // filtros (o cambiar orden/vista), la consulta sale en el render siguiente.
+  const [pedidoBusqueda, setPedidoBusqueda] = useState(0);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara una consulta de red
     if (pedidoBusqueda) buscar(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoBusqueda]);
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
+  const buscarConFiltros = () => {
+    if (buscador.aplicar({ estado })) rebuscar();
+  };
 
   // El orden lo aplica el servidor a TODO el rango: al cambiarlo se vuelve
   // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
   const ordenar = (campo: CampoOrden) => {
     ordenarLista(campo);
-    rebuscar();
+    if (buscador.aplicados) rebuscar();
   };
   const ordenarColab = (campo: CampoOrdenColaborador) => {
     ordenarColabBase(campo);
-    rebuscar();
-  };
-
-  const empresasOpciones = useMemo(() => empresas.map((e) => ({ id: e.id, label: e.nombre })), [empresas]);
-
-  const chipsFiltros = chips(
-    chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => { setEstado(""); rebuscar(); }),
-    ...chipsEmpresaSitioArea(empresasOpciones, filtroUbicacion, rebuscar),
-    chipOpcion("Colaborador", colaboradoresOpciones, colaboradorId, () => { setColaboradorId(""); rebuscar(); })
-  );
-
-  const limpiarFiltros = () => {
-    setEstado("");
-    cambiarEmpresaFiltro("");
-    setColaboradorId("");
-    rebuscar();
+    if (buscador.aplicados) rebuscar();
   };
 
   const cambiarVista = (v: "lista" | "colaborador") => {
@@ -216,60 +138,60 @@ export default function PanelHistorialJefe() {
     setItems(null);
     setFilasColaborador(null);
     setError("");
-    rebuscar();
+    if (buscador.aplicados) rebuscar();
   };
 
   // Detalle (código/fecha/ruta/valor/estado) de UN colaborador, pedido
   // solo cuando lo expande — no viaja con la lista completa.
   const cargarItemsColaborador = async (idColaborador: string): Promise<Fila[]> => {
-    const params = new URLSearchParams({ desde, hasta, colaboradorId: idColaborador, pagina: "1" });
-    if (estado) params.set("estado", estado);
+    const params = parametrosAplicados();
+    params.set("colaboradorId", idColaborador);
+    params.set("pagina", "1");
     const res = await fetch(`/api/jefe/historial?${params.toString()}`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.items;
   };
 
-  const urlExportar = () => `/api/jefe/historial/exportar?${parametrosBase().toString()}`;
-  // Exportar usa los mismos filtros que "Buscar", así que solo habilitamos
-  // el botón cuando esa búsqueda ya trajo resultados — evita generar un
-  // Excel vacío cuando el rango/filtro elegido no tiene datos.
+  const urlExportar = () => `/api/jefe/historial/exportar?${parametrosAplicados().toString()}`;
+  // Exporta con los filtros de la última búsqueda, solo si trajo resultados.
   const hayDatos = vista === "lista" ? (items?.length ?? 0) > 0 : (filasColaborador?.length ?? 0) > 0;
-  const puedeExportar = !!desde && !!hasta && hayDatos;
+  const puedeExportar = !!buscador.aplicados && !cargando && hayDatos;
 
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
-
-      <BarraFiltros
-        chips={chipsFiltros}
-        onLimpiar={limpiarFiltros}
-        onAplicar={() => buscar(1)}
-        aplicando={cargando}
-        textoAplicar="Aplicar"
-        destacado={
-          <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
+      <BuscadorHistorial
+        buscador={buscador}
+        onBuscar={buscarConFiltros}
+        buscando={cargando}
+        extrasParams={{ estado }}
+        extrasChips={[chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado)]}
+        onLimpiarExtras={() => setEstado("")}
+        extras={
+          <Campo etiqueta="Estado">
+            <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
+          </Campo>
         }
         vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
-        salidas={
-          <GrupoSalidas>
-            <BotonSalida
-              href={urlExportar()}
-              icono={IconoDescargar}
-              etiqueta="Excel"
-              titulo={puedeExportar ? "Exportar a Excel con los filtros de la búsqueda" : !desde || !hasta ? "Selecciona ambas fechas" : "Busca primero: no hay resultados para exportar"}
-              deshabilitado={!puedeExportar}
-            />
-          </GrupoSalidas>
+        exportar={[
+          {
+            etiqueta: "Excel",
+            href: urlExportar(),
+            icono: IconoDescargar,
+            deshabilitado: !puedeExportar,
+            detalle: puedeExportar ? "Todo lo de esta búsqueda" : "Busca primero: no hay resultados",
+          },
+        ]}
+        resumen={
+          !buscador.aplicados || cargando ? null : vista === "lista" ? (
+            items && <ResumenResultado principal={`${totalRegistros} ${totalRegistros === 1 ? "solicitud" : "solicitudes"}`} secundario={`· ${formatearMoneda(totalMonto)} en total`} />
+          ) : (
+            filasColaborador && <ResumenResultado principal={`${totalColab} ${totalColab === 1 ? "colaborador" : "colaboradores"}`} />
+          )
         }
-      >
-        <CampoFiltro etiqueta="Estado">
-          <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
-        </CampoFiltro>
-        <CamposEmpresaSitioArea empresas={empresasOpciones} filtro={filtroUbicacion} />
-        <CampoFiltro etiqueta="Colaborador">
-          <ComboboxBuscable opciones={colaboradoresOpciones} value={colaboradorId} onChange={setColaboradorId} placeholder="Todos" />
-        </CampoFiltro>
-      </BarraFiltros>
+      />
+
+      {!buscador.aplicados && !cargando && <AvisoSinBusqueda faltante={buscador.faltante} />}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

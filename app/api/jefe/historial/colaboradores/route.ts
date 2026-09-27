@@ -25,6 +25,7 @@ export async function GET(req: Request) {
   const sitioId = searchParams.get("sitioId");
   const areaId = searchParams.get("areaId");
   const estadoParam = searchParams.get("estado");
+  const colaboradorId = searchParams.get("colaboradorId");
   const pagina = leerPagina(searchParams);
 
   if (!desde || !hasta) {
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
   if (areaId) filtro.ruta = { areaId };
   else if (sitioId) filtro.ruta = { sitioId };
   else if (empresaId) filtro.ruta = { empresaId };
+  if (colaboradorId) filtro.colaboradorId = colaboradorId;
   if (estadoParam && (ESTADOS_VALIDOS as readonly string[]).includes(estadoParam)) filtro.estado = estadoParam;
 
   // Se ordena la lista COMPLETA (columna elegida en la tabla) antes de

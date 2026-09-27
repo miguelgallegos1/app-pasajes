@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { IconoCalendario } from "./Icons";
 import { formatearFecha } from "../lib/fechas";
 import { useCalendarioMes, fechaATexto, MESES, DIAS_SEMANA } from "./useCalendarioMes";
@@ -16,11 +16,16 @@ export default function RangoFechasSelector({
   hasta,
   onChange,
   fechaMinima,
+  renderDisparador,
 }: {
   desde: string;
   hasta: string;
   onChange: (desde: string, hasta: string) => void;
   fechaMinima?: string;
+  // Opcional: dibuja otro botón en lugar del campo de siempre (ej. un
+  // segmento de la barra de búsqueda de los historiales). El calendario y
+  // su lógica son los mismos.
+  renderDisparador?: (p: { abierto: boolean; etiqueta: string; alternar: () => void }) => ReactNode;
 }) {
   // Mientras se elige el segundo clic (el "hasta"), acá va guardado el
   // "desde" ya confirmado — es lo que distingue "primer clic" de "segundo
@@ -81,6 +86,9 @@ export default function RangoFechasSelector({
 
   return (
     <div className="relative" ref={contenedorRef}>
+      {renderDisparador ? (
+        renderDisparador({ abierto, etiqueta, alternar: () => (abierto ? setAbierto(false) : abrir()) })
+      ) : (
       <button
         type="button"
         onClick={() => (abierto ? setAbierto(false) : abrir())}
@@ -92,6 +100,7 @@ export default function RangoFechasSelector({
         <span className={desde && hasta ? "text-neutral-900 dark:text-white font-medium" : "text-neutral-400 dark:text-neutral-500"}>{etiqueta}</span>
         <IconoCalendario className="w-5 h-5 text-orange-500 shrink-0" />
       </button>
+      )}
 
       {abierto && (
         <div className="absolute z-50 mt-2 bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-2xl shadow-2xl p-4 w-72 origin-top animate-[dropdown-in_0.15s_ease-out]">

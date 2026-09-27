@@ -13,13 +13,12 @@ import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import SelectorModerno from "./SelectorModerno";
 import { chipOpcion } from "./BarraFiltros";
 import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
-import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
+import BuscadorHistorial, { Campo, AvisoSinBusqueda, ResumenResultado } from "./BuscadorHistorial";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import SelectorVista from "./SelectorVista";
-import { GrupoSalidas, BotonSalida } from "./AccionesSalida";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
@@ -55,6 +54,8 @@ export default function PanelHistorialCoordinador() {
 
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
+  const [totalRegistros, setTotalRegistros] = useState(0);
+  const [totalColab, setTotalColab] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
@@ -92,6 +93,7 @@ export default function PanelHistorialCoordinador() {
         const data = await res.json();
         setItems(data.items);
         setTotalMonto(data.totalMonto);
+        setTotalRegistros(data.total ?? 0);
         setTotalPaginas(data.totalPaginas);
         setPagina(paginaNueva);
       } else {
@@ -103,6 +105,7 @@ export default function PanelHistorialCoordinador() {
         }
         const data = await res.json();
         setFilasColaborador(data.items);
+        setTotalColab(data.total ?? 0);
         setTotalPaginasColab(data.totalPaginas);
         setPaginaColab(paginaNueva);
       }
@@ -178,16 +181,21 @@ export default function PanelHistorialCoordinador() {
           </Campo>
         }
         vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
-        salidas={
-          <GrupoSalidas>
-            <BotonSalida
-              href={urlExportar()}
-              icono={IconoDescargar}
-              etiqueta="Excel"
-              titulo={puedeExportar ? "Exportar a Excel con los filtros de la búsqueda" : "Busca primero: no hay resultados para exportar"}
-              deshabilitado={!puedeExportar}
-            />
-          </GrupoSalidas>
+        exportar={[
+          {
+            etiqueta: "Excel",
+            href: urlExportar(),
+            icono: IconoDescargar,
+            deshabilitado: !puedeExportar,
+            detalle: puedeExportar ? "Todo lo de esta búsqueda" : "Busca primero: no hay resultados",
+          },
+        ]}
+        resumen={
+          !buscador.aplicados || cargando ? null : vista === "lista" ? (
+            items && <ResumenResultado principal={`${totalRegistros} ${totalRegistros === 1 ? "solicitud" : "solicitudes"}`} secundario={`· ${formatearMoneda(totalMonto)} en total`} />
+          ) : (
+            filasColaborador && <ResumenResultado principal={`${totalColab} ${totalColab === 1 ? "colaborador" : "colaboradores"}`} />
+          )
         }
       />
 

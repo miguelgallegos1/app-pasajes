@@ -22,11 +22,10 @@ import { formatearFecha } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import { useHistorialLista } from "../lib/useHistorialLista";
 import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
-import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
+import BuscadorHistorial, { Campo, AvisoSinBusqueda, ResumenResultado } from "./BuscadorHistorial";
 import { chipOpcion } from "./BarraFiltros";
 import { IconoImprimir, IconoDevolver, IconoDescargar } from "./Icons";
 import SelectorVista from "./SelectorVista";
-import { GrupoSalidas, BotonSalida } from "./AccionesSalida";
 import TablaColaboradores, { type FilaColaborador, type CampoOrdenColaborador } from "./TablaColaboradores";
 import { useReportarCarga } from "../lib/cargaGlobal";
 
@@ -77,6 +76,7 @@ export default function PanelHistorialTH() {
   const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
   const [paginaColab, setPaginaColab] = useState(1);
   const [totalPaginasColab, setTotalPaginasColab] = useState(1);
+  const [totalColab, setTotalColab] = useState(0);
   const [cargandoColab, setCargandoColab] = useState(false);
   const [errorColab, setErrorColab] = useState("");
   useReportarCarga(cargandoColab);
@@ -97,6 +97,7 @@ export default function PanelHistorialTH() {
         return;
       }
       setFilasColaborador(data.items);
+      setTotalColab(data.total ?? 0);
       setTotalPaginasColab(data.totalPaginas);
       setPaginaColab(paginaNueva);
     } catch {
@@ -232,30 +233,29 @@ export default function PanelHistorialTH() {
           </Campo>
         }
         vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
-        salidas={
-          <GrupoSalidas>
-            <BotonSalida
-              href={urlExportar()}
-              icono={IconoDescargar}
-              etiqueta="Excel"
-              titulo={puedeExportar ? "Exportar a Excel con los filtros de la búsqueda" : ocupado ? "Buscando..." : "Busca primero: no hay resultados para exportar"}
-              deshabilitado={!puedeExportar}
-            />
-            <BotonSalida
-              href={urlImprimir()}
-              icono={IconoImprimir}
-              etiqueta="Imprimir"
-              titulo={
-                puedeImprimir
-                  ? "Imprimir la constancia de pago (solo pagadas) de esta búsqueda"
-                  : ocupado
-                  ? "Buscando..."
-                  : "La búsqueda no tiene solicitudes pagadas"
-              }
-              deshabilitado={!puedeImprimir}
-              nuevaPestana
-            />
-          </GrupoSalidas>
+        exportar={[
+          {
+            etiqueta: "Excel",
+            href: urlExportar(),
+            icono: IconoDescargar,
+            deshabilitado: !puedeExportar,
+            detalle: puedeExportar ? "Todo lo de esta búsqueda" : "Busca primero: no hay resultados",
+          },
+          {
+            etiqueta: "Imprimir constancia",
+            href: urlImprimir(),
+            icono: IconoImprimir,
+            deshabilitado: !puedeImprimir,
+            detalle: puedeImprimir ? "Solo las pagadas, para firmar" : "La búsqueda no tiene pagadas",
+            nuevaPestana: true,
+          },
+        ]}
+        resumen={
+          !buscador.aplicados || ocupado ? null : vista === "lista" ? (
+            <ResumenResultado principal={`${totalRegistros} ${totalRegistros === 1 ? "solicitud" : "solicitudes"}`} secundario={`· ${formatearMoneda(totalMonto)} en total`} />
+          ) : (
+            <ResumenResultado principal={`${totalColab} ${totalColab === 1 ? "colaborador" : "colaboradores"}`} />
+          )
         }
       />
 
