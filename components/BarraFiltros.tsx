@@ -155,6 +155,7 @@ export default function BarraFiltros({
   principal,
   vista,
   salidas,
+  sinChips = false,
   children,
 }: {
   // onEnter: para búsquedas que consultan al servidor (no filtran en vivo).
@@ -184,6 +185,9 @@ export default function BarraFiltros({
   principal?: ReactNode;
   vista?: ReactNode;
   salidas?: ReactNode;
+  // Sin la fila de chips: lo aplicado se indica solo con el número en el
+  // botón Filtros (historiales).
+  sinChips?: boolean;
   children: ReactNode;
 }) {
   const [abierto, setAbierto] = useState(false);
@@ -320,7 +324,7 @@ export default function BarraFiltros({
       </div>
       )}
 
-      {chips.length > 0 && (
+      {!sinChips && chips.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           {chips.map((c) => (
             <span
