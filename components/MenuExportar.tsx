@@ -47,7 +47,7 @@ export default function MenuExportar({ opciones }: { opciones: OpcionExportar[] 
         aria-expanded={abierto}
         aria-label="Exportar"
         title={hayAlguna ? "Exportar" : "Busca primero: no hay resultados para exportar"}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-800 transition hover:border-orange-400 hover:text-orange-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:text-orange-400 sm:px-4"
+        className="inline-flex h-[42px] items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-700 transition hover:border-orange-400 hover:text-orange-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-orange-400 dark:hover:text-orange-400 sm:px-3.5"
       >
         <IconoDescargar className="w-4 h-4" />
         <span className="hidden sm:inline">Exportar</span>

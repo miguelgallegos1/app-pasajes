@@ -22,7 +22,7 @@ import { formatearFecha } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import { useHistorialLista } from "../lib/useHistorialLista";
 import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
-import BuscadorHistorial, { Campo, AvisoSinBusqueda, ResumenResultado } from "./BuscadorHistorial";
+import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
 import { chipOpcion } from "./BarraFiltros";
 import { IconoImprimir, IconoDevolver, IconoDescargar } from "./Icons";
 import SelectorVista from "./SelectorVista";
@@ -76,7 +76,6 @@ export default function PanelHistorialTH() {
   const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
   const [paginaColab, setPaginaColab] = useState(1);
   const [totalPaginasColab, setTotalPaginasColab] = useState(1);
-  const [totalColab, setTotalColab] = useState(0);
   const [cargandoColab, setCargandoColab] = useState(false);
   const [errorColab, setErrorColab] = useState("");
   useReportarCarga(cargandoColab);
@@ -97,7 +96,6 @@ export default function PanelHistorialTH() {
         return;
       }
       setFilasColaborador(data.items);
-      setTotalColab(data.total ?? 0);
       setTotalPaginasColab(data.totalPaginas);
       setPaginaColab(paginaNueva);
     } catch {
@@ -232,7 +230,7 @@ export default function PanelHistorialTH() {
             <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
           </Campo>
         }
-        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
+        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} desplegable />}
         exportar={[
           {
             etiqueta: "Excel",
@@ -250,13 +248,6 @@ export default function PanelHistorialTH() {
             nuevaPestana: true,
           },
         ]}
-        resumen={
-          !buscador.aplicados || ocupado ? null : vista === "lista" ? (
-            <ResumenResultado principal={`${totalRegistros} ${totalRegistros === 1 ? "solicitud" : "solicitudes"}`} secundario={`· ${formatearMoneda(totalMonto)} en total`} />
-          ) : (
-            <ResumenResultado principal={`${totalColab} ${totalColab === 1 ? "colaborador" : "colaboradores"}`} />
-          )
-        }
       />
 
       {!buscador.aplicados && !ocupado && <AvisoSinBusqueda faltante={buscador.faltante} />}

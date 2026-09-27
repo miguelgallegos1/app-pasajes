@@ -5,8 +5,8 @@
 // de cada pantalla viven en el panel lateral. Nada se consulta hasta pulsar
 // Buscar (en la barra o en el panel); el botón Filtros muestra cuántos
 // filtros tiene lo BUSCADO y avisa si hay cambios sin aplicar. Estado/lógica en
-// lib/useBuscadorHistorial.ts. Debajo de la barra: resumen del resultado a
-// la izquierda; vista (Lista / Por colaborador) y "Exportar ▾" a la derecha.
+// lib/useBuscadorHistorial.ts. En la misma línea, a la derecha: "Lista ▾"
+// (vista) y "Exportar ▾".
 
 "use client";
 
@@ -74,7 +74,6 @@ export default function BuscadorHistorial({
   buscando,
   vista,
   exportar,
-  resumen,
 }: {
   buscador: Buscador;
   // Campos propios de la pantalla (ej. Estado): el campo del panel, su
@@ -85,11 +84,9 @@ export default function BuscadorHistorial({
   onLimpiarExtras?: () => void;
   onBuscar: () => void;
   buscando: boolean;
-  // Debajo de la barra: resumen del resultado a la izquierda; selector
-  // Lista / Por colaborador y "Exportar ▾" a la derecha.
+  // A la derecha de la barra: "Lista ▾" (vista) y "Exportar ▾".
   vista?: ReactNode;
   exportar?: OpcionExportar[];
-  resumen?: ReactNode;
 }) {
   const deshabilitado = buscando || !!b.faltante || b.sinAsignaciones;
   const sinAplicar = b.hayCambios(extrasParams);
@@ -112,10 +109,11 @@ export default function BuscadorHistorial({
   };
 
   return (
-    <div className="space-y-3">
     <BarraFiltros
       chips={listaChips}
       sinChips
+      vista={vista}
+      salidas={exportar && exportar.length > 0 ? <MenuExportar opciones={exportar} /> : undefined}
       onLimpiar={limpiar}
       onAplicar={onBuscar}
       textoAplicar="Buscar"
@@ -180,27 +178,6 @@ export default function BuscadorHistorial({
         </>
       )}
     </BarraFiltros>
-
-      {(resumen || vista || (exportar && exportar.length > 0)) && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">{resumen}</div>
-          <div className="flex items-center gap-2">
-            {vista}
-            {exportar && exportar.length > 0 && <MenuExportar opciones={exportar} />}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Resumen del resultado, sobre la tabla: "128 solicitudes · $412,50 en total".
-export function ResumenResultado({ principal, secundario }: { principal: string; secundario?: string }) {
-  return (
-    <p className="flex flex-wrap items-baseline gap-x-2">
-      <span className="text-lg font-bold text-neutral-900 dark:text-white">{principal}</span>
-      {secundario && <span className="text-sm text-neutral-500 dark:text-neutral-400">{secundario}</span>}
-    </p>
   );
 }
 

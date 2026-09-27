@@ -21,7 +21,7 @@ import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
 import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
-import BuscadorHistorial, { Campo, AvisoSinBusqueda, ResumenResultado } from "./BuscadorHistorial";
+import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
 import TablaColaboradores, { type FilaColaborador, type CampoOrdenColaborador } from "./TablaColaboradores";
 import { IconoDescargar } from "./Icons";
 
@@ -47,7 +47,6 @@ export default function PanelHistorialJefe() {
 
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
-  const [totalRegistros, setTotalRegistros] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
@@ -59,7 +58,6 @@ export default function PanelHistorialJefe() {
   const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
   const [paginaColab, setPaginaColab] = useState(1);
   const [totalPaginasColab, setTotalPaginasColab] = useState(1);
-  const [totalColab, setTotalColab] = useState(0);
 
   const { orden, ordenar: ordenarLista } = useOrdenServidor<CampoOrden>("historial-jefe");
   const { orden: ordenColab, ordenar: ordenarColabBase } = useOrdenServidor<CampoOrdenColaborador>("jefe-historial-colaborador");
@@ -86,7 +84,6 @@ export default function PanelHistorialJefe() {
         const data = await res.json();
         setItems(data.items);
         setTotalMonto(data.totalMonto);
-        setTotalRegistros(data.total ?? 0);
         setTotalPaginas(data.totalPaginas);
         setPagina(paginaNueva);
       } else {
@@ -98,7 +95,6 @@ export default function PanelHistorialJefe() {
         }
         const data = await res.json();
         setFilasColaborador(data.items);
-        setTotalColab(data.total ?? 0);
         setTotalPaginasColab(data.totalPaginas);
         setPaginaColab(paginaNueva);
       }
@@ -172,7 +168,7 @@ export default function PanelHistorialJefe() {
             <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
           </Campo>
         }
-        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
+        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} desplegable />}
         exportar={[
           {
             etiqueta: "Excel",
@@ -182,13 +178,6 @@ export default function PanelHistorialJefe() {
             detalle: puedeExportar ? "Todo lo de esta búsqueda" : "Busca primero: no hay resultados",
           },
         ]}
-        resumen={
-          !buscador.aplicados || cargando ? null : vista === "lista" ? (
-            items && <ResumenResultado principal={`${totalRegistros} ${totalRegistros === 1 ? "solicitud" : "solicitudes"}`} secundario={`· ${formatearMoneda(totalMonto)} en total`} />
-          ) : (
-            filasColaborador && <ResumenResultado principal={`${totalColab} ${totalColab === 1 ? "colaborador" : "colaboradores"}`} />
-          )
-        }
       />
 
       {!buscador.aplicados && !cargando && <AvisoSinBusqueda faltante={buscador.faltante} />}

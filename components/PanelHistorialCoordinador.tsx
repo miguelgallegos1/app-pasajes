@@ -13,7 +13,7 @@ import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import SelectorModerno from "./SelectorModerno";
 import { chipOpcion } from "./BarraFiltros";
 import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
-import BuscadorHistorial, { Campo, AvisoSinBusqueda, ResumenResultado } from "./BuscadorHistorial";
+import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
 import Paginacion from "./Paginacion";
 import TablaEsqueleto from "./TablaEsqueleto";
 import { useReportarCarga } from "../lib/cargaGlobal";
@@ -54,8 +54,6 @@ export default function PanelHistorialCoordinador() {
 
   const [items, setItems] = useState<Fila[] | null>(null);
   const [totalMonto, setTotalMonto] = useState(0);
-  const [totalRegistros, setTotalRegistros] = useState(0);
-  const [totalColab, setTotalColab] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
@@ -93,7 +91,6 @@ export default function PanelHistorialCoordinador() {
         const data = await res.json();
         setItems(data.items);
         setTotalMonto(data.totalMonto);
-        setTotalRegistros(data.total ?? 0);
         setTotalPaginas(data.totalPaginas);
         setPagina(paginaNueva);
       } else {
@@ -105,7 +102,6 @@ export default function PanelHistorialCoordinador() {
         }
         const data = await res.json();
         setFilasColaborador(data.items);
-        setTotalColab(data.total ?? 0);
         setTotalPaginasColab(data.totalPaginas);
         setPaginaColab(paginaNueva);
       }
@@ -180,7 +176,7 @@ export default function PanelHistorialCoordinador() {
             <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
           </Campo>
         }
-        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
+        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} desplegable />}
         exportar={[
           {
             etiqueta: "Excel",
@@ -190,13 +186,6 @@ export default function PanelHistorialCoordinador() {
             detalle: puedeExportar ? "Todo lo de esta búsqueda" : "Busca primero: no hay resultados",
           },
         ]}
-        resumen={
-          !buscador.aplicados || cargando ? null : vista === "lista" ? (
-            items && <ResumenResultado principal={`${totalRegistros} ${totalRegistros === 1 ? "solicitud" : "solicitudes"}`} secundario={`· ${formatearMoneda(totalMonto)} en total`} />
-          ) : (
-            filasColaborador && <ResumenResultado principal={`${totalColab} ${totalColab === 1 ? "colaborador" : "colaboradores"}`} />
-          )
-        }
       />
 
       {!buscador.aplicados && !cargando && <AvisoSinBusqueda faltante={buscador.faltante} />}

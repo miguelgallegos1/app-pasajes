@@ -176,12 +176,10 @@ export default function BarraFiltros({
   destacado?: ReactNode;
   acciones?: ReactNode;
   // Diseño de barra de los historiales (opcional; si no se pasa ninguno de
-  // estos, la barra se ve como siempre). Agrupa por intención:
-  //   consultar  [fechas] [Filtros] [principal: Buscar]
-  //   ver/sacar  [vista: Lista|Por colaborador] [salidas: Excel|Imprimir]
-  // En escritorio van en una fila (consultar a la izquierda, ver/sacar a la
-  // derecha); en tablet en dos filas; en celular cada grupo en su fila con
-  // los botones repartiendo el ancho.
+  // estos, la barra se ve como siempre). Una sola línea:
+  //   [fechas] [Filtros] [principal: Buscar] ······ [vista ▾] [salidas ▾]
+  // En celular las fechas ocupan su fila y el resto va debajo (vista y
+  // salidas solo con ícono).
   principal?: ReactNode;
   vista?: ReactNode;
   salidas?: ReactNode;
@@ -265,17 +263,13 @@ export default function BarraFiltros({
   return (
     <div className="space-y-2.5">
       {disenoHistorial ? (
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row lg:flex-1">
-            {destacado && <div className="w-full shrink-0 sm:w-72">{destacado}</div>}
-            <div className="flex gap-2">
-              {botonFiltros("flex-1 sm:flex-none")}
-              {principal && <div className="flex flex-1 sm:flex-none">{principal}</div>}
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {destacado && <div className="w-full shrink-0 sm:w-72">{destacado}</div>}
+          {botonFiltros()}
+          {principal && <div className="flex">{principal}</div>}
           {(vista || salidas || acciones) && (
-            <div className="flex items-center gap-2">
-              {vista && <div className="min-w-0 flex-1 sm:flex-none">{vista}</div>}
+            <div className="ml-auto flex items-center gap-2">
+              {vista}
               {salidas}
               {acciones}
             </div>
