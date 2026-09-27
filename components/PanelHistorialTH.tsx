@@ -351,7 +351,7 @@ export default function PanelHistorialTH() {
                 <tfoot>
                   <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 font-semibold">
                     <td className="px-4 py-3" colSpan={4}>
-                      Total del rango <span className="font-normal text-neutral-500 dark:text-neutral-400">({totalRegistros} solicitud{totalRegistros === 1 ? "" : "es"})</span>
+                      Total solicitudes <span className="font-normal text-neutral-500 dark:text-neutral-400">({totalRegistros} solicitud{totalRegistros === 1 ? "" : "es"})</span>
                     </td>
                     <td className="px-4 py-3" colSpan={4}>{formatearMoneda(totalMonto)}</td>
                   </tr>

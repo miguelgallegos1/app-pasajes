@@ -237,7 +237,7 @@ export default function PanelHistorialNomina() {
               {items.length > 0 && (
                 <tfoot>
                   <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 font-semibold">
-                    <td className="px-4 py-3" colSpan={4}>Total del rango</td>
+                    <td className="px-4 py-3" colSpan={4}>Total solicitudes</td>
                     <td className="px-4 py-3" colSpan={2}>{formatearMoneda(totalMonto)}</td>
                   </tr>
                 </tfoot>

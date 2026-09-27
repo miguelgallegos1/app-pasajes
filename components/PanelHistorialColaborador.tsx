@@ -186,7 +186,7 @@ export default function PanelHistorialColaborador({ modo = "colaborador" }: { mo
               {items.length > 0 && (
                 <tfoot>
                   <tr className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 font-semibold">
-                    <td className="px-4 py-3" colSpan={mostrarColaborador ? 4 : 3}>Total del rango</td>
+                    <td className="px-4 py-3" colSpan={mostrarColaborador ? 4 : 3}>Total solicitudes</td>
                     <td className="px-4 py-3" colSpan={2}>{formatearMoneda(totalMonto)}</td>
                   </tr>
                 </tfoot>
