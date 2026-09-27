@@ -193,6 +193,8 @@ function Avatar({ fotoUrl, nombreCompleto, iniciales }: { fotoUrl?: string | nul
   );
 }
 
+const esRechazadas = (c: ContadorMenu) => c.href === "/mis-pasajes" || c.href === "/th/mis-solicitudes";
+
 // Número de pendientes en el menú (reemplaza a la campanita), con el color
 // del estado de esa bandeja.
 function BadgeContador({ contador }: { contador: ContadorMenu }) {
@@ -437,8 +439,25 @@ export default function AppShell({
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
             </svg>
-            {/* Celular: el menú está escondido, así que el aviso va en el botón. */}
-            {totalPendientes > 0 && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900" />}
+            {/* Celular: el menú está escondido, así que el aviso va en el botón:
+                un punto que palpita, del color de lo pendiente. Si hay dos
+                (TH: por aprobar y rechazadas propias), van montados, con el
+                de la bandeja adelante. */}
+            {contadores.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex">
+                {[...contadores]
+                  .sort((x, y) => Number(esRechazadas(y)) - Number(esRechazadas(x)))
+                  .map((c, i) => {
+                    const color = c.clase.split(" ")[0];
+                    return (
+                      <span key={c.href} className={`relative flex h-2.5 w-2.5 ${i > 0 ? "-ml-1" : ""}`}>
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${color}`} />
+                        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-neutral-900 ${color}`} />
+                      </span>
+                    );
+                  })}
+              </span>
+            )}
           </button>
           {/* <img>, no <Image>: mismo motivo que en el Avatar de más abajo
               — /logo.png tiene su propio Cache-Control en next.config.ts. */}
