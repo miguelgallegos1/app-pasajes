@@ -152,6 +152,9 @@ export default function BarraFiltros({
   resultados,
   destacado,
   acciones,
+  principal,
+  vista,
+  salidas,
   children,
 }: {
   // onEnter: para búsquedas que consultan al servidor (no filtran en vivo).
@@ -171,6 +174,16 @@ export default function BarraFiltros({
   // vez de dentro del panel (ej. el rango de fechas de los historiales).
   destacado?: ReactNode;
   acciones?: ReactNode;
+  // Diseño de barra de los historiales (opcional; si no se pasa ninguno de
+  // estos, la barra se ve como siempre). Agrupa por intención:
+  //   consultar  [fechas] [Filtros] [principal: Buscar]
+  //   ver/sacar  [vista: Lista|Por colaborador] [salidas: Excel|Imprimir]
+  // En escritorio van en una fila (consultar a la izquierda, ver/sacar a la
+  // derecha); en tablet en dos filas; en celular cada grupo en su fila con
+  // los botones repartiendo el ancho.
+  principal?: ReactNode;
+  vista?: ReactNode;
+  salidas?: ReactNode;
   children: ReactNode;
 }) {
   const [abierto, setAbierto] = useState(false);
@@ -224,8 +237,47 @@ export default function BarraFiltros({
     ? "Ver 1 resultado"
     : `Ver ${resultados} resultados`;
 
+  const botonFiltros = (claseExtra = "") => (
+    <button
+      type="button"
+      onClick={() => setAbierto(true)}
+      title="Filtros (F)"
+      className={`relative inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-sm font-medium text-neutral-700 hover:border-orange-400 hover:text-orange-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-orange-400 dark:hover:text-orange-400 transition ${claseExtra}`}
+    >
+      <IconoFiltro className="w-4 h-4" />
+      Filtros
+      {chips.length > 0 && (
+        <span className="min-w-5 h-5 px-1.5 rounded-full bg-orange-500 text-white text-[11px] font-semibold flex items-center justify-center">
+          {chips.length}
+        </span>
+      )}
+      {sinAplicar && (
+        <span title="Hay cambios sin aplicar" className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-neutral-950 animate-pulse" />
+      )}
+    </button>
+  );
+  const disenoHistorial = !!(principal || vista || salidas);
+
   return (
     <div className="space-y-2.5">
+      {disenoHistorial ? (
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row lg:flex-1">
+            {destacado && <div className="w-full shrink-0 sm:w-72">{destacado}</div>}
+            <div className="flex gap-2">
+              {botonFiltros("flex-1 sm:flex-none")}
+              {principal && <div className="flex flex-1 sm:flex-none">{principal}</div>}
+            </div>
+          </div>
+          {(vista || salidas || acciones) && (
+            <div className="flex items-center gap-2">
+              {vista && <div className="min-w-0 flex-1 sm:flex-none">{vista}</div>}
+              {salidas}
+              {acciones}
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="flex flex-wrap items-center gap-2">
         {busqueda && (
           <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -266,6 +318,7 @@ export default function BarraFiltros({
         </button>
         {acciones && <div className="flex flex-wrap items-center gap-2 sm:ml-auto">{acciones}</div>}
       </div>
+      )}
 
       {chips.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">

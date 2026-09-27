@@ -35,6 +35,8 @@ export async function GET(req: Request) {
   }
 
   const filtro: Record<string, unknown> = {
+    // Colaborador elegido en el buscador (antes esta vista lo ignoraba).
+    ...(searchParams.get("colaboradorId") ? { colaboradorId: searchParams.get("colaboradorId") } : {}),
     estado: "PAGADA",
     fecha: { gte: desdeFecha, lte: hastaFecha },
   };

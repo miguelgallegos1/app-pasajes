@@ -15,7 +15,6 @@ import ComboboxBuscable from "./ComboboxBuscable";
 import Spinner from "./Spinner";
 import { IconoLupa } from "./Icons";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips, type ChipFiltro } from "./BarraFiltros";
-import { formatearFecha } from "../lib/fechas";
 import type { BuscadorHistorial as Buscador, OpcionBuscador } from "../lib/useBuscadorHistorial";
 
 // Mismo estilo de campo que el resto del panel de filtros.
@@ -71,7 +70,8 @@ export default function BuscadorHistorial({
   onLimpiarExtras,
   onBuscar,
   buscando,
-  acciones,
+  vista,
+  salidas,
 }: {
   buscador: Buscador;
   // Campos propios de la pantalla (ej. Estado): el campo del panel, su
@@ -82,8 +82,10 @@ export default function BuscadorHistorial({
   onLimpiarExtras?: () => void;
   onBuscar: () => void;
   buscando: boolean;
-  // Botones de la pantalla (Vista, Exportar, Imprimir).
-  acciones?: ReactNode;
+  // Selector Lista / Por colaborador y botones de salida (Excel, Imprimir):
+  // van en su propio grupo a la derecha de la barra (ver BarraFiltros).
+  vista?: ReactNode;
+  salidas?: ReactNode;
 }) {
   const deshabilitado = buscando || !!b.faltante || b.sinAsignaciones;
   const sinAplicar = b.hayCambios(extrasParams);
@@ -102,9 +104,8 @@ export default function BuscadorHistorial({
   };
 
   const listaChips = chips(
-    b.desde && b.hasta
-      ? { id: "fechas", etiqueta: b.desde === b.hasta ? formatearFecha(`${b.desde}T00:00:00Z`) : `${formatearFecha(`${b.desde}T00:00:00Z`)} – ${formatearFecha(`${b.hasta}T00:00:00Z`)}` }
-      : null,
+    // Sin chip de fechas: el rango ya se ve en el selector de la barra (el
+    // botón Buscar igual avisa en ámbar si cambió sin buscar).
     // Con una sola opción (su único alcance) el chip no se puede quitar.
     chipOpcion("Empresa", b.empresas, b.empresaId, b.empresas.length > 1 ? quitarYBuscar(() => b.cambiarEmpresa("")) : undefined),
     chipOpcion("Sitio", b.sitios, b.sitioId, b.sitios.length > 1 ? quitarYBuscar(() => b.cambiarSitio("")) : undefined),
@@ -128,23 +129,22 @@ export default function BuscadorHistorial({
       aplicando={buscando}
       aplicarDeshabilitado={deshabilitado}
       destacado={<RangoFechasSelector desde={b.desde} hasta={b.hasta} onChange={b.cambiarFechas} />}
-      acciones={
-        <>
-          <button
-            type="button"
-            onClick={onBuscar}
-            disabled={deshabilitado}
-            title={b.faltante ? `${b.faltante} (en Filtros)` : sinAplicar ? "Hay cambios sin aplicar" : "Buscar"}
-            className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${
-              sinAplicar ? "bg-amber-500 hover:bg-amber-600" : "bg-orange-500 hover:bg-orange-600"
-            }`}
-          >
-            {buscando ? <Spinner className="w-4 h-4" /> : <IconoLupa className="w-4 h-4" />}
-            {buscando ? "Buscando..." : "Buscar"}
-          </button>
-          {acciones}
-        </>
+      principal={
+      <button
+        type="button"
+        onClick={onBuscar}
+        disabled={deshabilitado}
+        title={b.faltante ? `${b.faltante} (en Filtros)` : sinAplicar ? "Hay cambios sin aplicar" : "Buscar"}
+        className={`w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${
+          sinAplicar ? "bg-amber-500 hover:bg-amber-600" : "bg-orange-500 hover:bg-orange-600"
+        }`}
+      >
+        {buscando ? <Spinner className="w-4 h-4" /> : <IconoLupa className="w-4 h-4" />}
+        {buscando ? "Buscando..." : "Buscar"}
+      </button>
       }
+      vista={vista}
+      salidas={salidas}
     >
       {b.sinAsignaciones ? (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">

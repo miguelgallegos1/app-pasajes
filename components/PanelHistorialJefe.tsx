@@ -19,6 +19,7 @@ import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import SelectorVista from "./SelectorVista";
+import { GrupoSalidas, BotonSalida } from "./AccionesSalida";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
@@ -248,26 +249,17 @@ export default function PanelHistorialJefe() {
         destacado={
           <RangoFechasSelector desde={desde} hasta={hasta} onChange={(d, h) => { setDesde(d); setHasta(h); rebuscar(); }} />
         }
-        acciones={
-          <>
-          <SelectorVista valor={vista} onCambiar={cambiarVista} />
-
-          {puedeExportar ? (
-            <a
+        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
+        salidas={
+          <GrupoSalidas>
+            <BotonSalida
               href={urlExportar()}
-              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
-            >
-              <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-            </a>
-          ) : (
-            <span
-              title={!desde || !hasta ? "Selecciona ambas fechas" : "Busca primero: no hay resultados para exportar"}
-              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
-            >
-              <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-            </span>
-          )}
-          </>
+              icono={IconoDescargar}
+              etiqueta="Excel"
+              titulo={puedeExportar ? "Exportar a Excel con los filtros de la búsqueda" : !desde || !hasta ? "Selecciona ambas fechas" : "Busca primero: no hay resultados para exportar"}
+              deshabilitado={!puedeExportar}
+            />
+          </GrupoSalidas>
         }
       >
         <CampoFiltro etiqueta="Estado">

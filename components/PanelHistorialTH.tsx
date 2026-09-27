@@ -1,8 +1,8 @@
 // components/PanelHistorialTH.tsx
 // Historial completo para Talento Humano: buscador (fechas, Empresa/Sitio/
-// Área, estado, supervisor, colaborador), total, paginación, Excel y
-// constancia de pago. Pantalla propia (no modal),
-// pensada para escritorio y móvil por igual.
+// Área, estado, supervisor, colaborador), vista Lista o Por colaborador
+// (igual que revisiones y pagos), total, paginación, Excel y constancia de
+// pago. Pantalla propia (no modal), pensada para escritorio y móvil.
 
 "use client";
 
@@ -25,6 +25,10 @@ import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
 import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
 import { chipOpcion } from "./BarraFiltros";
 import { IconoImprimir, IconoDevolver, IconoDescargar } from "./Icons";
+import SelectorVista from "./SelectorVista";
+import { GrupoSalidas, BotonSalida } from "./AccionesSalida";
+import TablaColaboradores, { type FilaColaborador, type CampoOrdenColaborador } from "./TablaColaboradores";
+import { useReportarCarga } from "../lib/cargaGlobal";
 
 type Fila = {
   id: string;
@@ -46,11 +50,6 @@ const OPCIONES_ESTADO = [
   { value: "PAGADA", label: "Pagada" },
 ];
 
-const CLASE_ACCION =
-  "inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-xl transition";
-const CLASE_ACCION_OFF =
-  "inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3 py-2 rounded-xl cursor-not-allowed";
-
 export default function PanelHistorialTH() {
   // Filtros (fechas, Empresa/Sitio/Área, Supervisor, Colaborador): nada se
   // busca hasta pulsar Buscar — ver lib/useBuscadorHistorial.ts.
@@ -58,7 +57,7 @@ export default function PanelHistorialTH() {
   const [estado, setEstado] = useState("");
 
   const { orden, ordenar: ordenarBase } = useOrdenServidor<CampoOrden>("historial-th");
-  const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaUrl, ultimaRespuesta } = useHistorialLista<Fila>(
+  const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaRespuesta } = useHistorialLista<Fila>(
     (paginaNueva) => {
       // Siempre con la foto de la última búsqueda (no lo que se está
       // cambiando en pantalla).
@@ -70,6 +69,53 @@ export default function PanelHistorialTH() {
     }
   );
   const toast = useToast();
+
+  // --- Vista "Por colaborador" (mismo patrón que revisiones y pagos): una
+  // fila por colaborador, paginada y ordenada en el servidor; el detalle se
+  // pide solo al expandir. La vista Lista sigue con useHistorialLista.
+  const [vista, setVista] = useState<"lista" | "colaborador">("lista");
+  const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
+  const [paginaColab, setPaginaColab] = useState(1);
+  const [totalPaginasColab, setTotalPaginasColab] = useState(1);
+  const [cargandoColab, setCargandoColab] = useState(false);
+  const [errorColab, setErrorColab] = useState("");
+  useReportarCarga(cargandoColab);
+  const { orden: ordenColab, ordenar: ordenarColabBase } = useOrdenServidor<CampoOrdenColaborador>("th-historial-colaborador");
+
+  const buscarColab = async (paginaNueva = 1) => {
+    if (!buscador.aplicados) return;
+    setCargandoColab(true);
+    setErrorColab("");
+    const params = new URLSearchParams(buscador.aplicados);
+    params.set("pagina", String(paginaNueva));
+    agregarOrdenAParams(params, ordenColab);
+    try {
+      const res = await fetch(`/api/th/historial/colaboradores?${params.toString()}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErrorColab(data.error ?? "No se pudo cargar el historial");
+        return;
+      }
+      setFilasColaborador(data.items);
+      setTotalPaginasColab(data.totalPaginas);
+      setPaginaColab(paginaNueva);
+    } catch {
+      setErrorColab("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+    } finally {
+      setCargandoColab(false);
+    }
+  };
+
+  // Detalle de UN colaborador (con los mismos filtros aplicados), solo al expandirlo.
+  const cargarItemsColaborador = async (idColaborador: string): Promise<Fila[]> => {
+    const params = new URLSearchParams(buscador.aplicados ?? "");
+    params.set("colaboradorId", idColaborador);
+    params.set("pagina", "1");
+    const res = await fetch(`/api/th/historial?${params.toString()}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.items;
+  };
 
   const [idARevertir, setIdARevertir] = useState<string | null>(null);
   const [motivoRevertir, setMotivoRevertir] = useState("");
@@ -89,18 +135,25 @@ export default function PanelHistorialTH() {
   // Exporta con los filtros de la ÚLTIMA búsqueda (sin paginar), y solo se
   // habilita si esa búsqueda trajo resultados — evita un Excel vacío.
   const urlExportar = () => {
-    const params = new URLSearchParams(ultimaUrl?.split("?")[1] ?? "");
-    params.delete("pagina");
+    const params = new URLSearchParams(buscador.aplicados ?? "");
+    agregarOrdenAParams(params, orden);
     return `/api/th/historial/exportar?${params.toString()}`;
   };
-  const puedeExportar = !cargando && !!ultimaUrl && totalRegistros > 0;
-  const puedeImprimir = !cargando && pagadasImprimibles > 0;
+  const ocupado = cargando || cargandoColab;
+  const hayDatos = vista === "lista" ? totalRegistros > 0 : (filasColaborador?.length ?? 0) > 0;
+  const puedeExportar = !ocupado && !!buscador.aplicados && hayDatos;
+  // El conteo de pagadas viene de la búsqueda en Lista; en Por colaborador
+  // se habilita si hay resultados (la constancia usa los mismos filtros).
+  const puedeImprimir = !ocupado && (vista === "lista" ? pagadasImprimibles > 0 : !!buscador.aplicados && hayDatos);
 
   // buscar() arma la URL con el estado de ESTE render: tras aplicar los
   // filtros (o cambiar el orden), la consulta sale en el render siguiente.
   const [pedidoBusqueda, setPedidoBusqueda] = useState(0);
   useEffect(() => {
-    if (pedidoBusqueda) buscar(1);
+    if (!pedidoBusqueda) return;
+    if (vista === "lista") buscar(1);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara una consulta de red
+    else buscarColab(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pedidoBusqueda]);
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
@@ -113,6 +166,16 @@ export default function PanelHistorialTH() {
   // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
   const ordenar = (campo: CampoOrden) => {
     ordenarBase(campo);
+    if (buscador.aplicados) rebuscar();
+  };
+  const ordenarColab = (campo: CampoOrdenColaborador) => {
+    ordenarColabBase(campo);
+    if (buscador.aplicados) rebuscar();
+  };
+
+  const cambiarVista = (v: "lista" | "colaborador") => {
+    setVista(v);
+    setFilasColaborador(null);
     if (buscador.aplicados) rebuscar();
   };
 
@@ -159,7 +222,7 @@ export default function PanelHistorialTH() {
       <BuscadorHistorial
         buscador={buscador}
         onBuscar={buscarConFiltros}
-        buscando={cargando}
+        buscando={ocupado}
         extrasParams={{ estado }}
         extrasChips={[chipOpcion("Estado", OPCIONES_ESTADO.map((o) => ({ id: o.value, label: o.label })), estado, () => setEstado(""))]}
         onLimpiarExtras={() => setEstado("")}
@@ -168,41 +231,74 @@ export default function PanelHistorialTH() {
             <SelectorModerno opciones={OPCIONES_ESTADO} value={estado} onChange={setEstado} placeholder="Todos" />
           </Campo>
         }
-        acciones={
-          <>
-            {puedeImprimir ? (
-              <a
-                href={urlImprimir()}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={`Imprime la constancia de ${pagadasImprimibles} ${pagadasImprimibles === 1 ? "solicitud pagada" : "solicitudes pagadas"} de esta búsqueda`}
-                className={CLASE_ACCION}
-              >
-                <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
-              </a>
-            ) : (
-              <span title={cargando ? "Buscando..." : "La búsqueda no tiene solicitudes pagadas"} className={CLASE_ACCION_OFF}>
-                <IconoImprimir className="w-4 h-4" /> Imprimir pagadas
-              </span>
-            )}
-            {puedeExportar ? (
-              <a href={urlExportar()} className={CLASE_ACCION}>
-                <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-              </a>
-            ) : (
-              <span title={cargando ? "Buscando..." : "Busca primero: no hay resultados para exportar"} className={CLASE_ACCION_OFF}>
-                <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-              </span>
-            )}
-          </>
+        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
+        salidas={
+          <GrupoSalidas>
+            <BotonSalida
+              href={urlExportar()}
+              icono={IconoDescargar}
+              etiqueta="Excel"
+              titulo={puedeExportar ? "Exportar a Excel con los filtros de la búsqueda" : ocupado ? "Buscando..." : "Busca primero: no hay resultados para exportar"}
+              deshabilitado={!puedeExportar}
+            />
+            <BotonSalida
+              href={urlImprimir()}
+              icono={IconoImprimir}
+              etiqueta="Imprimir"
+              titulo={
+                puedeImprimir
+                  ? "Imprimir la constancia de pago (solo pagadas) de esta búsqueda"
+                  : ocupado
+                  ? "Buscando..."
+                  : "La búsqueda no tiene solicitudes pagadas"
+              }
+              deshabilitado={!puedeImprimir}
+              nuevaPestana
+            />
+          </GrupoSalidas>
         }
       />
 
-      {!buscador.aplicados && !cargando && <AvisoSinBusqueda faltante={buscador.faltante} />}
+      {!buscador.aplicados && !ocupado && <AvisoSinBusqueda faltante={buscador.faltante} />}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {vista === "colaborador" && (
+        <>
+          {errorColab && <p className="text-sm text-red-600">{errorColab}</p>}
+          {cargandoColab ? (
+            <TablaEsqueleto columnas={3} />
+          ) : filasColaborador && (
+            <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+              <TablaColaboradores
+                filas={filasColaborador}
+                cargarItems={cargarItemsColaborador}
+                clave={(s) => s.id}
+                ordenServidor={{ orden: ordenColab, ordenar: ordenarColab }}
+                columnas={[
+                  { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
+                  { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
+                  { encabezado: "Ruta", render: (s) => s.rutaLabel },
+                  { encabezado: "Valor", render: (s) => formatearMoneda(s.montoTotal) },
+                  { encabezado: "Aprobado por", render: (s) => s.aprobadoPor ?? "—" },
+                  {
+                    encabezado: "Estado",
+                    render: (s) => (
+                      <span title={DESCRIPCION_ESTADO[s.estado]} className={`text-[11px] px-2 py-0.5 rounded-full ${ESTILOS_ESTADO[s.estado]}`}>
+                        {s.estado}
+                      </span>
+                    ),
+                  },
+                ]}
+                vacio="Sin resultados para esos filtros"
+              />
+              <Paginacion paginaActual={paginaColab} totalPaginas={totalPaginasColab} onCambiarPagina={buscarColab} deshabilitado={cargandoColab} />
+            </div>
+          )}
+        </>
+      )}
 
-      {cargando ? (
+      {vista === "lista" && error && <p className="text-sm text-red-600">{error}</p>}
+
+      {vista !== "lista" ? null : cargando ? (
         <TablaEsqueleto columnas={7} />
       ) : items && (
         <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">

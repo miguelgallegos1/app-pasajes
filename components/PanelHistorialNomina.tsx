@@ -14,6 +14,7 @@ import TablaEsqueleto from "./TablaEsqueleto";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import EstadoVacio from "./EstadoVacio";
 import SelectorVista from "./SelectorVista";
+import { GrupoSalidas, BotonSalida } from "./AccionesSalida";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { formatearFecha, formatearFechaEcuador } from "../lib/fechas";
 import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
@@ -146,25 +147,17 @@ export default function PanelHistorialNomina() {
         buscador={buscador}
         onBuscar={buscarConFiltros}
         buscando={cargando}
-        acciones={
-          <>
-            <SelectorVista valor={vista} onCambiar={cambiarVista} />
-            {puedeExportar ? (
-              <a
-                href={urlExportar()}
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3.5 py-2.5 rounded-xl transition"
-              >
-                <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-              </a>
-            ) : (
-              <span
-                title="Busca primero: no hay resultados para exportar"
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-300 dark:text-neutral-700 border border-neutral-200 dark:border-neutral-800 px-3.5 py-2.5 rounded-xl cursor-not-allowed"
-              >
-                <IconoDescargar className="w-4 h-4" /> Exportar a Excel
-              </span>
-            )}
-          </>
+        vista={<SelectorVista valor={vista} onCambiar={cambiarVista} segmentado className="w-full sm:w-auto" />}
+        salidas={
+          <GrupoSalidas>
+            <BotonSalida
+              href={urlExportar()}
+              icono={IconoDescargar}
+              etiqueta="Excel"
+              titulo={puedeExportar ? "Exportar a Excel con los filtros de la búsqueda" : "Busca primero: no hay resultados para exportar"}
+              deshabilitado={!puedeExportar}
+            />
+          </GrupoSalidas>
         }
       />
 

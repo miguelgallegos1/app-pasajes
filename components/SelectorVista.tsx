@@ -18,11 +18,43 @@ export default function SelectorVista({
   valor,
   onCambiar,
   className = "",
+  segmentado = false,
 }: {
   valor: VistaListado;
   onCambiar: (v: VistaListado) => void;
   className?: string;
+  // Barra de los historiales: control segmentado (caja con las dos
+  // opciones repartidas en partes iguales, misma altura que el resto de la
+  // barra). Sin esto, el diseño sutil de siempre (bandejas, Mis Pasajes).
+  segmentado?: boolean;
 }) {
+  if (segmentado) {
+    return (
+      <div role="tablist" aria-label="Vista" className={`flex h-[42px] items-stretch gap-1 rounded-xl bg-neutral-100 dark:bg-neutral-800/70 p-1 ${className}`}>
+        {OPCIONES.map((op) => {
+          const Icono = op.icono;
+          const activo = valor === op.value;
+          return (
+            <button
+              key={op.value}
+              type="button"
+              role="tab"
+              aria-selected={activo}
+              onClick={() => onCambiar(op.value)}
+              className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-xs font-semibold transition ${
+                activo
+                  ? "bg-white text-orange-600 shadow-sm dark:bg-neutral-900 dark:text-orange-400"
+                  : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
+              }`}
+            >
+              <Icono className="w-3.5 h-3.5" />
+              {op.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div className={`inline-flex items-center gap-1 ${className}`}>
       {OPCIONES.map((op) => {

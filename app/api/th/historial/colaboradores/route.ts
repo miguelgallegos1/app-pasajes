@@ -1,6 +1,7 @@
-// app/api/coordinador/historial/colaboradores/route.ts
-// GET: total de rutas + valor por colaborador (Revisadas + Pagadas) dentro
-// del alcance del Coordinador. Paginado por colaborador.
+// app/api/th/historial/colaboradores/route.ts
+// GET: total de rutas + valor por colaborador (Aprobadas + Pagadas) dentro
+// del alcance de TH. Paginado por colaborador (vista "Por colaborador"
+// del Historial de aprobaciones).
 
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/auth";
@@ -15,7 +16,7 @@ const POR_PAGINA = 15;
 
 export async function GET(req: Request) {
   const session = await getSession();
-  if (!session || !["COORDINADOR", "SUPER_ADMIN"].includes(session.rol)) {
+  if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
@@ -43,9 +44,9 @@ export async function GET(req: Request) {
   }
 
   const filtroEstado =
-    estado === "REVISADO" || estado === "PAGADA"
-      ? { estado: estado as "REVISADO" | "PAGADA" }
-      : { estado: { in: ["REVISADO", "PAGADA"] as Array<"REVISADO" | "PAGADA"> } };
+    estado === "APROBADA" || estado === "PAGADA"
+      ? { estado: estado as "APROBADA" | "PAGADA" }
+      : { estado: { in: ["APROBADA", "PAGADA"] as Array<"APROBADA" | "PAGADA"> } };
 
   const filtro: Record<string, unknown> = {
     // Colaborador elegido en el buscador (antes esta vista lo ignoraba).
