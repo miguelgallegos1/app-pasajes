@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { generateRegistrationOptions } from "@simplewebauthn/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
-import { obtenerRpConfig, COOKIE_DESAFIO, DURACION_DESAFIO_SEGUNDOS } from "../../../../../lib/webauthn";
+import { obtenerRpConfig, COOKIE_DESAFIO, DURACION_DESAFIO_SEGUNDOS, firmarDesafio } from "../../../../../lib/webauthn";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   });
 
   const res = NextResponse.json(opciones);
-  res.cookies.set(COOKIE_DESAFIO, JSON.stringify({ challenge: opciones.challenge, usuarioId: session.id }), {
+  res.cookies.set(COOKIE_DESAFIO, await firmarDesafio({ challenge: opciones.challenge, usuarioId: session.id }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

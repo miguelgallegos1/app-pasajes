@@ -3,7 +3,7 @@
 // vistazo, en vez de describirla por ruta/fecha/colaborador — por
 // ejemplo, para pedir "elimina la 7K3M". Se arma con un alfabeto sin
 // 0/O/1/I (se confunden fácil al leerlos o escribirlos a mano), lo que
-// da 34^4 = 1.336.336 combinaciones posibles: de sobra para "miles de
+// da 32^4 = 1.048.576 combinaciones posibles: de sobra para "miles de
 // solicitudes" sin quedarse corto con el tiempo.
 
 import { randomInt } from "crypto";
@@ -52,4 +52,21 @@ export async function generarCodigosSolicitud(cantidad: number): Promise<string[
     throw new Error("No se pudo generar suficientes códigos únicos para el lote");
   }
   return Array.from(codigos).slice(0, cantidad);
+}
+
+// Crea filas con códigos nuevos; si otra petición tomó uno de esos códigos
+// justo entre generarlos e insertarlos (P2002 en `codigo`), reintenta con
+// códigos nuevos. createMany es una sola sentencia: o entran todas o
+// ninguna, así que reintentar no duplica nada.
+export async function insertarConCodigos(cantidad: number, insertar: (codigos: string[]) => Promise<unknown>): Promise<void> {
+  for (let intento = 1; ; intento++) {
+    const codigos = await generarCodigosSolicitud(cantidad);
+    try {
+      await insertar(codigos);
+      return;
+    } catch (e) {
+      const conflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";
+      if (!conflicto || intento >= 3) throw e;
+    }
+  }
 }

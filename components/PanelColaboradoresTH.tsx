@@ -178,6 +178,9 @@ export default function PanelColaboradoresTH() {
   const [codigoNomina, setCodigoNomina] = useState("");
   const [areaId, setAreaId] = useState("");
   const [pin, setPin] = useState("");
+  // Firma del servidor para ESTE pin: al guardar solo se aceptan PINs
+  // generados por el sistema (ver lib/pinFirmado.ts).
+  const [pinFirma, setPinFirma] = useState("");
   const [generandoPin, setGenerandoPin] = useState(false);
   const [pinCopiado, setPinCopiado] = useState(false);
   const [reseteandoPin, setReseteandoPin] = useState(false);
@@ -207,6 +210,7 @@ export default function PanelColaboradoresTH() {
       if (res.ok) {
         const data = await res.json();
         setPin(data.pin);
+        setPinFirma(data.firma);
       } else {
         toast.error("No se pudo generar un PIN, intenta de nuevo");
       }
@@ -292,9 +296,9 @@ export default function PanelColaboradoresTH() {
           areaId,
           esSupervisor,
           estado: estadoEdicion,
-          ...(reseteandoPin ? { pin } : {}),
+          ...(reseteandoPin ? { pin, pinFirma } : {}),
         }
-      : { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor };
+      : { apellidos, nombres, codigoNomina, areaId, pin, pinFirma, esSupervisor };
 
     try {
       const res = await fetch(url, {

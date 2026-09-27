@@ -17,7 +17,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, whatsapp } = await req.json();
+  const { nombre, whatsapp } = await req.json().catch(() => ({}));
   if (!nombre?.trim()) return NextResponse.json({ error: "El nombre es obligatorio" }, { status: 400 });
 
   const area = await db.area.findUnique({ where: { id } });

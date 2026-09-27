@@ -9,10 +9,13 @@ import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
 import { establecerCookieSesion, verificarAccesoColaborador } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
-import { intentoPermitido, obtenerIp } from "../../../../lib/rateLimit";
+import { reservarIntento, liberarIntento, obtenerIp } from "../../../../lib/rateLimit";
 
 export async function POST(req: Request) {
-  if (!(await intentoPermitido(obtenerIp(req)))) {
+  // Cada intento se reserva antes de probar el PIN; solo los fallos quedan
+  // contados (ver lib/rateLimit.ts).
+  const ip = obtenerIp(req);
+  if (!(await reservarIntento(ip))) {
     return NextResponse.json(
       { error: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo." },
       { status: 429 }
@@ -22,6 +25,7 @@ export async function POST(req: Request) {
   const { pin } = await req.json().catch(() => ({ pin: null }));
 
   if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
+    await liberarIntento(ip); // no llegó a probar ningún PIN
     return NextResponse.json(
       { error: "El PIN debe tener 6 dígitos" },
       { status: 400 }
@@ -57,8 +61,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "PIN incorrecto" }, { status: 401 });
   }
 
-  // Si es Colaborador (no Supervisor) y tiene un supervisor asignado,
-  // bloqueamos su acceso individual.
+  // El PIN era correcto: este intento no cuenta como fallo.
+  await liberarIntento(ip);
+
+  // Colaborador inactivo, o (no Supervisor) con un supervisor asignado:
+  // se bloquea su acceso individual.
   const errorAcceso = await verificarAccesoColaborador(usuarioEncontrado);
   if (errorAcceso) {
     return NextResponse.json({ error: errorAcceso }, { status: 403 });

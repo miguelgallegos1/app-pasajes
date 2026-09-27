@@ -1,14 +1,15 @@
 // app/api/auth/generar-pin/route.ts
-// POST: propone un PIN de 6 dígitos aleatorio que todavía no está en uso,
-// para no tener que escribir uno a mano y esperar a que "Guardar" avise
-// que ya existe. Es solo una SUGERENCIA: al guardar el colaborador/usuario
-// se vuelve a validar la unicidad de todas formas.
+// POST: genera un PIN de 6 dígitos aleatorio que todavía no está en uso,
+// junto con su firma (lib/pinFirmado.ts): al guardar un colaborador, el
+// servidor solo acepta PINs generados acá. Igual se vuelve a validar la
+// unicidad al guardar (pudo tomarlo otro mientras tanto).
 
 import { NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
+import { firmarPin } from "../../../../lib/pinFirmado";
 
 const INTENTOS_MAXIMOS = 20;
 
@@ -23,7 +24,7 @@ export async function POST() {
     const pinLookup = calcularPinLookup(pin);
     const enUso = await db.usuario.findFirst({ where: { pinLookup }, select: { id: true } });
     if (!enUso) {
-      return NextResponse.json({ pin });
+      return NextResponse.json({ pin, firma: await firmarPin(pin, session.id) });
     }
   }
 

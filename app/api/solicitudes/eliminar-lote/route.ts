@@ -9,6 +9,8 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 
+const MAX_POR_LOTE = 500;
+
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -16,6 +18,9 @@ export async function POST(req: Request) {
   const { ids } = await req.json().catch(() => ({ ids: null }));
   if (!Array.isArray(ids) || ids.length === 0 || !ids.every((v) => typeof v === "string")) {
     return NextResponse.json({ error: "No se seleccionó ninguna solicitud" }, { status: 400 });
+  }
+  if (ids.length > MAX_POR_LOTE) {
+    return NextResponse.json({ error: `Máximo ${MAX_POR_LOTE} solicitudes por vez` }, { status: 400 });
   }
 
   const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
@@ -45,7 +50,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const resultado = await db.solicitudPasaje.deleteMany({ where: { id: { in: idsElegibles } } });
+  // El estado se vuelve a exigir al borrar (atómico): una que se aprobó
+  // mientras tanto no se elimina.
+  const resultado = await db.solicitudPasaje.deleteMany({
+    where: { id: { in: idsElegibles }, ...(esSuperAdmin ? {} : { estado: { in: ["PENDIENTE", "RECHAZADA"] } }) },
+  });
 
   return NextResponse.json({ eliminadas: resultado.count, omitidas: ids.length - resultado.count });
 }

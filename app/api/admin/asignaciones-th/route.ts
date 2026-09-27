@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { usuarioId, empresaId, sitioId, areaId, confirmar } = await req.json();
+  const { usuarioId, empresaId, sitioId, areaId, confirmar } = await req.json().catch(() => ({}));
 
   if (!usuarioId || !empresaId) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });

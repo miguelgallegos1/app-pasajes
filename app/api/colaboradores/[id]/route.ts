@@ -9,6 +9,7 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerAreasPermitidasTH } from "../../../../lib/alcanceTH";
 import { calcularPinLookup } from "../../../../lib/pin";
+import { pinFirmadoValido } from "../../../../lib/pinFirmado";
 
 export async function PATCH(
   req: Request,
@@ -20,7 +21,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { apellidos, nombres, codigoNomina, areaId, esSupervisor, supervisorId, estado, rutaIds, pin } = await req.json();
+  const { apellidos, nombres, codigoNomina, areaId, esSupervisor, supervisorId, estado, rutaIds, pin, pinFirma } = await req.json().catch(() => ({}));
 
   const colaborador = await db.colaborador.findUnique({ where: { id } });
   if (!colaborador) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -47,6 +48,10 @@ export async function PATCH(
   if (pin !== undefined) {
     if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
       return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
+    }
+    // Solo PINs generados por el sistema (ver lib/pinFirmado.ts).
+    if (!(await pinFirmadoValido(pin, pinFirma, session.id))) {
+      return NextResponse.json({ error: "El PIN debe generarse con el botón Generar. Genera uno nuevo e inténtalo de nuevo." }, { status: 400 });
     }
     pinLookupNuevo = calcularPinLookup(pin);
     const yaExiste = await db.usuario.findFirst({
@@ -119,7 +124,7 @@ export async function PATCH(
     // marcadas como exclusivas (pueden compartirla, ej. mismo sector).
     if (Array.isArray(rutaIds)) {
       const rutaIdsValidos = (
-        await db.ruta.findMany({ where: { id: { in: rutaIds }, areaId: areaFinalId }, select: { id: true } })
+        await db.ruta.findMany({ where: { id: { in: rutaIds.filter((r): r is string => typeof r === "string") }, areaId: areaFinalId }, select: { id: true } })
       ).map((r) => r.id);
       data.rutasExclusivas = { set: rutaIdsValidos.map((rutaId) => ({ id: rutaId })) };
     }

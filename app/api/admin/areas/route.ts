@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { sitioId, nombre, whatsapp } = await req.json();
+  const { sitioId, nombre, whatsapp } = await req.json().catch(() => ({}));
   if (!sitioId || !nombre?.trim()) {
     return NextResponse.json({ error: "Sitio y nombre son obligatorios" }, { status: 400 });
   }

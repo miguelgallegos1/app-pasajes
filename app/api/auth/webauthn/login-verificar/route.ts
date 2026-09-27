@@ -8,23 +8,20 @@ import { cookies } from "next/headers";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { db } from "../../../../../lib/db";
 import { establecerCookieSesion, verificarAccesoColaborador } from "../../../../../lib/auth";
-import { obtenerRpConfig, COOKIE_DESAFIO } from "../../../../../lib/webauthn";
+import { obtenerRpConfig, leerDesafio, COOKIE_DESAFIO } from "../../../../../lib/webauthn";
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
-  const desafioRaw = cookieStore.get(COOKIE_DESAFIO)?.value;
-  if (!desafioRaw) {
+  const desafio = await leerDesafio(cookieStore.get(COOKIE_DESAFIO)?.value);
+  if (!desafio) {
     return NextResponse.json({ error: "El acceso expiró, intenta de nuevo" }, { status: 400 });
   }
+  const { challenge } = desafio;
+  // Un solo intento por challenge: se descarta pase lo que pase (en el
+  // éxito se vuelve a borrar abajo sobre la respuesta final).
+  cookieStore.delete(COOKIE_DESAFIO);
 
-  let challenge: string;
-  try {
-    ({ challenge } = JSON.parse(desafioRaw));
-  } catch {
-    return NextResponse.json({ error: "El acceso expiró, intenta de nuevo" }, { status: 400 });
-  }
-
-  const response = await req.json();
+  const response = await req.json().catch(() => null);
   const credentialId: string | undefined = response?.id;
   if (!credentialId) {
     return NextResponse.json({ error: "Respuesta inválida" }, { status: 400 });

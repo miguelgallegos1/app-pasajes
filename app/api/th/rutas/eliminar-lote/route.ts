@@ -10,6 +10,8 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
 
+const MAX_POR_LOTE = 500;
+
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session || session.rol !== "SUPER_ADMIN") {
@@ -19,6 +21,10 @@ export async function POST(req: Request) {
   const { ids } = await req.json().catch(() => ({ ids: null }));
   if (!Array.isArray(ids) || ids.length === 0 || !ids.every((v) => typeof v === "string")) {
     return NextResponse.json({ error: "No se seleccionó ninguna ruta" }, { status: 400 });
+  }
+  // Tope por petición para que un bloque enorme no deje a la base ocupada.
+  if (ids.length > MAX_POR_LOTE) {
+    return NextResponse.json({ error: `Máximo ${MAX_POR_LOTE} por vez` }, { status: 400 });
   }
 
   const rutasElegibles = await db.ruta.findMany({

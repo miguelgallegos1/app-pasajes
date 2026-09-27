@@ -18,8 +18,9 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
 import { obtenerCondicionColaboradorTH } from "../../../../lib/alcanceTH";
-import { generarCodigosSolicitud } from "../../../../lib/codigoSolicitud";
+import { insertarConCodigos } from "../../../../lib/codigoSolicitud";
 import { fechaValida } from "../../../../lib/fechas";
+import { errorFechaSolicitud } from "../../../../lib/parametros";
 
 const MAX_ITEMS = 100;
 
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
   if (!fechaSolicitud) {
     return NextResponse.json({ error: "La fecha indicada no es válida" }, { status: 400 });
   }
+  const errorFecha = await errorFechaSolicitud(fechaSolicitud);
+  if (errorFecha) return NextResponse.json({ error: errorFecha }, { status: 400 });
 
   // La observación es por ruta, no una sola compartida para todo el lote:
   // cada colaborador puede tener un motivo distinto por cada pasaje.
@@ -148,19 +151,20 @@ export async function POST(req: Request) {
   // Segunda pasada: un solo lote de códigos y una sola inserción masiva,
   // en vez de generar+crear una fila a la vez (lo que hacía que crear 50
   // o 100 solicitudes tardara decenas de segundos).
-  const codigos = await generarCodigosSolicitud(filasAInsertar.length);
-  await db.solicitudPasaje.createMany({
-    data: filasAInsertar.map((fila, i) => ({
-      codigo: codigos[i],
-      colaboradorId: fila.colaboradorId,
-      rutaId: fila.rutaId,
-      fecha: fechaSolicitud,
-      montoTotal: fila.montoTotal,
-      observaciones: fila.observaciones,
-      estado: "PENDIENTE",
-      creadoPorUsuarioId: fila.creadoPorUsuarioId,
-    })),
-  });
+  await insertarConCodigos(filasAInsertar.length, (codigos) =>
+    db.solicitudPasaje.createMany({
+      data: filasAInsertar.map((fila, i) => ({
+        codigo: codigos[i],
+        colaboradorId: fila.colaboradorId,
+        rutaId: fila.rutaId,
+        fecha: fechaSolicitud,
+        montoTotal: fila.montoTotal,
+        observaciones: fila.observaciones,
+        estado: "PENDIENTE",
+        creadoPorUsuarioId: fila.creadoPorUsuarioId,
+      })),
+    })
+  );
 
   const creadas = filasAInsertar.length;
   return NextResponse.json({ creadas, omitidas: itemsValidos.length - creadas });

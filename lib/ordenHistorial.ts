@@ -49,3 +49,10 @@ export function ordenarColaboradores<T extends FilaAgregada>(filas: T[], searchP
     campo === "total" ? (a.total - b.total) * signo : a.nombreColaborador.localeCompare(b.nombreColaborador) * signo
   );
 }
+
+// Página pedida (1 si falta o no es un entero válido): antes "pagina=abc"
+// daba NaN y Prisma fallaba con un 500 en vez de mostrar la página 1.
+export function leerPagina(searchParams: URLSearchParams): number {
+  const n = Math.floor(Number(searchParams.get("pagina") ?? "1"));
+  return Number.isFinite(n) && n >= 1 ? n : 1;
+}

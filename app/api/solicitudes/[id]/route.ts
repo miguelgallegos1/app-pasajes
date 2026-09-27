@@ -8,6 +8,7 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
 import { fechaValida } from "../../../../lib/fechas";
+import { errorFechaSolicitud } from "../../../../lib/parametros";
 
 async function obtenerPermiso(solicitudId: string, sessionId: string) {
   const solicitud = await db.solicitudPasaje.findUnique({
@@ -48,6 +49,13 @@ export async function PATCH(
   const { solicitud, puede } = await obtenerPermiso(id, session.id);
   if (!solicitud) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
+  // La regla de "días atrás" solo si se CAMBIA la fecha: corregir una
+  // rechazada vieja manteniendo su fecha original no debe bloquearse.
+  if (fechaEditada.getTime() !== solicitud.fecha.getTime()) {
+    const errorFecha = await errorFechaSolicitud(fechaEditada);
+    if (errorFecha) return NextResponse.json({ error: errorFecha }, { status: 400 });
+  }
+
   const esSuperAdmin = session.rol === "SUPER_ADMIN";
   const puedeEditar = solicitud.estado === "PENDIENTE" || solicitud.estado === "RECHAZADA";
   if (!(puede || esSuperAdmin) || !puedeEditar) {
@@ -64,18 +72,24 @@ export async function PATCH(
     return NextResponse.json({ error: "Esa ruta no es válida para este colaborador" }, { status: 400 });
   }
 
-  const actualizada = await db.solicitudPasaje.update({
-    where: { id },
+  // Atómico: el estado se vuelve a exigir en el WHERE. Si TH la aprobó
+  // entre la lectura de arriba y esta escritura, no se toca (antes la
+  // devolvía a PENDIENTE pisando la aprobación).
+  const resultado = await db.solicitudPasaje.updateMany({
+    where: { id, estado: { in: ["PENDIENTE", "RECHAZADA"] } },
     data: {
       rutaId: ruta.id,
       fecha: fechaEditada,
       montoTotal: ruta.valor,
-      observaciones: observaciones?.trim() ? observaciones.trim().toUpperCase() : null,
+      observaciones: typeof observaciones === "string" && observaciones.trim() ? observaciones.trim().toUpperCase() : null,
       estado: "PENDIENTE", // al corregirla, vuelve a la cola de aprobación
     },
   });
+  if (resultado.count === 0) {
+    return NextResponse.json({ error: "La solicitud cambió de estado mientras la editabas; recarga la pantalla" }, { status: 409 });
+  }
 
-  return NextResponse.json(actualizada);
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(
@@ -103,6 +117,14 @@ export async function DELETE(
     }
   }
 
-  await db.solicitudPasaje.delete({ where: { id } });
+  // Atómico: quien no es Super Admin solo borra si SIGUE Pendiente o
+  // Rechazada (pudo aprobarse entre la lectura y esta escritura).
+  // deleteMany además no falla si otro ya la borró.
+  const resultado = await db.solicitudPasaje.deleteMany({
+    where: { id, ...(esSuperAdmin ? {} : { estado: { in: ["PENDIENTE", "RECHAZADA"] } }) },
+  });
+  if (resultado.count === 0) {
+    return NextResponse.json({ error: "La solicitud ya no se puede eliminar (cambió de estado o ya no existe)" }, { status: 409 });
+  }
   return NextResponse.json({ ok: true });
 }

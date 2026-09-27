@@ -17,7 +17,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, valor, activo } = await req.json();
+  const { nombre, valor, activo } = await req.json().catch(() => ({}));
 
   const ruta = await db.ruta.findUnique({ where: { id } });
   if (!ruta) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
@@ -28,9 +28,9 @@ export async function PATCH(
   }
 
   const data: Record<string, unknown> = {};
-  if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
+  if (typeof nombre === "string" && nombre.trim()) data.nombre = nombre.trim().toUpperCase();
   if (valor !== undefined) {
-    if (Number(valor) <= 0) return NextResponse.json({ error: "El valor debe ser mayor a 0" }, { status: 400 });
+    if (!Number.isFinite(Number(valor)) || Number(valor) <= 0) return NextResponse.json({ error: "El valor debe ser mayor a 0" }, { status: 400 });
     data.valor = Number(valor);
   }
   if (typeof activo === "boolean") data.activo = activo;

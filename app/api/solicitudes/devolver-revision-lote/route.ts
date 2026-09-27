@@ -9,6 +9,8 @@ import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { obtenerCondicionRutaTH } from "../../../../lib/alcanceTH";
 
+const MAX_POR_LOTE = 500;
+
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session || !["COORDINADOR", "NOMINA", "SUPER_ADMIN"].includes(session.rol)) {
@@ -18,6 +20,10 @@ export async function POST(req: Request) {
   const { ids, motivo } = await req.json().catch(() => ({ ids: null, motivo: "" }));
   if (!Array.isArray(ids) || ids.length === 0 || !ids.every((v) => typeof v === "string")) {
     return NextResponse.json({ error: "No se enviaron solicitudes" }, { status: 400 });
+  }
+  // Tope por petición para que un bloque enorme no deje a la base ocupada.
+  if (ids.length > MAX_POR_LOTE) {
+    return NextResponse.json({ error: `Máximo ${MAX_POR_LOTE} por vez` }, { status: 400 });
   }
   if (!motivo || motivo.trim().length < 3) {
     return NextResponse.json({ error: "Indica el motivo de la corrección" }, { status: 400 });

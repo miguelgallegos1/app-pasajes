@@ -10,12 +10,25 @@ export function formatearFecha(fecha: string | Date): string {
   return `${dia}/${mes}/${anio}`;
 }
 
-// Devuelve el Date parseado, o null si `valor` no es una fecha válida —
-// para no pasarle un Invalid Date a Prisma (lanzaría una excepción no
-// controlada en vez de un 400 claro) en filtros de rango por query param.
-export function fechaValida(valor: string): Date | null {
-  const d = new Date(valor);
-  return Number.isNaN(d.getTime()) ? null : d;
+// Fecha-sin-hora "YYYY-MM-DD" -> Date a medianoche UTC (como se guarda
+// `fecha` en la base), o null si no es exactamente ese formato o no existe
+// (ej. "2026-02-31"). Antes aceptaba cualquier cosa que entendiera `Date`
+// (horas, zonas, "9/26/2026"...), lo que podía guardar el día equivocado o
+// dejar fuera filas del último día de un rango.
+export function fechaValida(valor: unknown): Date | null {
+  if (typeof valor !== "string") return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+  if (!m) return null;
+  const [anio, mes, dia] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(Date.UTC(anio, mes - 1, dia));
+  return d.getUTCFullYear() === anio && d.getUTCMonth() === mes - 1 && d.getUTCDate() === dia ? d : null;
+}
+
+// "Hoy" en Ecuador (UTC-5, sin horario de verano) como fecha-sin-hora a
+// medianoche UTC, para comparar contra `fecha`.
+export function hoyEcuador(): Date {
+  const ahora = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  return new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate()));
 }
 
 // "YYYY-MM-DD" en hora LOCAL (no UTC) — el mismo formato que usan los

@@ -9,11 +9,11 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
-import { ordenSolicitudes } from "../../../../lib/ordenHistorial";
+import { ordenSolicitudes, leerPagina } from "../../../../lib/ordenHistorial";
 import { fechaValida } from "../../../../lib/fechas";
 
 const POR_PAGINA = 15;
-const ESTADOS_VALIDOS = ["PENDIENTE", "APROBADA", "RECHAZADA", "PAGADA"] as const;
+const ESTADOS_VALIDOS = ["PENDIENTE", "APROBADA", "REVISADO", "RECHAZADA", "PAGADA"] as const;
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const colaboradorId = searchParams.get("colaboradorId");
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
-  const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1"));
+  const pagina = leerPagina(searchParams);
 
   const filtro: Record<string, unknown> = {};
   if (codigo) filtro.codigo = { contains: codigo };

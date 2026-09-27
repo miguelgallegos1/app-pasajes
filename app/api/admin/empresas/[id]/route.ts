@@ -17,7 +17,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, ruc, activo, whatsapp } = await req.json();
+  const { nombre, ruc, activo, whatsapp } = await req.json().catch(() => ({}));
 
   const empresa = await db.empresa.findUnique({ where: { id } });
   if (!empresa) return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });

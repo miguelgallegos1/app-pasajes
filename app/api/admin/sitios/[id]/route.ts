@@ -17,7 +17,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, direccion, whatsapp } = await req.json();
+  const { nombre, direccion, whatsapp } = await req.json().catch(() => ({}));
 
   const sitio = await db.sitioProductivo.findUnique({ where: { id } });
   if (!sitio) return NextResponse.json({ error: "Sitio no encontrado" }, { status: 404 });

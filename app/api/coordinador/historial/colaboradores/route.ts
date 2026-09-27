@@ -8,7 +8,7 @@ import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
 import { ubicacionDesdeParams, condicionRuta } from "../../../../../lib/filtroUbicacion";
 import { fechaValida } from "../../../../../lib/fechas";
 import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
-import { ordenarColaboradores } from "../../../../../lib/ordenHistorial";
+import { ordenarColaboradores, leerPagina } from "../../../../../lib/ordenHistorial";
 import { SIN_SUPERVISOR } from "../../../../../lib/sinSupervisor";
 
 const POR_PAGINA = 15;
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   const hasta = searchParams.get("hasta");
   const estado = searchParams.get("estado");
   const supervisorId = searchParams.get("supervisorId");
-  const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1"));
+  const pagina = leerPagina(searchParams);
 
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });

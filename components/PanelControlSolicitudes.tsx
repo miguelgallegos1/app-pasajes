@@ -40,6 +40,7 @@ const OPCIONES_ESTADO = [
   { value: "", label: "Todos" },
   { value: "PENDIENTE", label: "Pendiente" },
   { value: "APROBADA", label: "Aprobada" },
+  { value: "REVISADO", label: "Revisada" },
   { value: "RECHAZADA", label: "Rechazada" },
   { value: "PAGADA", label: "Pagada" },
 ];
@@ -47,6 +48,7 @@ const OPCIONES_ESTADO = [
 const ESTILOS_ESTADO: Record<string, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800",
   APROBADA: "bg-green-100 text-green-800",
+  REVISADO: "bg-sky-100 text-sky-800",
   RECHAZADA: "bg-red-100 text-red-800",
   PAGADA: "bg-orange-100 text-orange-800",
 };

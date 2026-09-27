@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/auth";
 import { fechaValida } from "../../../../../lib/fechas";
 import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
-import { ordenarColaboradores } from "../../../../../lib/ordenHistorial";
+import { ordenarColaboradores, leerPagina } from "../../../../../lib/ordenHistorial";
 
 const POR_PAGINA = 15;
 
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   const empresaId = searchParams.get("empresaId");
   const sitioId = searchParams.get("sitioId");
   const areaId = searchParams.get("areaId");
-  const pagina = Math.max(1, Number(searchParams.get("pagina") ?? "1"));
+  const pagina = leerPagina(searchParams);
 
   if (!desde || !hasta) {
     return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });

@@ -13,9 +13,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { areaId, nombre, valor } = await req.json();
+  const { areaId, nombre, valor } = await req.json().catch(() => ({}));
 
-  if (!areaId || !nombre?.trim() || valor === undefined || Number(valor) <= 0) {
+  // Number.isFinite: "abc" daba NaN y `NaN <= 0` es false, así que pasaba.
+  if (typeof areaId !== "string" || typeof nombre !== "string" || !nombre.trim() || !Number.isFinite(Number(valor)) || Number(valor) <= 0) {
     return NextResponse.json({ error: "Nombre, área y valor (mayor a 0) son obligatorios" }, { status: 400 });
   }
 

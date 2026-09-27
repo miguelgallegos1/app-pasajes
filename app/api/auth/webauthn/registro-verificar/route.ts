@@ -9,29 +9,24 @@ import { cookies } from "next/headers";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
 import { db } from "../../../../../lib/db";
 import { getSession } from "../../../../../lib/auth";
-import { obtenerRpConfig, COOKIE_DESAFIO } from "../../../../../lib/webauthn";
+import { obtenerRpConfig, COOKIE_DESAFIO, leerDesafio } from "../../../../../lib/webauthn";
 
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const cookieStore = await cookies();
-  const desafioRaw = cookieStore.get(COOKIE_DESAFIO)?.value;
-  if (!desafioRaw) {
+  const desafio = await leerDesafio(cookieStore.get(COOKIE_DESAFIO)?.value);
+  if (!desafio) {
     return NextResponse.json({ error: "El registro expiró, intenta de nuevo" }, { status: 400 });
   }
-
-  let challenge: string, usuarioId: string;
-  try {
-    ({ challenge, usuarioId } = JSON.parse(desafioRaw));
-  } catch {
-    return NextResponse.json({ error: "El registro expiró, intenta de nuevo" }, { status: 400 });
-  }
+  const { challenge, usuarioId } = desafio;
+  cookieStore.delete(COOKIE_DESAFIO); // un solo intento por challenge
   if (usuarioId !== session.id) {
     return NextResponse.json({ error: "Sesión inválida" }, { status: 400 });
   }
 
-  const { response, dispositivo } = await req.json();
+  const { response, dispositivo } = await req.json().catch(() => ({}));
   const { rpID, origin } = obtenerRpConfig(req);
 
   let verificacion;

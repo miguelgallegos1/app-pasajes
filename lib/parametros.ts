@@ -5,6 +5,7 @@
 
 import { db } from "./db";
 import { DIAS_ATRAS_SOLICITUD_DEFECTO } from "./config";
+import { formatearFecha, hoyEcuador } from "./fechas";
 
 const ID_PARAMETRO_GLOBAL = "global";
 
@@ -52,4 +53,13 @@ export async function actualizarSeleccionTotal(valor: SeleccionTotal): Promise<v
     create: { id: ID_PARAMETRO_GLOBAL, ...data },
     update: data,
   });
+}
+
+// Misma regla que el calendario de nueva solicitud, ahora también en el
+// servidor (antes solo la aplicaba la pantalla: un pedido armado a mano
+// podía registrar fechas de cualquier antigüedad). null si la fecha vale.
+export async function errorFechaSolicitud(fecha: Date): Promise<string | null> {
+  const dias = await obtenerDiasAtrasSolicitud();
+  const minima = new Date(hoyEcuador().getTime() - dias * 24 * 60 * 60 * 1000);
+  return fecha < minima ? `Solo se pueden registrar fechas desde el ${formatearFecha(minima)} en adelante` : null;
 }

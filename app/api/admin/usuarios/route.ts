@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { nombre, email, pin, rol } = await req.json();
+  const { nombre, email, pin, rol } = await req.json().catch(() => ({}));
 
   if (!nombre?.trim() || !pin || !rol) {
     return NextResponse.json({ error: "Nombre, PIN y rol son obligatorios" }, { status: 400 });
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!ROLES_PERMITIDOS.includes(rol)) {
     return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
   }
-  if (!/^\d{6}$/.test(pin)) {
+  if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
     return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
   }
 
@@ -45,6 +45,8 @@ export async function POST(req: Request) {
   try {
     const nuevo = await db.usuario.create({
       data: { nombre: nombre.trim().toUpperCase(), email: email?.trim() ? email.trim().toLowerCase() : null, pinHash, pinLookup, rol },
+      // select: nunca devolver pinHash/pinLookup al navegador.
+      select: { id: true, nombre: true, rol: true, activo: true },
     });
     return NextResponse.json(nuevo, { status: 201 });
   } catch (e) {

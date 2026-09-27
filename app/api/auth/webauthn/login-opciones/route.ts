@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { generateAuthenticationOptions } from "@simplewebauthn/server";
-import { obtenerRpConfig, COOKIE_DESAFIO, DURACION_DESAFIO_SEGUNDOS } from "../../../../../lib/webauthn";
+import { obtenerRpConfig, firmarDesafio, COOKIE_DESAFIO, DURACION_DESAFIO_SEGUNDOS } from "../../../../../lib/webauthn";
 
 export async function POST(req: Request) {
   const { rpID } = obtenerRpConfig(req);
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   });
 
   const res = NextResponse.json(opciones);
-  res.cookies.set(COOKIE_DESAFIO, JSON.stringify({ challenge: opciones.challenge }), {
+  res.cookies.set(COOKIE_DESAFIO, await firmarDesafio({ challenge: opciones.challenge }), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

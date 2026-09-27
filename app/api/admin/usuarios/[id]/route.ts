@@ -21,11 +21,27 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, activo, pin, rol } = await req.json();
+  const { nombre, activo, pin, rol } = await req.json().catch(() => ({}));
 
   const data: Record<string, unknown> = {};
   if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
-  if (typeof activo === "boolean") data.activo = activo;
+  if (typeof activo === "boolean") {
+    // Desactivar al último Super Admin activo deja la app sin nadie que
+    // pueda gestionar usuarios (mismo criterio que al quitarle el rol).
+    if (!activo) {
+      const usuarioActual = await db.usuario.findUnique({ where: { id }, select: { rol: true } });
+      if (usuarioActual?.rol === "SUPER_ADMIN") {
+        const otrosSuperAdmins = await db.usuario.count({ where: { rol: "SUPER_ADMIN", activo: true, id: { not: id } } });
+        if (otrosSuperAdmins === 0) {
+          return NextResponse.json(
+            { error: "No puedes desactivar al último Super Administrador — nadie más podría gestionar usuarios/roles." },
+            { status: 400 }
+          );
+        }
+      }
+    }
+    data.activo = activo;
+  }
   if (rol !== undefined) {
     if (typeof rol !== "string" || !ROLES_VALIDOS.includes(rol)) {
       return NextResponse.json({ error: "Rol inválido" }, { status: 400 });
@@ -77,7 +93,8 @@ export async function PATCH(
   }
 
   try {
-    const actualizado = await db.usuario.update({ where: { id }, data });
+    // select: nunca devolver pinHash/pinLookup al navegador.
+    const actualizado = await db.usuario.update({ where: { id }, data, select: { id: true, nombre: true, rol: true, activo: true } });
     return NextResponse.json(actualizado);
   } catch (e) {
     const esConflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";

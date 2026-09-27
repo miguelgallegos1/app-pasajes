@@ -11,8 +11,11 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
 import { getSession } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
-import { generarCodigosSolicitud } from "../../../../lib/codigoSolicitud";
+import { insertarConCodigos } from "../../../../lib/codigoSolicitud";
 import { fechaValida } from "../../../../lib/fechas";
+import { errorFechaSolicitud } from "../../../../lib/parametros";
+
+const MAX_POR_LOTE = 500;
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -33,6 +36,9 @@ export async function POST(req: Request) {
   if (itemsValidos.length === 0) {
     return NextResponse.json({ error: "No se seleccionó ninguna ruta" }, { status: 400 });
   }
+  if (itemsValidos.length > MAX_POR_LOTE) {
+    return NextResponse.json({ error: `Máximo ${MAX_POR_LOTE} rutas por vez` }, { status: 400 });
+  }
   const ids = itemsValidos.map((it) => it.id);
   const observacionPorId = new Map(itemsValidos.map((it) => [it.id, it.observaciones]));
   if (!fecha) {
@@ -42,6 +48,8 @@ export async function POST(req: Request) {
   if (!fechaDestino) {
     return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
   }
+  const errorFecha = await errorFechaSolicitud(fechaDestino);
+  if (errorFecha) return NextResponse.json({ error: errorFecha }, { status: 400 });
 
   const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
   if (!miColaborador || miColaborador.estado !== "ACTIVO") {
@@ -126,19 +134,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ninguna de las rutas elegidas sigue siendo válida" }, { status: 400 });
   }
 
-  const codigos = await generarCodigosSolicitud(filasAInsertar.length);
-  await db.solicitudPasaje.createMany({
-    data: filasAInsertar.map((fila, i) => ({
-      codigo: codigos[i],
-      colaboradorId: fila.colaboradorId,
-      rutaId: fila.rutaId,
-      fecha: fechaDestino,
-      montoTotal: fila.montoTotal,
-      observaciones: fila.observaciones,
-      estado: "PENDIENTE",
-      creadoPorUsuarioId: fila.creadoPorUsuarioId,
-    })),
-  });
+  await insertarConCodigos(filasAInsertar.length, (codigos) =>
+    db.solicitudPasaje.createMany({
+      data: filasAInsertar.map((fila, i) => ({
+        codigo: codigos[i],
+        colaboradorId: fila.colaboradorId,
+        rutaId: fila.rutaId,
+        fecha: fechaDestino,
+        montoTotal: fila.montoTotal,
+        observaciones: fila.observaciones,
+        estado: "PENDIENTE",
+        creadoPorUsuarioId: fila.creadoPorUsuarioId,
+      })),
+    })
+  );
 
   return NextResponse.json({ copiadas: filasAInsertar.length });
 }

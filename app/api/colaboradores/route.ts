@@ -8,6 +8,7 @@ import { db } from "../../../lib/db";
 import { getSession } from "../../../lib/auth";
 import { obtenerAreasPermitidasTH } from "../../../lib/alcanceTH";
 import { calcularPinLookup } from "../../../lib/pin";
+import { pinFirmadoValido } from "../../../lib/pinFirmado";
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { apellidos, nombres, codigoNomina, areaId, pin, esSupervisor, supervisorId, rutaIds } = await req.json();
+  const { apellidos, nombres, codigoNomina, areaId, pin, pinFirma, esSupervisor, supervisorId, rutaIds } = await req.json().catch(() => ({}));
 
   if (!apellidos?.trim() || !nombres?.trim() || !codigoNomina?.trim() || !areaId || !pin) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
@@ -24,8 +25,12 @@ export async function POST(req: Request) {
   const nombresNormalizados = nombres.trim().toUpperCase();
   const nombreCompletoNormalizado = `${apellidosNormalizados} ${nombresNormalizados}`;
   const codigoNormalizado = codigoNomina.trim().toUpperCase();
-  if (!/^\d{6}$/.test(pin)) {
+  if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
     return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
+  }
+  // Solo PINs generados por el sistema (ver lib/pinFirmado.ts).
+  if (!(await pinFirmadoValido(pin, pinFirma, session.id))) {
+    return NextResponse.json({ error: "El PIN debe generarse con el botón Generar. Genera uno nuevo e inténtalo de nuevo." }, { status: 400 });
   }
 
   // El área elegida debe estar dentro del alcance de este TH
@@ -67,7 +72,7 @@ export async function POST(req: Request) {
 
   // Las rutas exclusivas elegidas deben pertenecer a la misma área
   const rutaIdsValidos: string[] = Array.isArray(rutaIds)
-    ? (await db.ruta.findMany({ where: { id: { in: rutaIds }, areaId: area.id }, select: { id: true } })).map(
+    ? (await db.ruta.findMany({ where: { id: { in: rutaIds.filter((r): r is string => typeof r === "string") }, areaId: area.id }, select: { id: true } })).map(
         (r) => r.id
       )
     : [];
@@ -112,7 +117,8 @@ export async function POST(req: Request) {
       return creado;
     });
 
-    return NextResponse.json(nuevo, { status: 201 });
+    // Solo el id: la respuesta no debe incluir pinHash/pinLookup del usuario.
+    return NextResponse.json({ id: nuevo.colaborador!.id }, { status: 201 });
   } catch (e) {
     if (e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002") {
       return NextResponse.json({ error: "Ese código de nómina ya está en uso por otro colaborador" }, { status: 400 });
