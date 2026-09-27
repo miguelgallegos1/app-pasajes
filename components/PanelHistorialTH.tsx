@@ -280,7 +280,7 @@ export default function PanelHistorialTH() {
         <div>
           <h2 className="font-semibold text-neutral-900 dark:text-white">Revertir a Pendiente</h2>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            La solicitud vuelve a la cola de aprobación. Usalo solo para corregir un error de control.
+            La solicitud vuelve a la cola de aprobación. Úsalo solo para corregir un error de control.
           </p>
         </div>
         <textarea

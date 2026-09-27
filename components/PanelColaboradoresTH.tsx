@@ -546,7 +546,7 @@ export default function PanelColaboradoresTH() {
                     <IconoRefrescar className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Copialo y comunícaselo al colaborador para su primer ingreso</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Cópialo y comunícaselo al colaborador para su primer ingreso</p>
               </div>
             )}
 
@@ -601,7 +601,7 @@ export default function PanelColaboradoresTH() {
                   </button>
                 </div>
                 <p className="text-xs text-amber-600 mt-1">
-                  El PIN anterior deja de funcionar en cuanto guardes. Copialo y comunícaselo al colaborador.
+                  El PIN anterior deja de funcionar en cuanto guardes. Cópialo y comunícaselo al colaborador.
                 </p>
               </div>
             )}

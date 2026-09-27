@@ -162,7 +162,7 @@ function BloqueCarga({
           </div>
           {columnaPin && resultado.creadas > 0 && (
             <p className="text-xs text-amber-600 font-medium">
-              Descargá el resultado o copiá los PIN generados antes de salir de esta pantalla — no se pueden volver a ver después.
+              Descarga el resultado o copia los PIN generados antes de salir de esta pantalla — no se pueden volver a ver después.
             </p>
           )}
           <div className="bg-white dark:bg-neutral-900 rounded-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">

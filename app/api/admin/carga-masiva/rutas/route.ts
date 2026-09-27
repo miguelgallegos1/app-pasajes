@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       errores.push({
         fila: numeroFila,
         estado: "ERROR",
-        mensaje: `No existe el Área "${areaNombre}" en el Sitio "${sitioNombre}" de la Empresa "${empresaNombre}" (revisá la hoja "Áreas disponibles")`,
+        mensaje: `No existe el Área "${areaNombre}" en el Sitio "${sitioNombre}" de la Empresa "${empresaNombre}" (revisa la hoja "Áreas disponibles")`,
       });
       continue;
     }

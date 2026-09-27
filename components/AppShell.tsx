@@ -138,7 +138,7 @@ const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
         { label: "Empresas", href: "/admin/empresas", descripcion: "Administra la estructura de empresas, sitios y áreas", icono: IconoEdificio },
         { label: "Usuarios", href: "/admin/usuarios", descripcion: "Talento Humano, Coordinadores, Nómina, Jefes y Super Administradores", icono: IconoUsuario },
         { label: "Control de Solicitudes", href: "/admin/solicitudes", descripcion: "Busca por código o filtra, y puedes eliminar cualquier solicitud sin importar su estado", icono: IconoControl },
-        { label: "Carga masiva", href: "/admin/carga-masiva", descripcion: "Cargá muchos colaboradores o rutas de una sola vez desde un Excel", icono: IconoDescargar },
+        { label: "Carga masiva", href: "/admin/carga-masiva", descripcion: "Carga muchos colaboradores o rutas de una sola vez desde un Excel", icono: IconoDescargar },
         { label: "Parámetros", href: "/admin/parametros", descripcion: "Valores generales del sistema, configurables sin tocar código", icono: IconoAjustes },
       ],
     },

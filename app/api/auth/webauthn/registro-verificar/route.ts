@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     });
     if (yaRegistrado) {
       return NextResponse.json(
-        { error: `Ya tenés "${dispositivoNormalizado}" activado. Quítalo primero si querés volver a registrarlo.` },
+        { error: `Ya tienes "${dispositivoNormalizado}" activado. Quítalo primero si quieres volver a registrarlo.` },
         { status: 400 }
       );
     }

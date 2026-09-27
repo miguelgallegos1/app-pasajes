@@ -332,7 +332,7 @@ export default function PanelUsuariosAdmin({
                     <IconoRefrescar className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Copialo y comunícaselo al usuario para su primer ingreso</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Cópialo y comunícaselo al usuario para su primer ingreso</p>
               </div>
             )}
 
@@ -387,7 +387,7 @@ export default function PanelUsuariosAdmin({
                   </button>
                 </div>
                 <p className="text-xs text-amber-600 mt-1">
-                  El PIN anterior deja de funcionar en cuanto guardes. Copialo y comunícaselo al usuario.
+                  El PIN anterior deja de funcionar en cuanto guardes. Cópialo y comunícaselo al usuario.
                 </p>
               </div>
             )}
