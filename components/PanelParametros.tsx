@@ -16,9 +16,9 @@ import { useToast } from "./Toast";
 type PantallaSeleccion = "aprobar" | "revisar" | "pagar";
 
 const PANTALLAS_SELECCION: { clave: PantallaSeleccion; etiqueta: string; detalle: string }[] = [
-  { clave: "aprobar", etiqueta: "Aprobaciones", detalle: "Talento Humano · Aprobar" },
-  { clave: "revisar", etiqueta: "Revisión", detalle: "Coordinación · Revisar" },
-  { clave: "pagar", etiqueta: "Pagos", detalle: "Nómina · Pagar" },
+  { clave: "aprobar", etiqueta: "Bandeja de aprobaciones", detalle: "Talento Humano · Aprobar" },
+  { clave: "revisar", etiqueta: "Bandeja de revisiones", detalle: "Coordinación · Revisar" },
+  { clave: "pagar", etiqueta: "Bandeja de pagos", detalle: "Nómina · Pagar" },
 ];
 
 export default function PanelParametros() {

@@ -22,7 +22,7 @@ export const TEMAS: Record<
 > = {
   PENDIENTE: {
     titulo: "pendiente de aprobar",
-    accion: "Ir a Aprobaciones",
+    accion: "Ir a la bandeja de aprobaciones",
     icono: IconoCheck,
     fondo: "bg-amber-50 dark:bg-amber-500/10",
     anillo: "ring-amber-200 dark:ring-amber-500/30",
@@ -32,7 +32,7 @@ export const TEMAS: Record<
   },
   APROBADA: {
     titulo: "pendiente de revisar",
-    accion: "Ir a Revisión",
+    accion: "Ir a la bandeja de revisiones",
     icono: IconoLupa,
     fondo: "bg-green-50 dark:bg-green-500/10",
     anillo: "ring-green-200 dark:ring-green-500/30",
@@ -42,7 +42,7 @@ export const TEMAS: Record<
   },
   REVISADO: {
     titulo: "pendiente de pagar",
-    accion: "Ir a Pagos",
+    accion: "Ir a la bandeja de pagos",
     icono: IconoDinero,
     fondo: "bg-sky-50 dark:bg-sky-500/10",
     anillo: "ring-sky-200 dark:ring-sky-500/30",

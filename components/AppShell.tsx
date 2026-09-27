@@ -72,7 +72,7 @@ const DASHBOARD: ItemMenu = {
 const MENU_TALENTO_HUMANO: GrupoMenu = {
   grupo: "Talento Humano",
   items: [
-    { label: "Aprobaciones", href: "/th/aprobaciones", descripcion: "Solicitudes de colaboradores esperando aprobación", icono: IconoCheck },
+    { label: "Bandeja de aprobaciones", href: "/th/aprobaciones", descripcion: "Solicitudes de colaboradores esperando aprobación", icono: IconoCheck },
     { label: "Historial de aprobaciones", href: "/th/historial", descripcion: "Solicitudes aprobadas y pagadas", icono: IconoReloj },
     { label: "Colaboradores", href: "/th/colaboradores", descripcion: "Crea y administra los colaboradores de tu Empresa/Sitio/Área", icono: IconoPersonas },
     { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", descripcion: "Elegir un supervisor y marca quiénes de su área le reportan", icono: IconoPersonas },
@@ -94,7 +94,7 @@ const MENU_MIS_SOLICITUDES_TH: GrupoMenu = {
 const MENU_COORDINACION: GrupoMenu = {
   grupo: "Coordinación",
   items: [
-    { label: "Revisión", href: "/coordinador/revision", descripcion: "Solicitudes aprobadas listas para revisar", icono: IconoCheck },
+    { label: "Bandeja de revisiones", href: "/coordinador/revision", descripcion: "Solicitudes aprobadas listas para revisar", icono: IconoCheck },
     { label: "Historial de revisiones", href: "/coordinador/historial", descripcion: "Solicitudes revisadas y pagadas", icono: IconoReloj },
   ],
 };
@@ -102,7 +102,7 @@ const MENU_COORDINACION: GrupoMenu = {
 const MENU_NOMINA: GrupoMenu = {
   grupo: "Nómina",
   items: [
-    { label: "Pagos", href: "/nomina/pagos", descripcion: "Solicitudes revisadas listas para pagar", icono: IconoDinero },
+    { label: "Bandeja de pagos", href: "/nomina/pagos", descripcion: "Solicitudes revisadas listas para pagar", icono: IconoDinero },
     { label: "Historial de pagos", href: "/nomina/historial", descripcion: "Solicitudes ya pagadas", icono: IconoReloj },
   ],
 };

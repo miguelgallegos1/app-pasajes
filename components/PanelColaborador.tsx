@@ -883,7 +883,7 @@ export default function PanelColaborador({ modo = "colaborador" }: { modo?: "col
                 ) : (
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                      Colaboradores — tocá uno para ver y marcar sus rutas
+                      Colaboradores — toca uno para ver y marcar sus rutas
                     </label>
                     <div className="mt-1.5 relative">
                       <IconoLupa className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
