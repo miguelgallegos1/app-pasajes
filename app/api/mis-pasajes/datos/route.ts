@@ -35,7 +35,9 @@ export async function GET() {
     db.solicitudPasaje.findMany({
       where: {
         colaboradorId: { in: idsAConsultar },
-        estado: { in: ["PENDIENTE", "APROBADA", "RECHAZADA"] },
+        // Registrar muestra solo lo accionable (pendientes y rechazadas);
+        // aprobadas, revisadas y pagadas viven en el Historial.
+        estado: { in: ["PENDIENTE", "RECHAZADA"] },
       },
       orderBy: { fecha: "desc" },
       include: {

@@ -1,6 +1,6 @@
 // app/api/solicitudes/historial/route.ts
-// GET: historial de solicitudes APROBADAS y/o PAGADAS, filtrado por fecha
-// y opcionalmente por estado.
+// GET: historial de solicitudes APROBADAS, REVISADAS y PAGADAS, filtrado
+// por fecha y opcionalmente por estado.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
@@ -30,37 +30,50 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
   }
 
-  const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
-  if (!miColaborador) return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
-
-  // Sin colaboradorId: si es supervisor ve su historial + el de su equipo;
-  // si no, solo el propio. Con colaboradorId puntual, debe ser él mismo o
-  // alguien a su cargo.
-  let colaboradorIds: string[];
-  if (colaboradorIdParam && colaboradorIdParam !== miColaborador.id) {
-    const objetivo = await db.colaborador.findUnique({ where: { id: colaboradorIdParam } });
-    const esSuSupervisor = miColaborador.esSupervisor && objetivo?.supervisorId === miColaborador.id;
-    if (!objetivo || !esSuSupervisor) {
-      return NextResponse.json({ error: "No tienes permiso para ver el historial de ese colaborador" }, { status: 403 });
-    }
-    colaboradorIds = [objetivo.id];
-  } else if (colaboradorIdParam === miColaborador.id || !miColaborador.esSupervisor) {
-    colaboradorIds = [miColaborador.id];
+  // ?registradas=1 (Mis solicitudes -> Historial de TH): lo que ESTE
+  // usuario registró, para quien sea. Sin eso, el historial del
+  // colaborador (propio, o del equipo si es supervisor), como siempre.
+  const registradas = searchParams.get("registradas") === "1" && ["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol);
+  let condicionDuenio: Record<string, unknown>;
+  if (registradas) {
+    condicionDuenio = { creadoPorUsuarioId: session.id };
   } else {
-    const equipo = await db.colaborador.findMany({
-      where: { supervisorId: miColaborador.id },
-      select: { id: true },
-    });
-    colaboradorIds = [miColaborador.id, ...equipo.map((c) => c.id)];
+    const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
+    if (!miColaborador) return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
+
+    // Sin colaboradorId: si es supervisor ve su historial + el de su equipo;
+    // si no, solo el propio. Con colaboradorId puntual, debe ser él mismo o
+    // alguien a su cargo.
+    let colaboradorIds: string[];
+    if (colaboradorIdParam && colaboradorIdParam !== miColaborador.id) {
+      const objetivo = await db.colaborador.findUnique({ where: { id: colaboradorIdParam } });
+      const esSuSupervisor = miColaborador.esSupervisor && objetivo?.supervisorId === miColaborador.id;
+      if (!objetivo || !esSuSupervisor) {
+        return NextResponse.json({ error: "No tienes permiso para ver el historial de ese colaborador" }, { status: 403 });
+      }
+      colaboradorIds = [objetivo.id];
+    } else if (colaboradorIdParam === miColaborador.id || !miColaborador.esSupervisor) {
+      colaboradorIds = [miColaborador.id];
+    } else {
+      const equipo = await db.colaborador.findMany({
+        where: { supervisorId: miColaborador.id },
+        select: { id: true },
+      });
+      colaboradorIds = [miColaborador.id, ...equipo.map((c) => c.id)];
+    }
+    condicionDuenio = { colaboradorId: { in: colaboradorIds } };
   }
 
-  const filtroEstado =
-    estado === "APROBADA" || estado === "PAGADA"
-      ? { estado: estado as "APROBADA" | "PAGADA" }
-      : { estado: { in: ["APROBADA", "PAGADA"] as Array<"APROBADA" | "PAGADA"> } };
+  // Todo lo que ya salió de Registrar: aprobadas, revisadas y pagadas
+  // (antes las REVISADAS no aparecían en ninguna pantalla del colaborador).
+  type EstadoHistorial = "APROBADA" | "REVISADO" | "PAGADA";
+  const ESTADOS_HISTORIAL: EstadoHistorial[] = ["APROBADA", "REVISADO", "PAGADA"];
+  const filtroEstado = ESTADOS_HISTORIAL.includes(estado as EstadoHistorial)
+    ? { estado: estado as EstadoHistorial }
+    : { estado: { in: ESTADOS_HISTORIAL } };
 
   const filtro = {
-    colaboradorId: { in: colaboradorIds },
+    ...condicionDuenio,
     fecha: { gte: desdeFecha, lte: hastaFecha },
     ...filtroEstado,
   };

@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
-import { getSession } from "../../../../lib/auth";
+import { getSession, obtenerFichaPropiaId } from "../../../../lib/auth";
 
 const MAX_POR_LOTE = 500;
 
@@ -23,10 +23,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Máximo ${MAX_POR_LOTE} solicitudes por vez` }, { status: 400 });
   }
 
-  const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
-  if (!miColaborador) return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
-
   const esSuperAdmin = session.rol === "SUPER_ADMIN";
+  const [miColaborador, fichaPropiaId] = await Promise.all([
+    db.colaborador.findUnique({ where: { usuarioId: session.id } }),
+    obtenerFichaPropiaId(session),
+  ]);
+  // Colaborador/supervisor por su cuenta, o usuario administrativo con su
+  // ficha vinculada (Mis solicitudes de TH), o Super Admin.
+  if (!miColaborador && !fichaPropiaId && !esSuperAdmin) {
+    return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
+  }
 
   const solicitudes = await db.solicitudPasaje.findMany({
     where: { id: { in: ids } },
@@ -37,8 +43,9 @@ export async function POST(req: Request) {
     .filter((s) => {
       if (esSuperAdmin) return true;
       const esPropietario = s.colaborador.usuarioId === session.id;
-      const esSuSupervisor = miColaborador.esSupervisor && s.colaborador.supervisorId === miColaborador.id;
-      const puedeGestionar = esPropietario || esSuSupervisor;
+      const esSuSupervisor = !!miColaborador?.esSupervisor && s.colaborador.supervisorId === miColaborador.id;
+      const esFichaPropia = !!fichaPropiaId && s.colaboradorId === fichaPropiaId;
+      const puedeGestionar = esPropietario || esSuSupervisor || esFichaPropia;
       return puedeGestionar && (s.estado === "PENDIENTE" || s.estado === "RECHAZADA");
     })
     .map((s) => s.id);

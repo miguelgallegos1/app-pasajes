@@ -71,8 +71,15 @@ const CLASE_CAMPO =
 
 const POR_PAGINA = 15;
 
-export default function PanelColaborador() {
+// modo "th": la misma pantalla para Talento Humano (Mis solicitudes ->
+// Registrar). El "yo" es su ficha de colaborador vinculada (si tiene), el
+// "equipo" son los colaboradores de sus áreas (para registrar por
+// contingencia), y la lista muestra lo que ÉL registró. Solo puede
+// editar/eliminar las de su propia ficha; las de otros son de solo
+// lectura (se rechazan desde Aprobaciones, las corrige su dueño).
+export default function PanelColaborador({ modo = "colaborador" }: { modo?: "colaborador" | "th" }) {
   const toast = useToast();
+  const urlDatos = modo === "th" ? "/api/th/mis-solicitudes/datos" : "/api/mis-pasajes/datos";
 
   const [colaboradorId, setColaboradorId] = useState("");
   const [nombreCompleto, setNombreCompleto] = useState("");
@@ -90,7 +97,7 @@ export default function PanelColaborador() {
 
   const cargarDatos = async () => {
     try {
-      const res = await fetch("/api/mis-pasajes/datos");
+      const res = await fetch(urlDatos);
       if (!res.ok) {
         setErrorInicial("No se pudo cargar la información. Intenta de nuevo.");
         return;
@@ -110,7 +117,7 @@ export default function PanelColaborador() {
 
   useEffect(() => {
     let cancelado = false;
-    fetch("/api/mis-pasajes/datos")
+    fetch(urlDatos)
       .then(async (res) => {
         if (cancelado) return;
         if (!res.ok) {
@@ -134,7 +141,7 @@ export default function PanelColaborador() {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [urlDatos]);
 
   const [busqueda, setBusqueda] = useState("");
   const [paginaActual, setPaginaActual] = useState(1);
@@ -152,11 +159,19 @@ export default function PanelColaborador() {
     [solicitudes, idsOcultos]
   );
 
+  // Editar/eliminar: Pendientes o Rechazadas (igual que valida la API). En
+  // modo TH, además, solo las de su propia ficha: las que registró para
+  // otro colaborador son de solo lectura.
+  const puedeGestionar = (s: Solicitud) =>
+    (s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (modo !== "th" || (!!colaboradorId && s.colaboradorId === colaboradorId));
+
   // "Ver rechazadas" del aviso flotante: filtra la lista a las RECHAZADAS.
+  // El aviso cuenta solo las que este usuario puede corregir.
   const [soloRechazadas, setSoloRechazadas] = useState(false);
   const cantidadRechazadas = useMemo(
-    () => solicitudesVisibles.filter((s) => s.estado === "RECHAZADA").length,
-    [solicitudesVisibles]
+    () => solicitudesVisibles.filter((s) => s.estado === "RECHAZADA" && puedeGestionar(s)).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- puedeGestionar depende de modo/colaboradorId
+    [solicitudesVisibles, modo, colaboradorId]
   );
 
   const solicitudesFiltradas = useMemo(() => {
@@ -225,7 +240,7 @@ export default function PanelColaborador() {
   // completa filtrada en memoria (a diferencia del Historial, que agrupa
   // por API porque maneja muchas más filas).
   const colaboradoresParaTarjetas = useMemo(
-    () => [{ id: colaboradorId, nombreCompleto }, ...equipo],
+    () => (colaboradorId ? [{ id: colaboradorId, nombreCompleto }, ...equipo] : equipo),
     [colaboradorId, nombreCompleto, equipo]
   );
   const solicitudesPorColaborador = useMemo(() => {
@@ -273,8 +288,9 @@ export default function PanelColaborador() {
   // Solo se pueden eliminar (individual o en bloque) las Pendientes o
   // Rechazadas, igual que valida la API — mismo criterio que el menú "⋮".
   const solicitudesEliminablesPagina = useMemo(
-    () => solicitudesPagina.filter((s) => s.estado === "PENDIENTE" || s.estado === "RECHAZADA"),
-    [solicitudesPagina]
+    () => solicitudesPagina.filter(puedeGestionar),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- puedeGestionar depende de modo/colaboradorId
+    [solicitudesPagina, modo, colaboradorId]
   );
   const todasEnPaginaSeleccionadas =
     solicitudesEliminablesPagina.length > 0 && solicitudesEliminablesPagina.every((s) => seleccionadas.has(s.id));
@@ -342,7 +358,7 @@ export default function PanelColaborador() {
 
   const opcionesColaborador = useMemo(
     () => [
-      { id: colaboradorId, label: `${nombreCompleto} (yo)` },
+      ...(colaboradorId ? [{ id: colaboradorId, label: `${nombreCompleto} (yo)` }] : []),
       ...equipo.map((c) => ({ id: c.id, label: c.nombreCompleto })),
     ],
     [colaboradorId, nombreCompleto, equipo]
@@ -365,6 +381,10 @@ export default function PanelColaborador() {
   const cargarRutasDe = async (idColaborador: string) => {
     if (idColaborador === colaboradorId) {
       setRutasDisponibles(rutasPropias);
+      return;
+    }
+    if (modo === "th") {
+      setRutasDisponibles(rutasEquipo[idColaborador] ?? []);
       return;
     }
     const idPeticion = ++peticionRutasIdRef.current;
@@ -601,7 +621,7 @@ export default function PanelColaborador() {
 
         <AvisoRechazadas
           cantidad={cantidadRechazadas}
-          deEquipo={esSupervisor}
+          deEquipo={modo !== "th" && esSupervisor}
           mostrandoSoloRechazadas={soloRechazadas}
           onVer={() => { setSoloRechazadas(true); setVista("lista"); setPaginaActual(1); }}
         />
@@ -619,11 +639,11 @@ export default function PanelColaborador() {
                 alternar: alternarSeleccion,
                 idsDe: (id) =>
                   (solicitudesPorColaborador.get(id) ?? [])
-                    .filter((s) => s.estado === "PENDIENTE" || s.estado === "RECHAZADA")
+                    .filter(puedeGestionar)
                     .map((s) => s.id),
                 alternarGrupo: alternarGrupoSeleccion,
               }}
-              puedeSeleccionar={(s) => s.estado === "PENDIENTE" || s.estado === "RECHAZADA"}
+              puedeSeleccionar={puedeGestionar}
               columnas={[
                 { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
                 { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
@@ -639,7 +659,7 @@ export default function PanelColaborador() {
                 },
               ]}
               acciones={(s) =>
-                (s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
+                puedeGestionar(s) && (
                   <MenuAcciones
                     acciones={[
                       { label: "Editar", onClick: () => abrirEdicion(s) },
@@ -681,7 +701,7 @@ export default function PanelColaborador() {
                 {solicitudesPagina.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                     <td className="px-4 py-3">
-                      {(s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
+                      {puedeGestionar(s) && (
                         <input
                           type="checkbox"
                           checked={seleccionadas.has(s.id)}
@@ -716,7 +736,7 @@ export default function PanelColaborador() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {(s.estado === "PENDIENTE" || s.estado === "RECHAZADA") && (
+                      {puedeGestionar(s) && (
                         <MenuAcciones
                           acciones={[
                             { label: "Editar", onClick: () => abrirEdicion(s) },

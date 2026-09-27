@@ -128,7 +128,13 @@ model Usuario {
   rol          Rol
   activo       Boolean       @default(true)
   createdAt    DateTime      @default(now())
-  colaborador  Colaborador?
+  colaborador  Colaborador?   @relation("CuentaColaborador")
+  // Usuarios administrativos (ej. TH) que también viajan: su ficha de
+  // colaborador (la de su otra cuenta, rol Colaborador), para distinguir
+  // SUS solicitudes de las que registran para otros. Opcional; lo asigna
+  // Super Admin en Admin -> Usuarios. Una ficha, un solo usuario.
+  colaboradorPropio   Colaborador? @relation("FichaPropia", fields: [colaboradorPropioId], references: [id])
+  colaboradorPropioId String?      @unique
   asignaciones AsignacionTH[]
   credencialesBiometricas CredencialBiometrica[]
   suscripcionesPush PushSubscription[]
@@ -204,8 +210,10 @@ model AsignacionTH {
 model Colaborador {
   id             String            @id @default(cuid())
   numero         Int               @unique @default(autoincrement())
-  usuario        Usuario           @relation(fields: [usuarioId], references: [id])
+  usuario        Usuario           @relation("CuentaColaborador", fields: [usuarioId], references: [id])
   usuarioId      String            @unique
+  // Usuario administrativo vinculado a esta ficha (ver Usuario.colaboradorPropio).
+  usuarioAdministrativo Usuario?   @relation("FichaPropia")
   nombreCompleto String
   apellidos      String
   nombres        String
@@ -282,6 +290,8 @@ model SolicitudPasaje {
   @@index([fecha])
   @@index([rutaId])
   @@index([estado, fecha])
+  // "Mis solicitudes" de TH: lo que registró un usuario, por estado.
+  @@index([creadoPorUsuarioId, estado])
 }
 
 // Contador de intentos de login fallidos por IP, para frenar fuerza bruta

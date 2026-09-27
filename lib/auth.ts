@@ -9,6 +9,7 @@ import { DURACION_SESION_SEGUNDOS } from "./config";
 import { JWT_SECRET } from "./jwtSecret";
 import { db } from "./db";
 import { obtenerColaboradorPorUsuarioId } from "./colaboradorSesion";
+import { obtenerAreasPermitidasTH } from "./alcanceTH";
 import { ponerCookiesSesion } from "./cookieSesion";
 
 const secret = new TextEncoder().encode(JWT_SECRET);
@@ -170,4 +171,21 @@ export async function verificarAccesoColaborador(usuario: {
     }.`;
   }
   return null;
+}
+// Ficha de colaborador propia de un usuario administrativo (Admin ->
+// Usuarios): sus solicitudes las gestiona como si fuera el dueño. Solo
+// cuenta si la ficha es de una EMPRESA de su alcance asignado (Super Admin,
+// sin restricción, siempre). Los colaboradores no la usan (son dueños por
+// su propia cuenta), así que para ellos no se consulta nada.
+export async function obtenerFichaPropiaId(sesion: SesionUsuario): Promise<string | null> {
+  if (sesion.rol === "COLABORADOR") return null;
+  const usuario = await db.usuario.findUnique({
+    where: { id: sesion.id },
+    select: { colaboradorPropio: { select: { id: true, area: { select: { sitio: { select: { empresaId: true } } } } } } },
+  });
+  const ficha = usuario?.colaboradorPropio;
+  if (!ficha) return null;
+  if (sesion.rol === "SUPER_ADMIN") return ficha.id;
+  const empresasAsignadas = new Set((await obtenerAreasPermitidasTH(sesion.id, sesion.rol)).map((a) => a.sitio.empresa.id));
+  return empresasAsignadas.has(ficha.area.sitio.empresaId) ? ficha.id : null;
 }

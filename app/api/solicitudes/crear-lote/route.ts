@@ -15,7 +15,7 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
-import { getSession } from "../../../../lib/auth";
+import { getSession, obtenerFichaPropiaId } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
 import { obtenerCondicionColaboradorTH } from "../../../../lib/alcanceTH";
 import { insertarConCodigos } from "../../../../lib/codigoSolicitud";
@@ -67,7 +67,10 @@ export async function POST(req: Request) {
   // para poder pedir algo (así sea para sí mismo). TH no: la mayoría no
   // tiene uno vinculado, y aun así puede crear a nombre de otros dentro de
   // su alcance — solo no podría marcarse "a sí mismo" sin uno.
-  const miColaborador = await db.colaborador.findUnique({ where: { usuarioId: session.id } });
+  const [miColaborador, fichaPropiaId] = await Promise.all([
+    db.colaborador.findUnique({ where: { usuarioId: session.id } }),
+    obtenerFichaPropiaId(session),
+  ]);
   if (!esTH && (!miColaborador || miColaborador.estado !== "ACTIVO")) {
     return NextResponse.json({ error: "Colaborador no encontrado" }, { status: 404 });
   }
@@ -105,7 +108,10 @@ export async function POST(req: Request) {
 
   for (const colaboradorId of idsColaboradores) {
     const colaborador = colaboradorPorId.get(colaboradorId);
-    const esUnoMismo = !!miColaborador && colaboradorId === miColaborador.id;
+    // "Uno mismo": su propia cuenta de colaborador, o (usuario
+    // administrativo) su ficha vinculada en Admin -> Usuarios — solo si es
+    // de una empresa de su alcance (lo valida obtenerFichaPropiaId).
+    const esUnoMismo = (!!miColaborador && colaboradorId === miColaborador.id) || (!!fichaPropiaId && colaboradorId === fichaPropiaId);
     // Mismo chequeo que la creación individual: uno mismo, alguien del
     // propio equipo si quien pide es supervisor, o cualquiera dentro del
     // alcance de Empresa/Sitio/Área si quien pide es TH.

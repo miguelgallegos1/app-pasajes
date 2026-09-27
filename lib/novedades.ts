@@ -25,6 +25,22 @@ export type Novedad = {
 
 export const NOVEDADES: Novedad[] = [
   {
+    id: "2026-09-mis-solicitudes-th",
+    fecha: "2026-09-26",
+    titulo: "Mis solicitudes: registra y controla tus pasajes",
+    descripcion:
+      "\"Crear solicitud\" ahora es Mis solicitudes, con Registrar e Historial: ves el estado de lo que registraste, corriges o eliminas tus pendientes y rechazadas, y te avisa si tienes alguna rechazada. Los historiales del menú ahora se llaman de aprobaciones, revisiones y pagos.",
+    roles: ["ADMIN_TH"],
+  },
+  {
+    id: "2026-09-registrar-solo-accionables",
+    fecha: "2026-09-26",
+    titulo: "Registrar muestra solo lo que tienes que atender",
+    descripcion:
+      "En Registrar ves tus solicitudes pendientes y rechazadas (y un aviso si alguna fue rechazada, para corregirla o eliminarla). Lo aprobado, revisado y pagado está en Historial.",
+    roles: ["COLABORADOR"],
+  },
+  {
     id: "2026-09-buscador-historiales",
     fecha: "2026-09-26",
     titulo: "Historiales: eliges primero, buscas después",

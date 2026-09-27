@@ -21,10 +21,19 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, activo, pin, rol } = await req.json().catch(() => ({}));
+  const { nombre, activo, pin, rol, colaboradorPropioId } = await req.json().catch(() => ({}));
 
   const data: Record<string, unknown> = {};
-  if (nombre?.trim()) data.nombre = nombre.trim().toUpperCase();
+  if (typeof nombre === "string" && nombre.trim()) data.nombre = nombre.trim().toUpperCase();
+  // Ficha de colaborador propia (opcional): null la desvincula.
+  if (colaboradorPropioId === null) data.colaboradorPropioId = null;
+  else if (typeof colaboradorPropioId === "string") {
+    const ficha = await db.colaborador.findUnique({ where: { id: colaboradorPropioId }, select: { id: true } });
+    if (!ficha) return NextResponse.json({ error: "La ficha de colaborador no existe" }, { status: 400 });
+    const yaVinculada = await db.usuario.findFirst({ where: { colaboradorPropioId, id: { not: id } }, select: { id: true } });
+    if (yaVinculada) return NextResponse.json({ error: "Esa ficha de colaborador ya está vinculada a otro usuario" }, { status: 400 });
+    data.colaboradorPropioId = colaboradorPropioId;
+  }
   if (typeof activo === "boolean") {
     // Desactivar al último Super Admin activo deja la app sin nadie que
     // pueda gestionar usuarios (mismo criterio que al quitarle el rol).
@@ -99,7 +108,12 @@ export async function PATCH(
   } catch (e) {
     const esConflicto = e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002";
     if (esConflicto) {
-      return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
+      const campos = (e as { meta?: { target?: unknown } }).meta?.target;
+      const porFicha = JSON.stringify(campos ?? "").includes("colaboradorPropioId");
+      return NextResponse.json(
+        { error: porFicha ? "Esa ficha de colaborador ya está vinculada a otro usuario" : "Ese PIN ya está en uso, elige otro" },
+        { status: 400 }
+      );
     }
     throw e;
   }

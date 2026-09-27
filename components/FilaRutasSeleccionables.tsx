@@ -4,9 +4,8 @@
 // acordeón de colaboradores): colapsada no queda nada del input a la
 // vista, solo el chevron (con un punto si ya tiene texto guardado) — un
 // clic ahí abre el panel debajo, y solo uno a la vez queda abierto.
-// Compartido entre "Nueva solicitud" (PanelColaborador, con o sin equipo)
-// y "Crear solicitud" de TH (PanelSolicitudesTH) — misma lógica, un solo
-// lugar en vez de mantenerla duplicada en cada pantalla.
+// Lo usa "Nueva solicitud" (PanelColaborador, con o sin equipo, y en modo
+// TH para Mis solicitudes) — un solo lugar para esta lógica.
 
 import { formatearMoneda } from "../lib/formato";
 import { IconoChevron } from "./Icons";

@@ -1,16 +1,18 @@
 // app/api/solicitudes/[id]/route.ts
 // PATCH: edita una solicitud mientras esté PENDIENTE o RECHAZADA
 // (al guardar los cambios, vuelve a PENDIENTE para que TH la revise de nuevo).
-// DELETE: el dueño (o su supervisor) elimina una solicitud PENDIENTE o RECHAZADA.
+// DELETE: el dueño (o su supervisor, o el usuario administrativo con esa
+// ficha vinculada) elimina una solicitud PENDIENTE o RECHAZADA.
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
-import { getSession } from "../../../../lib/auth";
+import { getSession, obtenerFichaPropiaId, type SesionUsuario } from "../../../../lib/auth";
 import { condicionRutasVisibles } from "../../../../lib/rutas";
 import { fechaValida } from "../../../../lib/fechas";
 import { errorFechaSolicitud } from "../../../../lib/parametros";
 
-async function obtenerPermiso(solicitudId: string, sessionId: string) {
+async function obtenerPermiso(solicitudId: string, sesion: SesionUsuario) {
+  const sessionId = sesion.id;
   const solicitud = await db.solicitudPasaje.findUnique({
     where: { id: solicitudId },
     include: { colaborador: true },
@@ -22,7 +24,11 @@ async function obtenerPermiso(solicitudId: string, sessionId: string) {
   const esSuSupervisor =
     !!miColaborador?.esSupervisor && solicitud.colaborador.supervisorId === miColaborador.id;
 
-  return { solicitud, puede: esPropietario || esSuSupervisor };
+  // Usuario administrativo (ej. TH) con su ficha vinculada: gestiona las
+  // solicitudes de SU ficha como si fuera el dueño (no las de otros).
+  const esFichaPropia = (await obtenerFichaPropiaId(sesion)) === solicitud.colaboradorId;
+
+  return { solicitud, puede: esPropietario || esSuSupervisor || esFichaPropia };
 }
 
 export async function PATCH(
@@ -46,7 +52,7 @@ export async function PATCH(
     return NextResponse.json({ error: "La fecha indicada no es válida" }, { status: 400 });
   }
 
-  const { solicitud, puede } = await obtenerPermiso(id, session.id);
+  const { solicitud, puede } = await obtenerPermiso(id, session);
   if (!solicitud) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
   // La regla de "días atrás" solo si se CAMBIA la fecha: corregir una
@@ -100,7 +106,7 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const { solicitud, puede } = await obtenerPermiso(id, session.id);
+  const { solicitud, puede } = await obtenerPermiso(id, session);
   if (!solicitud) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
   // El Super Admin puede eliminar una solicitud sin importar su estado

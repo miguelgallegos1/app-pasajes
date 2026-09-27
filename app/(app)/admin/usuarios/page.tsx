@@ -16,6 +16,7 @@ export default async function AdminUsuariosPage() {
       orderBy: { numero: "asc" },
       include: {
         asignaciones: { include: { empresa: true, sitio: true, area: true } },
+        colaboradorPropio: { select: { id: true, nombreCompleto: true, codigoNomina: true } },
       },
     }),
     db.empresa.findMany({
@@ -35,6 +36,9 @@ export default async function AdminUsuariosPage() {
     nombre: u.nombre,
     rol: u.rol,
     activo: u.activo,
+    fichaPropia: u.colaboradorPropio
+      ? { id: u.colaboradorPropio.id, label: `${u.colaboradorPropio.nombreCompleto} (${u.colaboradorPropio.codigoNomina ?? "Sin código"})` }
+      : null,
     asignaciones: u.asignaciones.map((a) => ({
       id: a.id,
       etiqueta: a.area

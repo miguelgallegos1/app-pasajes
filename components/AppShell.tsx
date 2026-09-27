@@ -72,8 +72,7 @@ const MENU_TALENTO_HUMANO: GrupoMenu = {
   grupo: "Talento Humano",
   items: [
     { label: "Aprobaciones", href: "/th/aprobaciones", descripcion: "Solicitudes de colaboradores esperando aprobación", icono: IconoCheck },
-    { label: "Historial", href: "/th/historial", descripcion: "Solicitudes aprobadas y pagadas", icono: IconoReloj },
-    { label: "Crear solicitud", href: "/th/solicitudes", descripcion: "Elegir un colaborador de tu alcance y registrale una o más rutas", icono: IconoBuseta },
+    { label: "Historial de aprobaciones", href: "/th/historial", descripcion: "Solicitudes aprobadas y pagadas", icono: IconoReloj },
     { label: "Colaboradores", href: "/th/colaboradores", descripcion: "Crea y administra los colaboradores de tu Empresa/Sitio/Área", icono: IconoPersonas },
     { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", descripcion: "Elegir un supervisor y marca quiénes de su área le reportan", icono: IconoPersonas },
     { label: "Rutas", href: "/th/rutas", descripcion: "Cada Área puede tener varias rutas (una por cada trayecto)", icono: IconoRuta },
@@ -81,11 +80,21 @@ const MENU_TALENTO_HUMANO: GrupoMenu = {
   ],
 };
 
+// TH también registra sus propias rutas (y, por contingencia, las de
+// colaboradores de sus áreas): mismas pantallas que el colaborador.
+const MENU_MIS_SOLICITUDES_TH: GrupoMenu = {
+  grupo: "Mis solicitudes",
+  items: [
+    { label: "Registrar", href: "/th/mis-solicitudes", descripcion: "Registra tus solicitudes (o las de un colaborador de tus áreas) y corrige las pendientes o rechazadas", icono: IconoBuseta },
+    { label: "Historial", href: "/th/mis-solicitudes/historial", descripcion: "Lo que registraste: aprobado, revisado y pagado", icono: IconoReloj },
+  ],
+};
+
 const MENU_COORDINACION: GrupoMenu = {
   grupo: "Coordinación",
   items: [
     { label: "Revisión", href: "/coordinador/revision", descripcion: "Solicitudes aprobadas listas para revisar", icono: IconoCheck },
-    { label: "Historial", href: "/coordinador/historial", descripcion: "Solicitudes revisadas y pagadas", icono: IconoReloj },
+    { label: "Historial de revisiones", href: "/coordinador/historial", descripcion: "Solicitudes revisadas y pagadas", icono: IconoReloj },
   ],
 };
 
@@ -93,7 +102,7 @@ const MENU_NOMINA: GrupoMenu = {
   grupo: "Nómina",
   items: [
     { label: "Pagos", href: "/nomina/pagos", descripcion: "Solicitudes revisadas listas para pagar", icono: IconoDinero },
-    { label: "Historial", href: "/nomina/historial", descripcion: "Solicitudes ya pagadas", icono: IconoReloj },
+    { label: "Historial de pagos", href: "/nomina/historial", descripcion: "Solicitudes ya pagadas", icono: IconoReloj },
   ],
 };
 
@@ -111,12 +120,13 @@ const HISTORIAL_GENERAL: ItemMenu = {
 // El menú del colaborador se arma aparte (ver construirMenuColaborador) porque
 // depende de esSupervisor, no solo del rol.
 const MENU_POR_ROL: Record<string, EntradaMenu[]> = {
-  ADMIN_TH: [DASHBOARD, MENU_TALENTO_HUMANO, NOVEDADES],
+  ADMIN_TH: [DASHBOARD, MENU_MIS_SOLICITUDES_TH, MENU_TALENTO_HUMANO, NOVEDADES],
   COORDINADOR: [DASHBOARD, MENU_COORDINACION, NOVEDADES],
   NOMINA: [DASHBOARD, MENU_NOMINA, NOVEDADES],
   JEFE: [DASHBOARD, HISTORIAL_GENERAL, NOVEDADES],
   SUPER_ADMIN: [
     DASHBOARD,
+    MENU_MIS_SOLICITUDES_TH,
     MENU_TALENTO_HUMANO,
     MENU_COORDINACION,
     MENU_NOMINA,
@@ -144,7 +154,7 @@ function construirMenuColaborador(esSupervisor: boolean): EntradaMenu[] {
       grupo: esSupervisor ? "Mi equipo" : "Mis Pasajes",
       items: [
         { label: "Registrar", href: "/mis-pasajes", descripcion: "Registra y da seguimiento a tus solicitudes de pasajes", icono: IconoBuseta },
-        { label: "Historial", href: "/mis-pasajes/historial", descripcion: "Solicitudes aprobadas y pagadas, filtradas por fecha", icono: IconoReloj },
+        { label: "Historial", href: "/mis-pasajes/historial", descripcion: "Solicitudes aprobadas, revisadas y pagadas, filtradas por fecha", icono: IconoReloj },
         { label: "Copiar rutas", href: "/mis-pasajes/copiar", descripcion: "Elige el día del que quieres copiar, marca las rutas y a qué día se repiten", icono: IconoRuta },
       ],
     },

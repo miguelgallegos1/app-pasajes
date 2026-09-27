@@ -17,9 +17,10 @@ import { useToast } from "./Toast";
 import { ETIQUETAS_ROL } from "../lib/roles";
 import MenuAcciones from "./MenuAcciones";
 import { useAccionesHeader } from "../lib/accionesHeader";
+import BuscadorFichaColaborador, { type Ficha } from "./BuscadorFichaColaborador";
 
 type Asignacion = { id: string; etiqueta: string };
-type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; asignaciones: Asignacion[] };
+type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; fichaPropia: Ficha | null; asignaciones: Asignacion[] };
 type Area = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; areas: Area[] };
 type Empresa = { id: string; nombre: string; sitios: Sitio[] };
@@ -47,6 +48,9 @@ export default function PanelUsuariosAdmin({
   const [reseteandoPin, setReseteandoPin] = useState(false);
   const [confirmandoResetPin, setConfirmandoResetPin] = useState(false);
   const [rol, setRol] = useState("ADMIN_TH");
+  // Ficha de colaborador propia (si este usuario también viaja): distingue
+  // SUS solicitudes de las que registra para otros.
+  const [fichaPropia, setFichaPropia] = useState<Ficha | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
@@ -106,6 +110,7 @@ export default function PanelUsuariosAdmin({
     setReseteandoPin(false);
     setConfirmandoResetPin(false);
     setRol(u.rol);
+    setFichaPropia(u.fichaPropia);
     setError("");
     setModalAbierto(true);
   };
@@ -125,7 +130,9 @@ export default function PanelUsuariosAdmin({
 
     const url = editandoId ? `/api/admin/usuarios/${editandoId}` : "/api/admin/usuarios";
     const method = editandoId ? "PATCH" : "POST";
-    const body = editandoId ? { nombre, rol, ...(reseteandoPin ? { pin } : {}) } : { nombre, pin, rol };
+    const body = editandoId
+      ? { nombre, rol, colaboradorPropioId: fichaPropia?.id ?? null, ...(reseteandoPin ? { pin } : {}) }
+      : { nombre, pin, rol };
 
     try {
       const res = await fetch(url, {
@@ -423,6 +430,20 @@ export default function PanelUsuariosAdmin({
                 </p>
               )}
             </div>
+
+            {editandoId && (
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                  Ficha de colaborador (opcional)
+                </label>
+                <div className="mt-1.5">
+                  <BuscadorFichaColaborador valor={fichaPropia} onCambiar={setFichaPropia} />
+                </div>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                  Si este usuario también viaja, su ficha de colaborador: así distingue sus propias solicitudes de las que registra para otros.
+                </p>
+              </div>
+            )}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
