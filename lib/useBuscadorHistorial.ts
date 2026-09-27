@@ -4,8 +4,10 @@
 // cada pantalla) y recién al pulsar "Buscar" se consulta — nada se trae
 // solo al entrar ni al cambiar un filtro.
 // - Empresa/Sitio/Área salen del alcance asignado del usuario
-//   (/api/historial/alcance), no de los datos. Si en un nivel hay una sola
-//   opción, queda elegida sola (calculado, sin efectos).
+//   (/api/historial/alcance), no de los datos. Cada nivel admite "Todas/
+//   Todos" (vacío) para quien tiene varias asignaciones; si en un nivel hay
+//   una sola opción, queda elegida sola (calculado, sin efectos). Solo el
+//   rango de fechas es obligatorio.
 // - Supervisor/Colaborador se cargan según el alcance elegido
 //   (/api/historial/personas), sin depender de la fecha.
 // - "aplicados" es la foto de los filtros de la última búsqueda: la
@@ -62,10 +64,15 @@ export function useBuscadorHistorial({ conSupervisor }: { conSupervisor: boolean
     [estructura]
   );
   const empresaId = empresaElegida || (empresas.length === 1 ? empresas[0].id : "");
-  const sitios = useMemo(
-    () => (estructura?.sitios ?? []).filter((s) => s.empresaId === empresaId).map((s) => ({ id: s.id, label: s.nombre })),
-    [estructura, empresaId]
-  );
+  // Con "Todas" las empresas se listan los sitios de todas; si hay más de
+  // una empresa, cada sitio muestra la suya para distinguirlos.
+  const sitios = useMemo(() => {
+    const nombreEmpresa = new Map((estructura?.empresas ?? []).map((e) => [e.id, e.nombre]));
+    const varias = (estructura?.empresas.length ?? 0) > 1;
+    return (estructura?.sitios ?? [])
+      .filter((s) => !empresaId || s.empresaId === empresaId)
+      .map((s) => ({ id: s.id, label: !empresaId && varias ? `${s.nombre} · ${nombreEmpresa.get(s.empresaId) ?? ""}` : s.nombre }));
+  }, [estructura, empresaId]);
   const sitioId = sitioElegido || (sitios.length === 1 ? sitios[0].id : "");
   const areas = useMemo(
     () => (estructura?.areas ?? []).filter((a) => a.sitioId === sitioId).map((a) => ({ id: a.id, label: a.nombre })),
@@ -95,12 +102,14 @@ export function useBuscadorHistorial({ conSupervisor }: { conSupervisor: boolean
     setColaboradorId("");
   };
 
-  // --- Personas del alcance elegido (se piden cuando ya hay sitio) ---
-  const clavePersonas = sitioId ? `${empresaId}|${sitioId}|${areaId}` : "";
+  // --- Personas del alcance elegido (con "Todas", de todo su alcance) ---
+  const clavePersonas = estructura && !estructura.sinAsignaciones ? `${empresaId}|${sitioId}|${areaId}` : "";
   const [personas, setPersonas] = useState<Personas | null>(null);
   useEffect(() => {
     if (!clavePersonas) return;
-    const params = new URLSearchParams({ empresaId, sitioId });
+    const params = new URLSearchParams();
+    if (empresaId) params.set("empresaId", empresaId);
+    if (sitioId) params.set("sitioId", sitioId);
     if (areaId) params.set("areaId", areaId);
     let cancelado = false;
     fetch(`/api/historial/personas?${params.toString()}`)
@@ -136,12 +145,14 @@ export function useBuscadorHistorial({ conSupervisor }: { conSupervisor: boolean
   }, [personasActuales, supervisorId, conSupervisor]);
 
   // --- Validación y foto de lo aplicado ---
-  const faltante = !desde || !hasta ? "Elige el rango de fechas" : !empresaId ? "Elige la empresa" : !sitioId ? "Elige el sitio" : null;
+  const faltante = !desde || !hasta ? "Elige el rango de fechas" : null;
 
   // `extras`: filtros propios de cada pantalla (ej. estado), para que
   // formen parte de la foto aplicada y de la detección de cambios.
   const armarParams = (extras: Record<string, string> = {}) => {
-    const p = new URLSearchParams({ desde, hasta, empresaId, sitioId });
+    const p = new URLSearchParams({ desde, hasta });
+    if (empresaId) p.set("empresaId", empresaId);
+    if (sitioId) p.set("sitioId", sitioId);
     if (areaId) p.set("areaId", areaId);
     if (conSupervisor && supervisorId) p.set("supervisorId", supervisorId);
     if (colaboradorId) p.set("colaboradorId", colaboradorId);

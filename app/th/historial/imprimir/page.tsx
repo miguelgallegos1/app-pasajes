@@ -101,9 +101,12 @@ export default async function ImprimirHistorialTHPage({
   const totalPasajes = resumen.reduce((acc, r) => acc + r.pasajes, 0);
   const totalValor = Math.round(resumen.reduce((acc, r) => acc + r.total, 0) * 100) / 100;
 
-  // Con "Área: Todas" se muestra la columna Área (hay gente de varias áreas
-  // del sitio); con un área elegida, va una sola vez en el encabezado.
-  const conColumnaArea = !areaId;
+  // Área según lo que realmente salió: si todos son de una sola área (o se
+  // eligió una), va una sola vez en el encabezado; si hay varias, como
+  // columna de la tabla.
+  const areasDistintas = new Set(resumen.map((r) => r.area));
+  const conColumnaArea = !area && areasDistintas.size > 1;
+  const areaEncabezado = area?.nombre ?? (areasDistintas.size === 1 ? Array.from(areasDistintas)[0] : null);
   const columnas = conColumnaArea ? 6 : 5;
 
   return (
@@ -120,10 +123,10 @@ export default async function ImprimirHistorialTHPage({
           <dd>{empresa?.nombre ?? "Todas"}</dd>
           <dt className="font-semibold">Sitio:</dt>
           <dd>{sitio?.nombre ?? "Todos"}</dd>
-          {area && (
+          {areaEncabezado && (
             <>
               <dt className="font-semibold">Área:</dt>
-              <dd>{area.nombre}</dd>
+              <dd>{areaEncabezado}</dd>
             </>
           )}
           <dt className="font-semibold">Fechas:</dt>

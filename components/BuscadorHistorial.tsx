@@ -30,15 +30,19 @@ function ComboAlcance({
   placeholder,
   cargando,
   todas,
+  siempreCombo,
 }: {
   opciones: OpcionBuscador[];
   valor: string;
   onCambiar: (v: string) => void;
   placeholder: string;
   cargando?: boolean;
-  todas?: boolean;
+  // Texto de la opción vacía ("Todas"/"Todos").
+  todas: string;
+  // Área: aunque haya una sola, se deja elegir "Todas" o esa.
+  siempreCombo?: boolean;
 }) {
-  if (opciones.length === 1 && !todas) {
+  if (opciones.length === 1 && !siempreCombo) {
     return (
       <div
         className="flex items-center rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-2.5 text-sm font-medium text-neutral-700 dark:border-neutral-800 dark:bg-neutral-800/60 dark:text-neutral-200 truncate"
@@ -50,7 +54,7 @@ function ComboAlcance({
   }
   return (
     <ComboboxBuscable
-      opciones={todas ? [{ id: "", label: "Todas" }, ...opciones] : opciones}
+      opciones={[{ id: "", label: todas }, ...opciones]}
       value={valor}
       onChange={onCambiar}
       placeholder={placeholder}
@@ -97,13 +101,13 @@ export default function BuscadorHistorial({
     setPedido((n) => n + 1);
   };
 
-  // Empresa y Sitio son obligatorios: su chip no se puede quitar.
   const listaChips = chips(
     b.desde && b.hasta
       ? { id: "fechas", etiqueta: b.desde === b.hasta ? formatearFecha(`${b.desde}T00:00:00Z`) : `${formatearFecha(`${b.desde}T00:00:00Z`)} – ${formatearFecha(`${b.hasta}T00:00:00Z`)}` }
       : null,
-    chipOpcion("Empresa", b.empresas, b.empresaId),
-    chipOpcion("Sitio", b.sitios, b.sitioId),
+    // Con una sola opción (su único alcance) el chip no se puede quitar.
+    chipOpcion("Empresa", b.empresas, b.empresaId, b.empresas.length > 1 ? quitarYBuscar(() => b.cambiarEmpresa("")) : undefined),
+    chipOpcion("Sitio", b.sitios, b.sitioId, b.sitios.length > 1 ? quitarYBuscar(() => b.cambiarSitio("")) : undefined),
     chipOpcion("Área", b.areas, b.areaId, quitarYBuscar(() => b.cambiarArea(""))),
     ...extrasChips.map((c) => (c?.onQuitar ? { ...c, onQuitar: quitarYBuscar(c.onQuitar) } : c)),
     b.conSupervisor && chipOpcion("Supervisor", b.supervisores, b.supervisorId, quitarYBuscar(() => b.cambiarSupervisor(""))),
@@ -111,7 +115,7 @@ export default function BuscadorHistorial({
   );
 
   const limpiar = () => {
-    b.cambiarArea("");
+    b.cambiarEmpresa("");
     onLimpiarExtras?.();
   };
 
@@ -148,20 +152,14 @@ export default function BuscadorHistorial({
         </p>
       ) : (
         <>
-          <CampoFiltro etiqueta="Empresa *">
-            <ComboAlcance opciones={b.empresas} valor={b.empresaId} onCambiar={b.cambiarEmpresa} placeholder="Elige la empresa" cargando={b.cargandoEstructura} />
+          <CampoFiltro etiqueta="Empresa">
+            <ComboAlcance opciones={b.empresas} valor={b.empresaId} onCambiar={b.cambiarEmpresa} placeholder="Todas" cargando={b.cargandoEstructura} todas="Todas" />
           </CampoFiltro>
-          <CampoFiltro etiqueta="Sitio *">
-            <ComboAlcance
-              opciones={b.sitios}
-              valor={b.sitioId}
-              onCambiar={b.cambiarSitio}
-              placeholder={b.empresaId ? "Elige el sitio" : "Primero la empresa"}
-              cargando={b.cargandoEstructura}
-            />
+          <CampoFiltro etiqueta="Sitio">
+            <ComboAlcance opciones={b.sitios} valor={b.sitioId} onCambiar={b.cambiarSitio} placeholder="Todos" cargando={b.cargandoEstructura} todas="Todos" />
           </CampoFiltro>
           <CampoFiltro etiqueta="Área">
-            <ComboAlcance opciones={b.areas} valor={b.areaId} onCambiar={b.cambiarArea} placeholder={b.sitioId ? "Todas" : "Primero el sitio"} todas />
+            <ComboAlcance opciones={b.areas} valor={b.areaId} onCambiar={b.cambiarArea} placeholder={b.sitioId ? "Todas" : "Todas (elige un sitio para filtrar)"} todas="Todas" siempreCombo />
           </CampoFiltro>
 
           {extras}
@@ -204,8 +202,8 @@ export function AvisoSinBusqueda({ faltante }: { faltante: string | null }) {
       <p className="mt-3 text-sm font-semibold text-neutral-800 dark:text-neutral-200">Elige qué quieres consultar</p>
       <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
         {faltante
-          ? `Elige las fechas y, en Filtros, la empresa y el sitio. Luego pulsa Buscar.`
-          : "Tus filtros ya están listos: pulsa Buscar (o ajusta más filtros en Filtros)."}
+          ? "Elige el rango de fechas y pulsa Buscar."
+          : "Elige el rango de fechas y, si quieres, acota en Filtros (empresa, sitio, área, personas). Luego pulsa Buscar."}
       </p>
     </div>
   );

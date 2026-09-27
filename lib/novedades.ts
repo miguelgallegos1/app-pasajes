@@ -29,7 +29,7 @@ export const NOVEDADES: Novedad[] = [
     fecha: "2026-09-26",
     titulo: "Historiales: eliges primero, buscas después",
     descripcion:
-      "En los historiales ahora eliges las fechas y, en Filtros, la empresa, el sitio (y si quieres área, estado, supervisor o colaborador) y recién al pulsar Buscar se traen los datos: solo lo que necesitas. Si tienes una sola empresa o sitio asignado, ya viene elegido.",
+      "En los historiales eliges las fechas y, si quieres, acotas en Filtros por empresa, sitio, área, estado, supervisor o colaborador (o dejas \"Todas\"). Recién al pulsar Buscar se traen los datos: solo lo que necesitas.",
     roles: ["ADMIN_TH", "COORDINADOR", "NOMINA"],
   },
   {

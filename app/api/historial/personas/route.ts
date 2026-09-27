@@ -1,7 +1,7 @@
 // app/api/historial/personas/route.ts
-// GET ?empresaId&sitioId&areaId: colaboradores y supervisores del alcance
-// elegido en el buscador de los historiales, para los combos Supervisor y
-// Colaborador. Dependen del ALCANCE (dónde trabaja el colaborador), no de
+// GET ?empresaId&sitioId&areaId (todos opcionales): colaboradores y
+// supervisores del alcance elegido en el buscador de los historiales, para
+// los combos Supervisor y Colaborador. Dependen del ALCANCE (dónde trabaja el colaborador), no de
 // las solicitudes de un rango de fechas — así se pueden elegir antes de
 // buscar. Siempre dentro de las áreas permitidas del usuario.
 
@@ -22,11 +22,8 @@ export async function GET(req: Request) {
   const empresaId = searchParams.get("empresaId");
   const sitioId = searchParams.get("sitioId");
   const areaId = searchParams.get("areaId");
-  if (!empresaId && !sitioId && !areaId) {
-    return NextResponse.json({ error: "Elige al menos la empresa" }, { status: 400 });
-  }
-
-  const ubicacion = areaId ? { areaId } : sitioId ? { sitioId } : { sitio: { empresaId: empresaId! } };
+  // Sin nada elegido ("Todas" las empresas): todo el alcance del usuario.
+  const ubicacion = areaId ? { areaId } : sitioId ? { sitioId } : empresaId ? { sitio: { empresaId } } : {};
 
   // Nómina y Super Admin ven todo; TH y Coordinación, solo sus áreas.
   const restringido = session.rol === "ADMIN_TH" || session.rol === "COORDINADOR";
