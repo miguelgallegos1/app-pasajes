@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { IconoUbicacion, IconoX } from "./Icons";
+import { EnZonaAvisos } from "./ZonaAvisos";
 
 const CLAVE_OCULTA = "app-pasajes:aviso-domicilio-oculto-hasta";
 const RECORDATORIO_DIAS = 30;
@@ -43,7 +44,8 @@ export default function TarjetaActualizarDomicilio() {
   };
 
   return (
-    <div className="fixed z-40 bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:bottom-5 sm:w-[360px] animate-[panel-in_0.35s_cubic-bezier(0.16,1,0.3,1)]">
+    <EnZonaAvisos>
+    <div className="animate-[panel-in_0.35s_cubic-bezier(0.16,1,0.3,1)]">
       <div className="relative rounded-2xl bg-white dark:bg-neutral-900 ring-1 ring-black/5 dark:ring-white/10 shadow-2xl overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-400 via-orange-500 to-amber-400" />
 
@@ -74,5 +76,6 @@ export default function TarjetaActualizarDomicilio() {
         </div>
       </div>
     </div>
+    </EnZonaAvisos>
   );
 }

@@ -30,6 +30,7 @@ import { CargaGlobalContext } from "../lib/cargaGlobal";
 import BarraCarga from "./BarraCarga";
 import VigilanteSesion from "./VigilanteSesion";
 import AvisoNovedades from "./AvisoNovedades";
+import { ZonaAvisos } from "./ZonaAvisos";
 import type { Novedad } from "../lib/novedades";
 
 // Carga diferida: el código de WebAuthn (~16KB) solo se descarga la
@@ -539,6 +540,7 @@ export default function AppShell({
         <ModalBiometria abierto={biometriaAbierta} onCerrar={() => setBiometriaAbierta(false)} />
       )}
 
+      <ZonaAvisos />
       {rol === "COLABORADOR" && <TarjetaActualizarDomicilio />}
       <AvisoNovedades novedades={novedades} usuarioId={usuarioId} />
 

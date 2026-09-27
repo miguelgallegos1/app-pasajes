@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { IconoAlerta, IconoX } from "./Icons";
+import { EnZonaAvisos } from "./ZonaAvisos";
 
 export default function AvisoRechazadas({
   cantidad,
@@ -27,25 +28,27 @@ export default function AvisoRechazadas({
   if (cantidad === 0) return null;
 
   const texto = cantidad === 1 ? "1 solicitud rechazada" : `${cantidad} solicitudes rechazadas`;
-  // Abajo a la izquierda del contenido (a la derecha del menú lateral en
-  // escritorio), para no chocar con la tarjeta de domicilio ni con el
-  // aviso de novedades; en móvil, arriba bajo el header.
-  const posicion = "fixed z-30 top-16 left-4 right-4 md:top-auto md:right-auto md:bottom-5 md:left-[calc(15rem+1.25rem)]";
-
+  // Va en la zona de avisos (abajo al centro, apilado con los demás):
+  // ver components/ZonaAvisos.tsx.
   if (minimizado) {
     return (
-      <button
-        type="button"
-        onClick={() => setMinimizado(false)}
-        className={`${posicion} md:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 shadow-lg animate-[dropdown-in_0.2s_ease-out]`}
-      >
-        <IconoAlerta className="w-4 h-4" /> {texto}
-      </button>
+      <EnZonaAvisos>
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setMinimizado(false)}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 shadow-lg animate-[dropdown-in_0.2s_ease-out]"
+          >
+            <IconoAlerta className="w-4 h-4" /> {texto}
+          </button>
+        </div>
+      </EnZonaAvisos>
     );
   }
 
   return (
-    <div role="alert" className={`${posicion} md:w-[400px] animate-[panel-in_0.35s_cubic-bezier(0.16,1,0.3,1)]`}>
+    <EnZonaAvisos>
+    <div role="alert" className="animate-[panel-in_0.35s_cubic-bezier(0.16,1,0.3,1)]">
       <div className="relative rounded-2xl bg-white dark:bg-neutral-900 ring-1 ring-red-500/20 shadow-2xl overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-1 bg-red-500" />
         <button
@@ -84,5 +87,6 @@ export default function AvisoRechazadas({
         </div>
       </div>
     </div>
+    </EnZonaAvisos>
   );
 }
