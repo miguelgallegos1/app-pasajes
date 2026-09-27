@@ -23,7 +23,8 @@ import Avatar from "./Avatar";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import FilaRutasSeleccionables, { type RutaSimple } from "./FilaRutasSeleccionables";
 import NotificacionesPush from "./NotificacionesPush";
-import { IconoPregunta, IconoLupa, IconoAlerta, IconoChevron, IconoEliminar } from "./Icons";
+import { IconoPregunta, IconoLupa, IconoAlerta, IconoChevron, IconoEliminar, IconoX } from "./Icons";
+import AvisoRechazadas from "./AvisoRechazadas";
 import { useAccionesHeader } from "../lib/accionesHeader";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
@@ -151,10 +152,18 @@ export default function PanelColaborador() {
     [solicitudes, idsOcultos]
   );
 
+  // "Ver rechazadas" del aviso flotante: filtra la lista a las RECHAZADAS.
+  const [soloRechazadas, setSoloRechazadas] = useState(false);
+  const cantidadRechazadas = useMemo(
+    () => solicitudesVisibles.filter((s) => s.estado === "RECHAZADA").length,
+    [solicitudesVisibles]
+  );
+
   const solicitudesFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
-    if (!texto) return solicitudesVisibles;
-    return solicitudesVisibles.filter(
+    const base = soloRechazadas ? solicitudesVisibles.filter((s) => s.estado === "RECHAZADA") : solicitudesVisibles;
+    if (!texto) return base;
+    return base.filter(
       (s) =>
         s.codigo.toLowerCase().includes(texto) ||
         (s.codigoNomina ?? "").toLowerCase().includes(texto) ||
@@ -162,7 +171,7 @@ export default function PanelColaborador() {
         s.nombreColaborador.toLowerCase().includes(texto) ||
         (s.observaciones ?? "").toLowerCase().includes(texto)
     );
-  }, [solicitudesVisibles, busqueda]);
+  }, [solicitudesVisibles, busqueda, soloRechazadas]);
 
   const cambiarBusqueda = (v: string) => {
     setBusqueda(v);
@@ -574,8 +583,28 @@ export default function PanelColaborador() {
               className="w-full rounded-xl border border-neutral-300 bg-white text-neutral-900 pl-10 pr-4 py-2.5 text-sm placeholder-neutral-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
             />
           </div>
+          {soloRechazadas && (
+            <span className="inline-flex items-center gap-1 self-start sm:self-auto rounded-full bg-red-50 text-red-700 ring-1 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20 pl-3 pr-1.5 py-1 text-xs font-medium">
+              Solo rechazadas
+              <button
+                type="button"
+                onClick={() => { setSoloRechazadas(false); setPaginaActual(1); }}
+                title="Mostrar todas"
+                className="rounded-full p-0.5 hover:bg-red-100 dark:hover:bg-red-500/20 transition"
+              >
+                <IconoX className="w-3 h-3" />
+              </button>
+            </span>
+          )}
           <SelectorVista valor={vista} onCambiar={setVista} className="sm:ml-auto" />
         </div>
+
+        <AvisoRechazadas
+          cantidad={cantidadRechazadas}
+          deEquipo={esSupervisor}
+          mostrandoSoloRechazadas={soloRechazadas}
+          onVer={() => { setSoloRechazadas(true); setVista("lista"); setPaginaActual(1); }}
+        />
 
         {vista === "colaborador" ? (
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
