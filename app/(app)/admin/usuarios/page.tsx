@@ -41,6 +41,9 @@ export default async function AdminUsuariosPage() {
       : null,
     asignaciones: u.asignaciones.map((a) => ({
       id: a.id,
+      empresaId: a.empresaId,
+      sitioId: a.sitioId,
+      areaId: a.areaId,
       etiqueta: a.area
         ? `${a.empresa?.nombre} · ${a.sitio?.nombre} · ${a.area.nombre}`
         : a.sitio
