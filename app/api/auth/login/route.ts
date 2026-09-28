@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
-import { establecerCookieSesion, verificarAccesoColaborador } from "../../../../lib/auth";
+import { establecerCookieSesion, verificarAccesoColaborador, primerNombre } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
 import { reservarIntento, liberarIntento, obtenerIp } from "../../../../lib/rateLimit";
 
@@ -74,6 +74,7 @@ export async function POST(req: Request) {
   const res = NextResponse.json({
     rol: usuarioEncontrado.rol,
     nombre: usuarioEncontrado.nombre,
+    primerNombre: primerNombre(usuarioEncontrado.nombre),
   });
   await establecerCookieSesion(res, { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol });
 

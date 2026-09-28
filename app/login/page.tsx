@@ -117,14 +117,14 @@ export default function LoginPage() {
     })();
   }, []);
 
-  const irADestino = (rol: string) => {
+  const irADestino = (rol: string, nombre?: string) => {
     // Dejamos "loading" en true a propósito — la pantalla se queda mostrando
     // el overlay de carga hasta que router.push() navegue de verdad,
     // evitando el "parpadeo" de volver al formulario justo antes de cambiar.
     // El mensaje cambia acá: seguir diciendo "Verificando tu PIN..." una vez
     // que YA se verificó (y solo falta que cargue la siguiente pantalla) se
     // siente como que la carga se quedó pegada.
-    setMensajeCarga("¡Listo! Entrando...");
+    setMensajeCarga(nombre ? `¡Hola, ${nombre}!` : "¡Hola!");
     setEntrando(true);
     const destino = DESTINO_POR_ROL[rol] ?? "/";
     // Red de seguridad: si la navegación de Next se queda colgada (caché
@@ -179,8 +179,8 @@ export default function LoginPage() {
       return;
     }
 
-    const { rol } = await res.json();
-    irADestino(rol);
+    const { rol, primerNombre } = await res.json();
+    irADestino(rol, primerNombre);
   };
 
   const entrarConBiometria = async () => {
@@ -208,8 +208,8 @@ export default function LoginPage() {
         throw new Error(data.error ?? "No se pudo verificar tu identidad");
       }
 
-      const { rol } = await verRes.json();
-      irADestino(rol);
+      const { rol, primerNombre } = await verRes.json();
+      irADestino(rol, primerNombre);
     } catch (e) {
       const errorInfo = e as { name?: string; message?: string };
       if (errorInfo?.name === "AbortError") {
@@ -347,24 +347,29 @@ export default function LoginPage() {
       {/* Overlay de carga: cubre toda la pantalla mientras se verifica,
           para que sea imposible confundirlo con que "no está pasando nada".
           Aparece con un fade corto (en vez de aparecer de golpe) y, una vez
-          confirmado el PIN, cambia a un check verde — así la última imagen
-          antes de cambiar de pantalla es "listo", no el mismo spinner
-          dando vueltas, que se sentía como una pantalla trabada. */}
+          confirmado el PIN, saluda por su nombre ("¡Hola, Miguel!") con un
+          check verde — así la última imagen antes de cambiar de pantalla es
+          "listo", no el mismo spinner dando vueltas, que se sentía como una
+          pantalla trabada. */}
       <div
-        className={`absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/50 dark:bg-black/40 transition-opacity duration-200 ${
-          loading ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={`absolute inset-0 flex flex-col items-center justify-center gap-3 transition-all duration-200 ${
+          entrando ? "bg-white/90 dark:bg-neutral-950/90 backdrop-blur-sm" : "bg-white/50 dark:bg-black/40"
+        } ${loading ? "opacity-100" : "opacity-0 pointer-events-none"}`}
       >
         {entrando ? (
-          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-500/15 text-green-600 dark:text-green-400 flex items-center justify-center">
-            <IconoCheck className="w-5 h-5" />
+          <div className="flex flex-col items-center gap-3 text-center animate-[dropdown-in_0.3s_ease-out]">
+            <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-500/15 text-green-600 dark:text-green-400 flex items-center justify-center ring-8 ring-green-500/10">
+              <IconoCheck className="w-7 h-7" />
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white">{mensajeCarga}</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">Preparando tu espacio…</p>
           </div>
         ) : (
-          <Spinner className="w-10 h-10 text-orange-500" />
+          <>
+            <Spinner className="w-10 h-10 text-orange-500" />
+            <p className="text-sm font-medium text-orange-600 dark:text-orange-400">{mensajeCarga}</p>
+          </>
         )}
-        <p className={`text-sm font-medium ${entrando ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}`}>
-          {mensajeCarga}
-        </p>
       </div>
     </main>
   );

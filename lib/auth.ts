@@ -119,6 +119,11 @@ export function acortarNombreLibre(nombreCompleto: string): string {
 // Nombre y foto a mostrar en el AppShell (sidebar/header), sin importar
 // el rol. Se usa una sola vez desde el layout compartido de las pantallas
 // internas, en vez de que cada página vuelva a consultarlo por su cuenta.
+// Solo el primer nombre, para el saludo del login ("¡Hola, Miguel!").
+export function primerNombre(nombreCompleto: string): string {
+  return acortarNombreLibre(nombreCompleto).split(" ")[0] ?? "";
+}
+
 export async function obtenerPerfilSesion(
   session: SesionUsuario
 ): Promise<{ nombre: string; nombreCorto: string; fotoUrl: string | null; esSupervisor: boolean }> {
