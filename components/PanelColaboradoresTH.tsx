@@ -403,7 +403,7 @@ export default function PanelColaboradoresTH() {
 
       {truncado && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-4 py-3">
-          Hay más colaboradores de los que se pueden mostrar acá. Usa los filtros de Empresa/Sitio/Área para acotar la lista.
+          Hay más colaboradores de los que esta pantalla puede cargar: solo se muestran los primeros {colaboradores.length.toLocaleString("es-EC")}, y el resto no aparece ni en la búsqueda. Avisa al administrador del sistema.
         </div>
       )}
 

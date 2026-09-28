@@ -13,10 +13,13 @@ import { obtenerCondicionColaboradorTH, obtenerAreasPermitidasTH } from "../../.
 // para que el buscador/filtro sea instantáneo en el cliente (sin ida y
 // vuelta al servidor en cada letra), así que la consulta no puede quedar
 // sin límite — una empresa con muchísimos colaboradores no debería poder
-// tirar abajo esta pantalla. Bien por encima de lo que cualquier empresa
-// real tiene hoy; si algún día se llega a este tope, mejor mostrar un
-// aviso (ver "truncado" en la respuesta) que fallar o colgarse.
-const LIMITE_COLABORADORES = 3000;
+// tirar abajo esta pantalla. Bien por encima de lo que hay hoy (~2100 en
+// sep-2026; el Super Admin ve todas las áreas): la tabla dibuja solo 15
+// filas, así que el costo es la descarga inicial. Si algún día se llega a
+// este tope, se muestra un aviso (ver "truncado" en la respuesta) en vez
+// de fallar — pero los que quedan fuera NO se encuentran ni buscando, así
+// que antes de acercarse hay que pasar a buscar/paginar en el servidor.
+const LIMITE_COLABORADORES = 10000;
 
 export async function GET() {
   const session = await getSession();
