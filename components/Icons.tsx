@@ -340,9 +340,9 @@ export function IconoWhatsApp({ className = "w-6 h-6" }: { className?: string })
 export function IconoNovedad({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 3l1.8 4.6L18.5 9.4l-4.7 1.8L12 16l-1.8-4.8L5.5 9.4l4.7-1.8z" />
-      <path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
-      <path d="M5 16l.6 1.4 1.4.6-1.4.6L5 20l-.6-1.4-1.4-.6 1.4-.6z" />
+      {/* Bocina (megáfono): anuncia novedades */}
+      <path d="M3 11l18-5v12L3 14v-3z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
     </svg>
   );
 }
