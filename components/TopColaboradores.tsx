@@ -92,7 +92,7 @@ export default function TopColaboradores({ datos }: { datos: FilaTopColaborador[
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-xs text-neutral-900 dark:text-white truncate">{d.nombre}</p>
-                <p className="text-sm font-bold text-neutral-900 dark:text-white tabular-nums shrink-0">{formatearMoneda(d.total)}</p>
+                <p className="text-xs font-semibold text-neutral-900 dark:text-white tabular-nums shrink-0">{formatearMoneda(d.total)}</p>
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex-1 h-2 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
