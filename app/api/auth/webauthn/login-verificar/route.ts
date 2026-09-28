@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { db } from "../../../../../lib/db";
-import { establecerCookieSesion, verificarAccesoColaborador, primerNombre } from "../../../../../lib/auth";
+import { establecerCookieSesion, verificarAccesoColaborador, obtenerPrimerNombre } from "../../../../../lib/auth";
 import { obtenerRpConfig, leerDesafio, COOKIE_DESAFIO } from "../../../../../lib/webauthn";
 
 export async function POST(req: Request) {
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
   const res = NextResponse.json({
     rol: usuarioEncontrado.rol,
     nombre: usuarioEncontrado.nombre,
-    primerNombre: primerNombre(usuarioEncontrado.nombre),
+    primerNombre: await obtenerPrimerNombre(usuarioEncontrado.id, usuarioEncontrado.nombre),
   });
   await establecerCookieSesion(res, { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol });
   res.cookies.delete(COOKIE_DESAFIO);

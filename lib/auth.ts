@@ -96,34 +96,60 @@ export const getSession = cache(async (): Promise<SesionUsuario | null> => {
 // palabras — no hay forma de saber cuál es cuál sin esos campos.
 function acortarNombre(nombres: string, apellidos: string): string {
   const primerNombre = nombres.trim().split(/\s+/)[0] ?? "";
-  const primerApellido = apellidos.trim().split(/\s+/)[0] ?? "";
+  const primerApellido = partirApellidos(apellidos.trim().split(/\s+/).filter(Boolean), 1).apellidos[0] ?? "";
   return [primerNombre, primerApellido].filter(Boolean).join(" ");
+}
+
+// Partículas que forman parte de un apellido compuesto ("De Santis",
+// "De la Torre", "Van Dijk", "San Martín"): sin esto, contar palabras
+// tomaba "De" como apellido y el apellido real como nombre.
+const PARTICULAS_APELLIDO = new Set(["de", "del", "la", "las", "los", "y", "da", "das", "do", "dos", "di", "van", "von", "der", "san", "santa", "mac", "mc"]);
+
+// Agrupa las palabras en apellidos: cada apellido son sus partículas más
+// la palabra que las sigue. Devuelve los apellidos armados (hasta
+// `maximo`) y cuántas palabras consumieron.
+function partirApellidos(palabras: string[], maximo: number): { apellidos: string[]; usadas: number } {
+  const apellidos: string[] = [];
+  let i = 0;
+  while (i < palabras.length && apellidos.length < maximo) {
+    const inicio = i;
+    while (i < palabras.length - 1 && PARTICULAS_APELLIDO.has(palabras[i].toLowerCase())) i++;
+    i++;
+    apellidos.push(palabras.slice(inicio, i).join(" "));
+  }
+  return { apellidos, usadas: i };
 }
 
 // Para Usuario.nombre (texto libre, sin nombres/apellidos separados):
 // misma convención que usa el resto de la app para nombre completo
 // (Colaborador.nombreCompleto = apellidos + nombres, apellidos primero,
-// como en la cédula) — así que con 3+ palabras se asumen 2 apellidos
-// (puede haber 1 o 2 nombres después), y con exactamente 2, un apellido y
-// un nombre. El primer nombre es siempre la primera palabra DESPUÉS de
-// los apellidos, nunca la última palabra del texto completo.
+// como en la cédula). Se toman hasta 2 apellidos (respetando los
+// compuestos, ver PARTICULAS_APELLIDO) siempre que quede al menos un
+// nombre después; el primer nombre es la primera palabra que sigue.
 export function acortarNombreLibre(nombreCompleto: string): string {
   const palabras = nombreCompleto.trim().split(/\s+/).filter(Boolean);
   if (palabras.length <= 1) return palabras[0] ?? "";
-  const primerApellido = palabras[0];
-  const indiceNombre = palabras.length >= 3 ? 2 : 1;
-  const primerNombre = palabras[indiceNombre];
-  return `${primerNombre} ${primerApellido}`;
+  let partes = partirApellidos(palabras, 2);
+  if (partes.usadas >= palabras.length) partes = partirApellidos(palabras, 1);
+  const primerNombre = palabras[partes.usadas] ?? "";
+  return [primerNombre, partes.apellidos[0]].filter(Boolean).join(" ");
+}
+
+// Solo el primer nombre, para el saludo del login ("¡Hola, Ada!"). Si la
+// cuenta tiene ficha de colaborador (propia o vinculada), se toma de su
+// campo "nombres", que no hay que adivinar; si no, de Usuario.nombre.
+export async function obtenerPrimerNombre(usuarioId: string, nombreCompleto: string): Promise<string> {
+  const ficha = await db.colaborador.findFirst({
+    where: { OR: [{ usuarioId }, { usuarioAdministrativo: { id: usuarioId } }] },
+    select: { nombres: true },
+  });
+  if (ficha?.nombres.trim()) return ficha.nombres.trim().split(/\s+/)[0];
+  return acortarNombreLibre(nombreCompleto).split(" ")[0] ?? "";
 }
 
 // Nombre y foto a mostrar en el AppShell (sidebar/header), sin importar
 // el rol. Se usa una sola vez desde el layout compartido de las pantallas
 // internas, en vez de que cada página vuelva a consultarlo por su cuenta.
-// Solo el primer nombre, para el saludo del login ("¡Hola, Miguel!").
-export function primerNombre(nombreCompleto: string): string {
-  return acortarNombreLibre(nombreCompleto).split(" ")[0] ?? "";
-}
-
 export async function obtenerPerfilSesion(
   session: SesionUsuario
 ): Promise<{ nombre: string; nombreCorto: string; fotoUrl: string | null; esSupervisor: boolean }> {
