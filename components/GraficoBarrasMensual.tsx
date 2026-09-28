@@ -1,5 +1,7 @@
 // components/GraficoBarrasMensual.tsx
-// Barras apiladas comparando los últimos meses por estado. SVG propio
+// Barras apiladas comparando los últimos meses por estado; la altura de
+// cada segmento es el VALOR ($) de ese estado, y el tooltip muestra el
+// valor y el número de solicitudes. SVG propio
 // (sin librería externa), con leyenda siempre visible y tooltip al pasar
 // el mouse/enfocar cada mes. Colores validados con el script de
 // accesibilidad del skill de dataviz (ver referencia de la paleta).
@@ -7,6 +9,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { formatearMoneda } from "../lib/formato";
 
 export type FilaMes = {
   mes: string;
@@ -15,24 +18,35 @@ export type FilaMes = {
   aprobadas: number;
   revisadas: number;
   pagadas: number;
+  montoPendientes: number;
+  montoAprobadas: number;
+  montoRevisadas: number;
+  montoPagadas: number;
 };
 
 const SERIES = [
-  { clave: "pendientes", label: "Pendientes", color: "#eda100" },
-  { clave: "aprobadas", label: "Aprobadas", color: "#1baf7a" },
-  { clave: "revisadas", label: "Revisadas", color: "#2a78d6" },
-  { clave: "pagadas", label: "Pagadas", color: "#eb6834" },
+  { clave: "pendientes", monto: "montoPendientes", label: "Pendientes", color: "#eda100" },
+  { clave: "aprobadas", monto: "montoAprobadas", label: "Aprobadas", color: "#1baf7a" },
+  { clave: "revisadas", monto: "montoRevisadas", label: "Revisadas", color: "#2a78d6" },
+  { clave: "pagadas", monto: "montoPagadas", label: "Pagadas", color: "#eb6834" },
 ] as const;
 
 const W = 640;
 const H = 220;
-const PAD_IZQ = 34;
+const PAD_IZQ = 46;
 const PAD_DER = 8;
-const PAD_ARRIBA = 12;
+const PAD_ARRIBA = 24;
 const PAD_ABAJO = 26;
 const ANCHO_PLOT = W - PAD_IZQ - PAD_DER;
 const ALTO_PLOT = H - PAD_ARRIBA - PAD_ABAJO;
 const BASE_Y = PAD_ARRIBA + ALTO_PLOT;
+
+// "$1,2K" / "$850" — para el eje y la etiqueta sobre cada barra, donde
+// el monto completo no entra.
+function montoCorto(valor: number): string {
+  if (valor >= 1000) return `$${(valor / 1000).toLocaleString("es-EC", { maximumFractionDigits: 1 })}K`;
+  return `$${Math.round(valor).toLocaleString("es-EC")}`;
+}
 
 function techoAgradable(valor: number): number {
   if (valor <= 0) return 1;
@@ -72,14 +86,15 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const total = (fila: FilaMes) => fila.pendientes + fila.aprobadas + fila.revisadas + fila.pagadas;
+  const total = (fila: FilaMes) => fila.montoPendientes + fila.montoAprobadas + fila.montoRevisadas + fila.montoPagadas;
+  const cantidadTotal = (fila: FilaMes) => fila.pendientes + fila.aprobadas + fila.revisadas + fila.pagadas;
   const totalGeneral = datos.reduce((acc, f) => acc + total(f), 0);
   const maxTotal = Math.max(...datos.map(total), 1);
   const techo = techoAgradable(maxTotal);
 
   const n = Math.max(datos.length, 1);
   const anchoSlot = ANCHO_PLOT / n;
-  const anchoBarra = Math.min(24, anchoSlot * 0.5);
+  const anchoBarra = Math.min(48, anchoSlot * 0.6);
 
   const moverTooltip = (e: React.MouseEvent, idx: number) => {
     const cont = contenedorRef.current;
@@ -111,12 +126,12 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
         {/* Líneas de referencia (0, mitad, techo) */}
         {[0, 0.5, 1].map((frac) => {
           const y = BASE_Y - frac * ALTO_PLOT;
-          const valor = Math.round(techo * frac);
+          const valor = techo * frac;
           return (
             <g key={frac}>
-              <line x1={PAD_IZQ} y1={y} x2={W - PAD_DER} y2={y} stroke="#e1e0d9" strokeWidth={1} />
+              <line x1={PAD_IZQ} y1={y} x2={W - PAD_DER} y2={y} stroke="#e1e0d9" strokeWidth={1} strokeDasharray={frac === 0 ? undefined : "3 4"} className="dark:stroke-neutral-700" />
               <text x={PAD_IZQ - 6} y={y + 3} textAnchor="end" fontSize="11" fill="#898781">
-                {valor.toLocaleString("es-EC")}
+                {montoCorto(valor)}
               </text>
             </g>
           );
@@ -126,7 +141,7 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
         {datos.map((fila, idx) => {
           const xSlot = PAD_IZQ + idx * anchoSlot;
           const xBarra = xSlot + anchoSlot / 2 - anchoBarra / 2;
-          const valores = [fila.pendientes, fila.aprobadas, fila.revisadas, fila.pagadas];
+          const valores = [fila.montoPendientes, fila.montoAprobadas, fila.montoRevisadas, fila.montoPagadas];
           const ultimoNoVacio = valores.reduce((acc, v, i) => (v > 0 ? i : acc), -1);
 
           let acumulado = 0;
@@ -144,8 +159,9 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
                 y={PAD_ARRIBA}
                 width={anchoSlot}
                 height={ALTO_PLOT}
-                fill="#e1e0d9"
-                opacity={hoverIdx === idx ? 0.5 : 0}
+                rx={10}
+                className="fill-indigo-50 dark:fill-white/5"
+                opacity={hoverIdx === idx ? 1 : 0}
                 style={{ transition: "opacity 0.15s ease" }}
               />
               <g
@@ -153,18 +169,19 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
                   transform: montado ? "scaleY(1)" : "scaleY(0)",
                   transformOrigin: `${xSlot + anchoSlot / 2}px ${BASE_Y}px`,
                   transformBox: "view-box",
-                  transition: `transform 0.6s cubic-bezier(0.22,1,0.36,1) ${idx * 55}ms`,
+                  transition: `transform 0.6s cubic-bezier(0.22,1,0.36,1) ${idx * 55}ms, opacity 0.15s ease`,
+                  opacity: hoverIdx === null || hoverIdx === idx ? 1 : 0.45,
                 }}
               >
                 {segmentos.map(({ i, valor, y, altoSeg }) => {
                   if (valor <= 0) return null;
                   const esTope = i === ultimoNoVacio;
-                  const gap = altoSeg > 3 ? 1 : 0;
+                  const gap = altoSeg > 4 ? 1 : 0;
                   if (esTope) {
                     return (
                       <path
                         key={i}
-                        d={pathTopeRedondeado(xBarra, y + gap, anchoBarra, altoSeg - gap, 4)}
+                        d={pathTopeRedondeado(xBarra, y + gap, anchoBarra, altoSeg - gap, 6)}
                         fill={SERIES[i].color}
                       />
                     );
@@ -181,6 +198,19 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
                   );
                 })}
               </g>
+              {total(fila) > 0 && (
+                <text
+                  x={xSlot + anchoSlot / 2}
+                  y={BASE_Y - (total(fila) / techo) * ALTO_PLOT - 7}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fontWeight="700"
+                  className="fill-neutral-700 dark:fill-neutral-200"
+                  style={{ opacity: montado ? 1 : 0, transition: `opacity 0.4s ease ${idx * 55 + 350}ms` }}
+                >
+                  {montoCorto(total(fila))}
+                </text>
+              )}
               {/* Área invisible de hover, más grande que la barra */}
               <rect
                 x={xSlot}
@@ -190,7 +220,7 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
                 fill="transparent"
                 tabIndex={0}
                 role="button"
-                aria-label={`${fila.etiqueta}: ${fila.pendientes} pendientes, ${fila.aprobadas} aprobadas, ${fila.revisadas} revisadas, ${fila.pagadas} pagadas`}
+                aria-label={`${fila.etiqueta}: ${SERIES.map((s) => `${formatearMoneda(fila[s.monto])} en ${fila[s.clave]} ${s.label.toLowerCase()}`).join(", ")}`}
                 onMouseMove={(e) => moverTooltip(e, idx)}
                 onMouseEnter={(e) => moverTooltip(e, idx)}
                 onMouseLeave={() => setHoverIdx(null)}
@@ -209,20 +239,25 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
 
       {hoverIdx !== null && datos[hoverIdx] && (
         <div
-          className="absolute z-10 pointer-events-none bg-white text-neutral-900 dark:bg-neutral-900 dark:text-white text-xs rounded-lg shadow-xl px-3 py-2 space-y-1 min-w-[150px]"
+          className="absolute z-10 pointer-events-none bg-white/95 backdrop-blur text-neutral-900 dark:bg-neutral-900/95 dark:text-white text-xs rounded-xl shadow-xl ring-1 ring-black/5 dark:ring-white/10 px-3 py-2.5 space-y-1 w-[220px]"
           style={{
-            left: Math.max(8, Math.min(posTooltip.x + 10, anchoContenedor - 158)),
-            top: Math.max(posTooltip.y - 90, 0),
+            left: Math.max(8, Math.min(posTooltip.x + 12, anchoContenedor - 228)),
+            top: Math.max(posTooltip.y - 130, 0),
           }}
         >
-          <p className="font-semibold text-[11px] text-neutral-600 dark:text-neutral-300">{datos[hoverIdx].etiqueta}</p>
+          <div className="flex items-baseline justify-between gap-2 pb-1 mb-1 border-b border-neutral-100 dark:border-white/10">
+            <p className="font-semibold text-[11px] text-neutral-600 dark:text-neutral-300">{datos[hoverIdx].etiqueta}</p>
+            <p className="font-bold">{formatearMoneda(total(datos[hoverIdx]))}</p>
+          </div>
           {SERIES.map((s) => (
             <div key={s.clave} className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-              <span className="font-semibold">{datos[hoverIdx][s.clave]}</span>
-              <span className="text-neutral-500 dark:text-neutral-400">{s.label}</span>
+              <span className="text-neutral-500 dark:text-neutral-400 flex-1">{s.label}</span>
+              <span className="font-semibold tabular-nums">{formatearMoneda(datos[hoverIdx][s.monto])}</span>
+              <span className="text-neutral-400 dark:text-neutral-500 tabular-nums w-7 text-right">({datos[hoverIdx][s.clave]})</span>
             </div>
           ))}
+          <p className="pt-1 text-[11px] text-neutral-400 dark:text-neutral-500">{cantidadTotal(datos[hoverIdx])} solicitudes en el mes</p>
         </div>
       )}
 

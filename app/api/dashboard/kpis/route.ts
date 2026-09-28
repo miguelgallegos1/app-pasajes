@@ -111,27 +111,83 @@ export async function GET(req: Request) {
     return { inicio, fin };
   });
 
+  // Solo los estados que se dibujan en el gráfico (las rechazadas no
+  // cuentan ni en las barras ni en el top de colaboradores).
+  const ESTADOS_GRAFICO = ["PENDIENTE", "APROBADA", "REVISADO", "PAGADA"] as const;
+  const filtroRuta = rutaFiltro ? { ruta: rutaFiltro } : {};
+
   const tendenciaMensual = await Promise.all(
     rangosMensuales.map(async ({ inicio, fin }) => {
       const grupos = await db.solicitudPasaje.groupBy({
         by: ["estado"],
-        where: {
-          fecha: { gte: inicio, lte: fin },
-          ...(rutaFiltro ? { ruta: rutaFiltro } : {}),
-        },
+        where: { fecha: { gte: inicio, lte: fin }, ...filtroRuta },
         _count: true,
+        _sum: { montoTotal: true },
       });
-      const porEstado = Object.fromEntries(grupos.map((g) => [g.estado, g._count]));
+      const cantidad = Object.fromEntries(grupos.map((g) => [g.estado, g._count]));
+      const monto = Object.fromEntries(grupos.map((g) => [g.estado, Number(g._sum.montoTotal ?? 0)]));
       return {
         mes: `${inicio.getUTCFullYear()}-${String(inicio.getUTCMonth() + 1).padStart(2, "0")}`,
         etiqueta: `${NOMBRES_MES[inicio.getUTCMonth()]} ${inicio.getUTCFullYear()}`,
-        pendientes: porEstado.PENDIENTE ?? 0,
-        aprobadas: porEstado.APROBADA ?? 0,
-        revisadas: porEstado.REVISADO ?? 0,
-        pagadas: porEstado.PAGADA ?? 0,
+        pendientes: cantidad.PENDIENTE ?? 0,
+        aprobadas: cantidad.APROBADA ?? 0,
+        revisadas: cantidad.REVISADO ?? 0,
+        pagadas: cantidad.PAGADA ?? 0,
+        montoPendientes: monto.PENDIENTE ?? 0,
+        montoAprobadas: monto.APROBADA ?? 0,
+        montoRevisadas: monto.REVISADO ?? 0,
+        montoPagadas: monto.PAGADA ?? 0,
       };
     })
   );
+
+  // Top 20 de colaboradores por valor sumado en esos mismos 6 meses, con
+  // el desglose por estado para pintar su barra igual que el gráfico.
+  const TOP_COLABORADORES = 20;
+  const rangoTendencia = {
+    fecha: { gte: rangosMensuales[0].inicio, lte: rangosMensuales[MESES_TENDENCIA - 1].fin },
+    estado: { in: [...ESTADOS_GRAFICO] },
+    ...filtroRuta,
+  };
+  const topGrupos = await db.solicitudPasaje.groupBy({
+    by: ["colaboradorId"],
+    where: rangoTendencia,
+    _count: true,
+    _sum: { montoTotal: true },
+    orderBy: { _sum: { montoTotal: "desc" } },
+    take: TOP_COLABORADORES,
+  });
+  const topIds = topGrupos.map((g) => g.colaboradorId);
+  const [colaboradoresTop, desgloseTop] = topIds.length
+    ? await Promise.all([
+        db.colaborador.findMany({
+          where: { id: { in: topIds } },
+          select: { id: true, nombreCompleto: true, codigoNomina: true },
+        }),
+        db.solicitudPasaje.groupBy({
+          by: ["colaboradorId", "estado"],
+          where: { ...rangoTendencia, colaboradorId: { in: topIds } },
+          _sum: { montoTotal: true },
+        }),
+      ])
+    : [[], []];
+  const colaboradorPorId = new Map(colaboradoresTop.map((c) => [c.id, c]));
+  const topColaboradores = topGrupos.map((g) => {
+    const c = colaboradorPorId.get(g.colaboradorId);
+    const montoDe = (estado: string) =>
+      Number(desgloseTop.find((d) => d.colaboradorId === g.colaboradorId && d.estado === estado)?._sum.montoTotal ?? 0);
+    return {
+      id: g.colaboradorId,
+      nombre: c?.nombreCompleto ?? "Desconocido",
+      codigoNomina: c?.codigoNomina ?? null,
+      cantidad: g._count,
+      total: Number(g._sum.montoTotal ?? 0),
+      pendientes: montoDe("PENDIENTE"),
+      aprobadas: montoDe("APROBADA"),
+      revisadas: montoDe("REVISADO"),
+      pagadas: montoDe("PAGADA"),
+    };
+  });
 
   return NextResponse.json({
     pendientes: { cantidad: pendientes._count, total: Number(pendientes._sum.montoTotal ?? 0) },
@@ -140,5 +196,6 @@ export async function GET(req: Request) {
     pagadas: { cantidad: pagadas._count, total: Number(pagadas._sum.montoTotal ?? 0) },
     gastoPorArea,
     tendenciaMensual,
+    topColaboradores,
   });
 }
