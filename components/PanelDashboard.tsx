@@ -35,30 +35,73 @@ type Area = { id: string; nombre: string; sitioId: string };
 // Mismo mapeo de color que en GraficoBarrasMensual — un estado siempre
 // se ve del mismo color en toda la pantalla (tarjeta, leyenda y barra).
 const TARJETAS_KPI = [
-  { clave: "pendientes" as const, label: "Pendientes", color: "#eda100" },
-  { clave: "aprobadas" as const, label: "Aprobadas", color: "#1baf7a" },
-  { clave: "revisadas" as const, label: "Revisadas", color: "#2a78d6" },
-  { clave: "pagadas" as const, label: "Pagadas", color: "#eb6834" },
+  { clave: "pendientes" as const, label: "Pendientes", color: "#eda100", fondo: "from-amber-50 dark:from-amber-500/15", texto: "text-amber-800 dark:text-amber-400" },
+  { clave: "aprobadas" as const, label: "Aprobadas", color: "#1baf7a", fondo: "from-green-50 dark:from-green-500/15", texto: "text-green-800 dark:text-green-400" },
+  { clave: "revisadas" as const, label: "Revisadas", color: "#2a78d6", fondo: "from-sky-50 dark:from-sky-500/15", texto: "text-sky-800 dark:text-sky-400" },
+  { clave: "pagadas" as const, label: "Pagadas", color: "#eb6834", fondo: "from-orange-50 dark:from-orange-500/15", texto: "text-orange-800 dark:text-orange-400" },
 ];
 
-// Tarjeta blanca (oscura en tema oscuro) de cada gráfico; las dos de
-// arriba se montan sobre la franja morada de los KPIs.
-const CLASE_TARJETA =
-  "bg-white dark:bg-neutral-900 rounded-3xl p-5 sm:p-6 shadow-[0_12px_32px_rgba(30,27,75,0.12)] ring-1 ring-black/5 dark:ring-white/10 dark:shadow-black/40";
-
-function EncabezadoTarjeta({ titulo, subtitulo, extra }: { titulo: string; subtitulo: string; extra?: React.ReactNode }) {
+// Tarjeta blanca (oscura en tema oscuro) de cada gráfico, con una franja
+// de color arriba y el ícono en un cuadrito del mismo degradado.
+function TarjetaGrafico({
+  titulo,
+  subtitulo,
+  degradado,
+  icono,
+  children,
+}: {
+  titulo: string;
+  subtitulo: string;
+  degradado: string;
+  icono: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 mb-4">
-      <div className="flex items-center gap-3 min-w-0">
-        {extra}
+    <section className="relative overflow-hidden bg-white dark:bg-neutral-900 rounded-3xl p-5 sm:p-6 shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition hover:shadow-lg">
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${degradado}`} />
+      <div className="flex items-center gap-3 mb-4">
+        <span className={`w-10 h-10 rounded-2xl grid place-items-center shrink-0 text-white shadow-md bg-gradient-to-br ${degradado}`}>
+          {icono}
+        </span>
         <div className="min-w-0">
-          <h2 className="font-extrabold text-base sm:text-lg text-neutral-900 dark:text-white">{titulo}</h2>
+          <h2 className="font-bold text-base text-neutral-900 dark:text-white">{titulo}</h2>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">{subtitulo}</p>
         </div>
       </div>
-    </div>
+      {children}
+    </section>
   );
 }
+
+const PROPS_ICONO = {
+  viewBox: "0 0 24 24",
+  className: "w-5 h-5",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+const ICONO_BARRAS = (
+  <svg {...PROPS_ICONO}>
+    <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+  </svg>
+);
+const ICONO_DONA = (
+  <svg {...PROPS_ICONO}>
+    <path d="M12 3a9 9 0 1 0 9 9h-9z" />
+    <path d="M15 3.5A9 9 0 0 1 20.5 9H15z" />
+  </svg>
+);
+// Billete: el top es de los que más gastan.
+const ICONO_DINERO = (
+  <svg {...PROPS_ICONO}>
+    <rect x="2" y="6" width="20" height="12" rx="2" />
+    <circle cx="12" cy="12" r="2.5" />
+    <path d="M6 12h.01M18 12h.01" />
+  </svg>
+);
 
 export default function PanelDashboard() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -201,60 +244,59 @@ export default function PanelDashboard() {
 
       {datos && (
         <>
-          {/* Franja morada con los KPIs. En tema oscuro baja a un morado
-              casi negro con borde claro, para que no se funda con el fondo
-              de la app (#0a0a0a) ni encandile. */}
-          <div className="rounded-3xl bg-gradient-to-br from-indigo-950 via-indigo-800 to-orange-900 dark:from-indigo-950 dark:via-violet-950 dark:to-neutral-900 dark:ring-1 dark:ring-white/10 px-4 pt-5 pb-20 sm:px-6 sm:pt-6 sm:pb-24">
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-200 mb-3">Resumen del período</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              {TARJETAS_KPI.map((t) => {
-                const kpi = datos[t.clave];
-                return (
-                  <div
-                    key={t.clave}
-                    className="rounded-2xl p-4 sm:p-5 bg-white/[0.08] ring-1 ring-white/15 border-t-[3px] backdrop-blur-sm transition hover:bg-white/[0.12] hover:-translate-y-0.5"
-                    style={{ borderTopColor: t.color }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color, boxShadow: `0 0 12px ${t.color}` }} />
-                      <p className="text-xs font-bold uppercase tracking-wide text-indigo-100">{t.label}</p>
-                    </div>
-                    <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mt-2">{kpi.cantidad}</p>
-                    <p className="text-sm font-semibold text-indigo-200 mt-0.5">{formatearMoneda(kpi.total)}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            {TARJETAS_KPI.map((t) => {
+              const kpi = datos[t.clave];
+              return (
+                <div
+                  key={t.clave}
+                  className={`relative overflow-hidden bg-gradient-to-br ${t.fondo} to-white dark:to-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-3xl p-4 sm:p-5 shadow-sm transition hover:shadow-lg hover:-translate-y-1`}
+                >
+                  {/* Círculo decorativo del color del estado, en la esquina */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-15 dark:opacity-25"
+                    style={{ backgroundColor: t.color }}
+                  />
+                  <div className="relative flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-white/70 dark:ring-white/10" style={{ backgroundColor: t.color }} />
+                    <p className={`text-xs font-bold uppercase tracking-wide ${t.texto}`}>{t.label}</p>
                   </div>
-                );
-              })}
-            </div>
+                  <p className="relative text-3xl sm:text-4xl font-extrabold tracking-tight text-neutral-900 dark:text-white mt-2">{kpi.cantidad}</p>
+                  <p className={`relative text-sm font-semibold ${t.texto} mt-0.5`}>{formatearMoneda(kpi.total)}</p>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 -mt-16 sm:-mt-20 px-2 sm:px-4 relative">
-            <section className={CLASE_TARJETA}>
-              <EncabezadoTarjeta titulo="Solicitudes por mes" subtitulo="Valor de los últimos 6 meses, por estado" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <TarjetaGrafico
+              titulo="Solicitudes por mes"
+              subtitulo="Valor de los últimos 6 meses, por estado"
+              degradado="from-orange-500 to-amber-400"
+              icono={ICONO_BARRAS}
+            >
               <GraficoBarrasMensual key={version} datos={datos.tendenciaMensual} />
-            </section>
+            </TarjetaGrafico>
 
-            <section className={CLASE_TARJETA}>
-              <EncabezadoTarjeta titulo="Gasto por Área" subtitulo="Aprobado + Revisado + Pagado, período seleccionado" />
+            <TarjetaGrafico
+              titulo="Gasto por Área"
+              subtitulo="Aprobado + Revisado + Pagado, período seleccionado"
+              degradado="from-fuchsia-500 to-pink-400"
+              icono={ICONO_DONA}
+            >
               <GraficoPastelAreas key={version} datos={datos.gastoPorArea} />
-            </section>
+            </TarjetaGrafico>
           </div>
 
-          <section className={CLASE_TARJETA}>
-            <EncabezadoTarjeta
-              titulo="Top 20 colaboradores"
-              subtitulo="Los que más gastan en pasajes, últimos 6 meses"
-              extra={
-                <span className="w-10 h-10 rounded-2xl grid place-items-center shrink-0 text-white bg-gradient-to-br from-red-500 to-rose-600 shadow-md shadow-red-500/30">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="2" y="6" width="20" height="12" rx="2" />
-                    <circle cx="12" cy="12" r="2.5" />
-                    <path d="M6 12h.01M18 12h.01" />
-                  </svg>
-                </span>
-              }
-            />
+          <TarjetaGrafico
+            titulo="Top 20 colaboradores"
+            subtitulo="Los que más gastan en pasajes, últimos 6 meses"
+            degradado="from-red-500 to-rose-600"
+            icono={ICONO_DINERO}
+          >
             <TopColaboradores key={version} datos={datos.topColaboradores} />
-          </section>
+          </TarjetaGrafico>
         </>
       )}
       </>

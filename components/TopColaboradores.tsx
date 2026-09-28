@@ -35,11 +35,6 @@ const MEDALLAS = [
   "bg-gradient-to-br from-orange-300 to-orange-600 text-orange-950 shadow-orange-600/40",
 ];
 
-function iniciales(nombre: string): string {
-  const partes = nombre.trim().split(/\s+/);
-  return ((partes[0]?.[0] ?? "") + (partes[1]?.[0] ?? "")).toUpperCase();
-}
-
 export default function TopColaboradores({ datos }: { datos: FilaTopColaborador[] }) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -93,9 +88,6 @@ export default function TopColaboradores({ datos }: { datos: FilaTopColaborador[
               }`}
             >
               {idx + 1}
-            </span>
-            <span className="hidden sm:grid w-9 h-9 rounded-full place-items-center text-xs font-semibold shrink-0 bg-gradient-to-br from-orange-400 to-rose-500 text-white">
-              {iniciales(d.nombre)}
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2">

@@ -160,7 +160,7 @@ export default function GraficoBarrasMensual({ datos }: { datos: FilaMes[] }) {
                 width={anchoSlot}
                 height={ALTO_PLOT}
                 rx={10}
-                className="fill-indigo-50 dark:fill-white/5"
+                className="fill-orange-50 dark:fill-white/5"
                 opacity={hoverIdx === idx ? 1 : 0}
                 style={{ transition: "opacity 0.15s ease" }}
               />
