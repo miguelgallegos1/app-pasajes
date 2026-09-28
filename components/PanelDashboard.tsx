@@ -57,7 +57,7 @@ function TarjetaGrafico({
   children: React.ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden bg-white dark:bg-neutral-900 rounded-2xl p-5 sm:p-6 shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition hover:shadow-lg">
+    <section className="relative overflow-hidden bg-white dark:bg-neutral-900 rounded-2xl p-5 sm:p-6 shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition hover:shadow-lg hover:-translate-y-0.5">
       <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${degradado}`} />
       <div className="flex items-center gap-3 mb-4">
         <span className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 text-white shadow-md bg-gradient-to-br ${degradado}`}>
