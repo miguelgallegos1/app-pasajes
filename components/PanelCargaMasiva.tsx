@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import Spinner from "./Spinner";
 import { IconoDescargar } from "./Icons";
 import { useToast } from "./Toast";
+import { nombreArchivoDescarga } from "../lib/nombreArchivo";
 
 type FilaResultado = {
   fila: number;
@@ -154,7 +155,7 @@ function BloqueCarga({
             )}
             <button
               type="button"
-              onClick={() => descargarResultadosCSV(resultado, `resultado-carga-${titulo.toLowerCase()}.csv`, columnaPin)}
+              onClick={() => descargarResultadosCSV(resultado, nombreArchivoDescarga(`resultado-carga-${titulo.toLowerCase()}`, "csv"), columnaPin)}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-lg transition"
             >
               <IconoDescargar className="w-3.5 h-3.5" /> Descargar resultado

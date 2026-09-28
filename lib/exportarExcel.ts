@@ -5,6 +5,7 @@
 
 import * as XLSX from "xlsx";
 import { formatearFecha } from "./fechas";
+import { nombreArchivoDescarga } from "./nombreArchivo";
 
 export function construirLibroExcel(filas: Record<string, unknown>[], nombreHoja: string): Buffer {
   return construirLibroExcelMultiHoja([{ nombre: nombreHoja, filas }]);
@@ -80,14 +81,7 @@ export function filaAvisoTruncadoHistorial(): ReturnType<typeof filaHistorialExc
   };
 }
 
-// Nombre del archivo descargado: cada palabra con la primera letra en
-// mayúscula ("historial-revision" → "Historial-Revision") y un sufijo
-// numérico corto al final, para que el navegador no le agregue "(1)",
-// "(2)"... al descargar varias veces el mismo reporte. El sufijo son los
-// últimos 6 dígitos de los milisegundos actuales: se repite recién cada
-// ~16 minutos y solo chocaría si además coincide al milisegundo.
+// Nombre del archivo descargado (ver lib/nombreArchivo.ts).
 export function nombreArchivoExcel(base: string): string {
-  const conMayusculas = base.replace(/(^|-)([a-záéíóúñ])/g, (_, sep: string, letra: string) => sep + letra.toUpperCase());
-  const sufijo = String(Date.now() % 1_000_000).padStart(6, "0");
-  return `${conMayusculas}-${sufijo}.xlsx`;
+  return nombreArchivoDescarga(base, "xlsx");
 }
