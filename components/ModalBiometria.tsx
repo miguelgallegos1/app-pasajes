@@ -141,7 +141,7 @@ export default function ModalBiometria({ abierto, onCerrar }: { abierto: boolean
           <button
             onClick={activar}
             disabled={registrando}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl transition shadow-sm hover:shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {registrando && <Spinner className="w-4 h-4" />}
             {registrando ? "Verificando..." : "Activar en este dispositivo"}

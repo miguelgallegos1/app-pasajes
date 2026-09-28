@@ -574,7 +574,7 @@ export default function PanelColaborador({ modo = "colaborador" }: { modo?: "col
       )}
       <button
         onClick={abrirModal}
-        className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5"
+        className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
       >
         + Nueva solicitud
       </button>

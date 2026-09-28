@@ -383,7 +383,7 @@ export default function PanelColaboradoresTH() {
     <button
       onClick={abrirCrear}
       disabled={sinAsignaciones}
-      className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+      className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md disabled:opacity-40 disabled:hover:shadow-sm"
     >
       + Nuevo colaborador
     </button>
@@ -698,7 +698,7 @@ export default function PanelColaboradoresTH() {
                   type="button"
                   onClick={() => setEsSupervisor(false)}
                   className={`text-left px-3.5 py-3 rounded-xl border-2 transition ${
-                    !esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 hover:shadow-sm hover:-translate-y-0.5"
+                    !esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 hover:shadow-sm"
                   }`}
                 >
                   <p className={`text-sm font-semibold ${!esSupervisor ? "text-orange-700 dark:text-orange-400" : "text-neutral-800 dark:text-neutral-200"}`}>
@@ -710,7 +710,7 @@ export default function PanelColaboradoresTH() {
                   type="button"
                   onClick={() => setEsSupervisor(true)}
                   className={`text-left px-3.5 py-3 rounded-xl border-2 transition ${
-                    esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 hover:shadow-sm hover:-translate-y-0.5"
+                    esSupervisor ? "border-orange-400 bg-orange-50 dark:bg-orange-500/10" : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 hover:shadow-sm"
                   }`}
                 >
                   <p className={`text-sm font-semibold ${esSupervisor ? "text-orange-700 dark:text-orange-400" : "text-neutral-800 dark:text-neutral-200"}`}>

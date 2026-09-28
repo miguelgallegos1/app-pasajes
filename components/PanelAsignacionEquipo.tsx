@@ -340,7 +340,7 @@ export default function PanelAsignacionEquipo() {
   useAccionesHeader(
     <button
       onClick={() => router.push("/th/colaboradores?nuevo=1")}
-      className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 shrink-0"
+      className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md shrink-0"
     >
       + Nuevo colaborador
     </button>

@@ -242,7 +242,7 @@ function ItemLink({
       className={`relative flex items-center gap-2.5 py-2.5 rounded-lg text-sm font-medium transition ${colapsado ? "justify-center px-0" : "px-3"} ${
         activo
           ? "bg-orange-500/10 text-orange-700 font-semibold dark:bg-orange-500/15 dark:text-orange-400"
-          : "text-neutral-600 hover:bg-neutral-100 hover:shadow-sm hover:-translate-y-0.5 dark:text-neutral-300 dark:hover:bg-neutral-800/70"
+          : "text-neutral-600 hover:bg-neutral-100 hover:shadow-sm dark:text-neutral-300 dark:hover:bg-neutral-800/70"
       }`}
     >
       <Icono className="w-4 h-4 shrink-0" />

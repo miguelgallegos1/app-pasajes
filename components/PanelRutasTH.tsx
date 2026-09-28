@@ -415,7 +415,7 @@ export default function PanelRutasTH() {
       <button
         onClick={abrirCrear}
         disabled={sinAsignaciones}
-        className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+        className="text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md disabled:opacity-40 disabled:hover:shadow-sm"
       >
         + Nueva ruta
       </button>

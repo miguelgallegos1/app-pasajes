@@ -108,7 +108,7 @@ function BloqueCarga({
   };
 
   return (
-    <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4 transition hover:shadow-md hover:-translate-y-0.5">
+    <div className="bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-5 shadow-sm ring-1 ring-black/5 dark:ring-white/10 space-y-4 transition hover:shadow-md">
       <div>
         <h2 className="text-base font-bold text-neutral-900 dark:text-white">{titulo}</h2>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{descripcion}</p>
