@@ -36,6 +36,8 @@ import { useContadorMenu, type ContadorMenu } from "../lib/useContadorMenu";
 // primera vez que alguien abre el modal, no en cada página de la app.
 const ModalBiometria = dynamic(() => import("./ModalBiometria"), { ssr: false });
 
+const CLAVE_MENU_COLAPSADO = "menuColapsado";
+
 type IconoComponente = (props: { className?: string }) => React.ReactElement;
 // descripcion: subtítulo de la pantalla, para el breadcrumb (Breadcrumbs.tsx)
 // — antes vivía repetido dentro de cada Panel, debajo de su propio <h1>.
@@ -208,7 +210,19 @@ function BadgeContador({ contador }: { contador: ContadorMenu }) {
   );
 }
 
-function ItemLink({ item, activo, onClick, contadores }: { item: ItemMenu; activo: boolean; onClick?: () => void; contadores: ContadorMenu[] }) {
+function ItemLink({
+  item,
+  activo,
+  onClick,
+  contadores,
+  colapsado = false,
+}: {
+  item: ItemMenu;
+  activo: boolean;
+  onClick?: () => void;
+  contadores: ContadorMenu[];
+  colapsado?: boolean;
+}) {
   const contador = contadores.find((c) => c.href === item.href);
   const Icono = item.icono;
   return (
@@ -223,15 +237,24 @@ function ItemLink({ item, activo, onClick, contadores }: { item: ItemMenu; activ
       // se pide por su cuenta al montar (fetch en el cliente), así que no
       // se pierde nada por no precargar el RSC.
       prefetch={false}
-      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+      title={colapsado ? item.label : undefined}
+      aria-label={colapsado ? item.label : undefined}
+      className={`relative flex items-center gap-2.5 py-2.5 rounded-lg text-sm font-medium transition ${colapsado ? "justify-center px-0" : "px-3"} ${
         activo
           ? "bg-orange-500/10 text-orange-700 font-semibold dark:bg-orange-500/15 dark:text-orange-400"
           : "text-neutral-600 hover:bg-neutral-100 hover:shadow-sm hover:-translate-y-0.5 dark:text-neutral-300 dark:hover:bg-neutral-800/70"
       }`}
     >
       <Icono className="w-4 h-4 shrink-0" />
-      {item.label}
-      {contador && <BadgeContador contador={contador} />}
+      {!colapsado && item.label}
+      {contador &&
+        (colapsado ? (
+          // Colapsado no cabe el número: un punto del mismo color en la
+          // esquina del ícono (el número sigue en el title del enlace).
+          <span className={`absolute top-1.5 right-2.5 w-2 h-2 rounded-full ring-2 ring-white dark:ring-neutral-900 ${contador.clase.split(" ")[0]}`} />
+        ) : (
+          <BadgeContador contador={contador} />
+        ))}
     </Link>
   );
 }
@@ -243,6 +266,7 @@ function ItemsMenu({
   onAlternarGrupo,
   onClickItem,
   contadores,
+  colapsado = false,
 }: {
   entradas: EntradaMenu[];
   pathname: string;
@@ -250,7 +274,27 @@ function ItemsMenu({
   onAlternarGrupo: (grupo: string) => void;
   onClickItem?: () => void;
   contadores: ContadorMenu[];
+  colapsado?: boolean;
 }) {
+  // Colapsado (solo íconos) no hay títulos de grupo que abrir: se ven
+  // todos los ítems, con una rayita entre un grupo y el siguiente.
+  if (colapsado) {
+    return (
+      <>
+        {entradas.map((entrada) =>
+          esGrupo(entrada) ? (
+            <div key={entrada.grupo} className="space-y-1 pt-1 mt-1 border-t border-neutral-200 dark:border-neutral-800/70">
+              {entrada.items.map((item) => (
+                <ItemLink key={item.href} item={item} activo={pathname === item.href} contadores={contadores} colapsado />
+              ))}
+            </div>
+          ) : (
+            <ItemLink key={entrada.href} item={entrada} activo={pathname === entrada.href} contadores={contadores} colapsado />
+          )
+        )}
+      </>
+    );
+  }
   return (
     <>
       {entradas.map((entrada) => {
@@ -328,6 +372,30 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  // Escritorio: menú lateral reducido a íconos, solo si el usuario lo
+  // pide. Se recuerda en este navegador (es una preferencia de vista, no
+  // un dato). Se lee después de montar para no desalinear el HTML del
+  // servidor con el del cliente.
+  const [menuColapsado, setMenuColapsado] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- preferencia guardada en el navegador
+      if (localStorage.getItem(CLAVE_MENU_COLAPSADO) === "1") setMenuColapsado(true);
+    } catch {
+      // Sin acceso a localStorage (modo privado, etc.): queda abierto.
+    }
+  }, []);
+  const alternarMenuColapsado = () => {
+    setMenuColapsado((actual) => {
+      const nuevo = !actual;
+      try {
+        localStorage.setItem(CLAVE_MENU_COLAPSADO, nuevo ? "1" : "0");
+      } catch {
+        // Igual cambia en pantalla; solo no se recuerda.
+      }
+      return nuevo;
+    });
+  };
   // Botón principal de la pantalla actual (ej. "+ Nueva ruta"), publicado
   // por el propio Panel vía useAccionesHeader — se muestra en la misma
   // fila que el breadcrumb, a la derecha (ver lib/accionesHeader.tsx).
@@ -459,6 +527,20 @@ export default function AppShell({
               </span>
             )}
           </button>
+          <button
+            type="button"
+            onClick={alternarMenuColapsado}
+            aria-label={menuColapsado ? "Expandir menú" : "Colapsar menú"}
+            aria-pressed={menuColapsado}
+            title={menuColapsado ? "Expandir menú" : "Colapsar menú"}
+            className="hidden md:inline-flex shrink-0 p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 rounded-lg transition"
+          >
+            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M9 4v16" />
+              <path d={menuColapsado ? "M13 10l2 2-2 2" : "M15 10l-2 2 2 2"} />
+            </svg>
+          </button>
           {/* <img>, no <Image>: mismo motivo que en el Avatar de más abajo
               — /logo.png tiene su propio Cache-Control en next.config.ts. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -493,17 +575,17 @@ export default function AppShell({
             <nav> scrollea por dentro. Se mantiene el scroll de la ventana
             (no un <main> con overflow propio) para no romper los
             encabezados de tabla sticky que usan top-14/md:top-16. */}
-        <aside className="hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100dvh-4rem)] self-start w-60 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0">
-          <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
-            <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} contadores={contadores} />
+        <aside className={`hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100dvh-4rem)] self-start ${menuColapsado ? "w-16" : "w-60"} transition-[width] duration-200 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0`}>
+          <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
+            <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} contadores={contadores} colapsado={menuColapsado} />
           </nav>
-          <div className="p-3 border-t border-neutral-200 dark:border-neutral-800/70 flex items-center justify-between gap-2">
+          <div className={`p-3 border-t border-neutral-200 dark:border-neutral-800/70 flex items-center gap-2 ${menuColapsado ? "flex-col" : "justify-between"}`}>
             {rol === "COLABORADOR" ? (
               <BotonWhatsApp />
             ) : (
               <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
             )}
-            <div className="flex items-center gap-1">
+            <div className={`flex items-center gap-1 ${menuColapsado ? "flex-col" : ""}`}>
             <button
               onClick={abrirBiometria}
               title="Acceso biométrico"
