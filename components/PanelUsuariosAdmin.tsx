@@ -3,11 +3,12 @@
 // crear, editar, y "Gestionar" (Desactivar/Reactivar + Eliminar, bloqueado
 // si tiene historial de aprobaciones o pagos). Para los de TH y
 // Coordinador, además se gestionan sus asignaciones de Empresa/Sitio/Área
-// en un modal aparte.
+// en un modal aparte. Con buscador, filtros de Estado (Activos por
+// defecto, igual que Colaboradores) y Rol, y paginación.
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Modal from "./Modal";
@@ -18,6 +19,8 @@ import { ETIQUETAS_ROL } from "../lib/roles";
 import MenuAcciones from "./MenuAcciones";
 import { useAccionesHeader } from "../lib/accionesHeader";
 import BuscadorFichaColaborador, { type Ficha } from "./BuscadorFichaColaborador";
+import BarraFiltros, { CampoEstadoActivo, CampoFiltro, chipEstadoActivo, chipOpcion, chips, cumpleFiltroActivo, type FiltroActivo } from "./BarraFiltros";
+import Paginacion from "./Paginacion";
 
 type Asignacion = { id: string; etiqueta: string };
 type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; fichaPropia: Ficha | null; asignaciones: Asignacion[] };
@@ -28,6 +31,8 @@ type Empresa = { id: string; nombre: string; sitios: Sitio[] };
 // Roles cuyo alcance se restringe por Empresa/Sitio/Área (comparten el
 // mismo mecanismo de AsignacionTH, ver lib/alcanceTH.ts).
 const ROLES_CON_ALCANCE = ["ADMIN_TH", "COORDINADOR"];
+
+const POR_PAGINA = 15;
 
 export default function PanelUsuariosAdmin({
   usuarios,
@@ -219,6 +224,43 @@ export default function PanelUsuariosAdmin({
 
   const usuarioAreas = usuarios.find((u) => u.id === idAreas);
 
+  // ---------- Búsqueda, filtros y paginación ----------
+  const [busqueda, setBusqueda] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState<FiltroActivo>("ACTIVO");
+  const [rolFiltro, setRolFiltro] = useState("");
+  const [paginaActual, setPaginaActual] = useState(1);
+
+  // Solo los roles que de verdad hay en la lista, para no ofrecer filtros vacíos.
+  const opcionesRol = useMemo(
+    () =>
+      Array.from(new Set(usuarios.map((u) => u.rol))).map((r) => ({ id: r, label: ETIQUETAS_ROL[r] ?? r })),
+    [usuarios]
+  );
+
+  const usuariosFiltrados = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return usuarios.filter((u) => {
+      if (!cumpleFiltroActivo(estadoFiltro, u.activo)) return false;
+      if (rolFiltro && u.rol !== rolFiltro) return false;
+      if (!texto) return true;
+      return (
+        u.nombre.toLowerCase().includes(texto) ||
+        (ETIQUETAS_ROL[u.rol] ?? u.rol).toLowerCase().includes(texto) ||
+        String(u.numero) === texto
+      );
+    });
+  }, [usuarios, busqueda, estadoFiltro, rolFiltro]);
+
+  const totalPaginas = Math.max(1, Math.ceil(usuariosFiltrados.length / POR_PAGINA));
+  // Si un cambio (desactivar, eliminar) deja la página actual vacía, se
+  // muestra la última que sí tiene filas en vez de una tabla en blanco.
+  const pagina = Math.min(paginaActual, totalPaginas);
+  const usuariosPagina = usuariosFiltrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+
+  const cambiarBusqueda = (v: string) => { setBusqueda(v); setPaginaActual(1); };
+  const cambiarEstadoFiltro = (v: FiltroActivo) => { setEstadoFiltro(v); setPaginaActual(1); };
+  const cambiarRolFiltro = (v: string) => { setRolFiltro(v); setPaginaActual(1); };
+
   useAccionesHeader(
     <button
       onClick={abrirCrear}
@@ -230,6 +272,21 @@ export default function PanelUsuariosAdmin({
 
   return (
     <div className="flex-1 px-4 sm:px-8 pb-5 space-y-4">
+      <BarraFiltros
+        busqueda={{ valor: busqueda, onCambiar: cambiarBusqueda, placeholder: "Buscar...", ayuda: "Busca por nombre, rol o número" }}
+        chips={chips(
+          chipEstadoActivo(estadoFiltro, () => cambiarEstadoFiltro("ACTIVO")),
+          chipOpcion("Rol", opcionesRol, rolFiltro, () => cambiarRolFiltro(""))
+        )}
+        onLimpiar={() => { cambiarEstadoFiltro("ACTIVO"); cambiarRolFiltro(""); }}
+        resultados={usuariosFiltrados.length}
+      >
+        <CampoEstadoActivo valor={estadoFiltro} onCambiar={cambiarEstadoFiltro} />
+        <CampoFiltro etiqueta="Rol">
+          <ComboboxBuscable opciones={opcionesRol} value={rolFiltro} onChange={cambiarRolFiltro} placeholder="Todos" />
+        </CampoFiltro>
+      </BarraFiltros>
+
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[640px]">
@@ -244,7 +301,7 @@ export default function PanelUsuariosAdmin({
               </tr>
             </thead>
             <tbody>
-              {usuarios.map((u) => (
+              {usuariosPagina.map((u) => (
                 <tr key={u.id} className="border-t border-neutral-200/70 dark:border-neutral-800/70 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 transition">
                   <td className="px-4 py-3 text-neutral-400 dark:text-neutral-500">{u.numero}</td>
                   <td className="px-4 py-3">{u.nombre}</td>
@@ -278,16 +335,18 @@ export default function PanelUsuariosAdmin({
                   </td>
                 </tr>
               ))}
-              {usuarios.length === 0 && (
+              {usuariosFiltrados.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center text-neutral-400 dark:text-neutral-500">
-                    Aún no hay usuarios administrativos creados
+                    {usuarios.length === 0 ? "Aún no hay usuarios administrativos creados" : "Ningún usuario coincide con la búsqueda o los filtros"}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        <Paginacion paginaActual={pagina} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
       </div>
 
       {/* Modal: Crear/Editar usuario */}
