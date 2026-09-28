@@ -7,7 +7,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
+import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import CalendarioSelector from "./CalendarioSelector";
 import { useFechaMinimaSolicitud } from "./useFechaMinimaSolicitud";
 import ComboboxBuscable from "./ComboboxBuscable";
@@ -58,13 +58,6 @@ const VALOR_ORDEN: Record<CampoOrden, (s: Solicitud) => string | number> = {
   estado: (s) => s.estado,
 };
 
-const ESTILOS_ESTADO: Record<string, string> = {
-  PENDIENTE: "bg-amber-100 text-amber-800",
-  APROBADA: "bg-green-100 text-green-800",
-  RECHAZADA: "bg-red-100 text-red-800",
-  REVISADO: "bg-sky-100 text-sky-800",
-  PAGADA: "bg-orange-100 text-orange-800",
-};
 
 const CLASE_CAMPO =
   "mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm text-neutral-900 dark:text-white " +

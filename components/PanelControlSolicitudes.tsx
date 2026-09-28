@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { DESCRIPCION_ESTADO } from "../lib/estadosSolicitud";
+import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import RangoFechasSelector from "./RangoFechasSelector";
@@ -45,13 +45,6 @@ const OPCIONES_ESTADO = [
   { value: "PAGADA", label: "Pagada" },
 ];
 
-const ESTILOS_ESTADO: Record<string, string> = {
-  PENDIENTE: "bg-amber-100 text-amber-800",
-  APROBADA: "bg-green-100 text-green-800",
-  REVISADO: "bg-sky-100 text-sky-800",
-  RECHAZADA: "bg-red-100 text-red-800",
-  PAGADA: "bg-orange-100 text-orange-800",
-};
 
 export default function PanelControlSolicitudes() {
   const toast = useToast();

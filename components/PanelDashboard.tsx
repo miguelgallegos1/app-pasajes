@@ -35,10 +35,10 @@ type Area = { id: string; nombre: string; sitioId: string };
 // Mismo mapeo de color que en GraficoBarrasMensual — un estado siempre
 // se ve del mismo color en toda la pantalla (tarjeta, leyenda y barra).
 const TARJETAS_KPI = [
-  { clave: "pendientes" as const, label: "Pendientes", color: "#eda100", fondo: "from-amber-50 dark:from-amber-500/15", texto: "text-amber-800 dark:text-amber-400" },
-  { clave: "aprobadas" as const, label: "Aprobadas", color: "#1baf7a", fondo: "from-green-50 dark:from-green-500/15", texto: "text-green-800 dark:text-green-400" },
+  { clave: "pendientes" as const, label: "Pendientes", color: "#eb6834", fondo: "from-orange-50 dark:from-orange-500/15", texto: "text-orange-800 dark:text-orange-400" },
+  { clave: "aprobadas" as const, label: "Aprobadas", color: "#eda100", fondo: "from-amber-50 dark:from-amber-500/15", texto: "text-amber-800 dark:text-amber-400" },
   { clave: "revisadas" as const, label: "Revisadas", color: "#2a78d6", fondo: "from-sky-50 dark:from-sky-500/15", texto: "text-sky-800 dark:text-sky-400" },
-  { clave: "pagadas" as const, label: "Pagadas", color: "#eb6834", fondo: "from-orange-50 dark:from-orange-500/15", texto: "text-orange-800 dark:text-orange-400" },
+  { clave: "pagadas" as const, label: "Pagadas", color: "#1baf7a", fondo: "from-green-50 dark:from-green-500/15", texto: "text-green-800 dark:text-green-400" },
 ];
 
 // Tarjeta blanca (oscura en tema oscuro) de cada gráfico, con una franja
@@ -57,10 +57,10 @@ function TarjetaGrafico({
   children: React.ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden bg-white dark:bg-neutral-900 rounded-3xl p-5 sm:p-6 shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition hover:shadow-lg">
+    <section className="relative overflow-hidden bg-white dark:bg-neutral-900 rounded-2xl p-5 sm:p-6 shadow-sm ring-1 ring-black/5 dark:ring-white/10 transition hover:shadow-lg">
       <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${degradado}`} />
       <div className="flex items-center gap-3 mb-4">
-        <span className={`w-10 h-10 rounded-2xl grid place-items-center shrink-0 text-white shadow-md bg-gradient-to-br ${degradado}`}>
+        <span className={`w-10 h-10 rounded-xl grid place-items-center shrink-0 text-white shadow-md bg-gradient-to-br ${degradado}`}>
           {icono}
         </span>
         <div className="min-w-0">
@@ -250,7 +250,7 @@ export default function PanelDashboard() {
               return (
                 <div
                   key={t.clave}
-                  className={`relative overflow-hidden bg-gradient-to-br ${t.fondo} to-white dark:to-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-3xl p-4 sm:p-5 shadow-sm transition hover:shadow-lg hover:-translate-y-1`}
+                  className={`relative overflow-hidden bg-gradient-to-br ${t.fondo} to-white dark:to-neutral-900 ring-1 ring-black/5 dark:ring-white/10 rounded-2xl p-4 sm:p-5 shadow-sm transition hover:shadow-lg hover:-translate-y-1`}
                 >
                   {/* Círculo decorativo del color del estado, en la esquina */}
                   <span

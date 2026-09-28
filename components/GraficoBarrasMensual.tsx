@@ -25,10 +25,10 @@ export type FilaMes = {
 };
 
 const SERIES = [
-  { clave: "pendientes", monto: "montoPendientes", label: "Pendientes", color: "#eda100" },
-  { clave: "aprobadas", monto: "montoAprobadas", label: "Aprobadas", color: "#1baf7a" },
+  { clave: "pendientes", monto: "montoPendientes", label: "Pendientes", color: "#eb6834" },
+  { clave: "aprobadas", monto: "montoAprobadas", label: "Aprobadas", color: "#eda100" },
   { clave: "revisadas", monto: "montoRevisadas", label: "Revisadas", color: "#2a78d6" },
-  { clave: "pagadas", monto: "montoPagadas", label: "Pagadas", color: "#eb6834" },
+  { clave: "pagadas", monto: "montoPagadas", label: "Pagadas", color: "#1baf7a" },
 ] as const;
 
 const W = 640;

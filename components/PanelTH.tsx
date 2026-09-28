@@ -467,10 +467,10 @@ export default function PanelTH() {
             )}
           </div>
           {seleccionadas.size > 0 && (
-            <div className="flex-1 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-[dropdown-in_0.15s_ease-out]">
+            <div className="flex-1 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 animate-[dropdown-in_0.15s_ease-out]">
               <div>
-                <p className="text-[11px] text-green-700 dark:text-green-400 uppercase tracking-wide">Seleccionadas</p>
-                <p className="text-lg font-bold text-green-800 dark:text-green-300">
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 uppercase tracking-wide">Seleccionadas</p>
+                <p className="text-lg font-bold text-amber-800 dark:text-amber-300">
                   {seleccionadas.size} · {formatearMoneda(totalSeleccionado)}
                 </p>
               </div>
@@ -484,7 +484,7 @@ export default function PanelTH() {
                 </button>
                 <button
                   onClick={() => setConfirmandoLote(true)}
-                  className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+                  className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-amber-950 px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
                 >
                   Aprobar ({seleccionadas.size})
                 </button>
@@ -517,7 +517,7 @@ export default function PanelTH() {
               <div className="flex gap-1.5">
                 <button
                   onClick={() => setIdAAprobar(s.id)}
-                  className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-full transition"
+                  className="text-xs font-medium text-amber-950 bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-full transition"
                 >
                   Aprobar
                 </button>
@@ -606,7 +606,7 @@ export default function PanelTH() {
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => setIdAAprobar(s.id)}
-                          className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-full transition"
+                          className="text-xs font-medium text-amber-950 bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-full transition"
                         >
                           Aprobar
                         </button>
@@ -665,7 +665,7 @@ export default function PanelTH() {
       </div>
 
       <Modal abierto={!!idAAprobar} onCerrar={() => setIdAAprobar(null)} onConfirmar={confirmarAprobar} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
+            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Aprobar esta solicitud?</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-2 justify-center pt-1">
@@ -679,7 +679,7 @@ export default function PanelTH() {
               <button
                 onClick={confirmarAprobar}
                 disabled={aprobando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-amber-950 rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
                 {aprobando && <Spinner className="w-4 h-4" />}
                 {aprobando ? "Aprobando..." : "Aprobar"}
@@ -688,7 +688,7 @@ export default function PanelTH() {
       </Modal>
 
       <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={confirmarAprobarLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
+            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Aprobar {seleccionadas.size} solicitudes?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Total: {formatearMoneda(totalSeleccionado)}</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -703,7 +703,7 @@ export default function PanelTH() {
               <button
                 onClick={confirmarAprobarLote}
                 disabled={aprobandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-amber-950 rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
                 {aprobandoLote && <Spinner className="w-4 h-4" />}
                 {aprobandoLote ? "Aprobando..." : "Aprobar todas"}

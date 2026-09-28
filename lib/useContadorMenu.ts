@@ -21,12 +21,13 @@ export type ContadorMenu = { href: string; total: number; clase: string; texto: 
 // despierta todo el día con un sondeo corto es lo que más cuesta.
 const INTERVALO_SONDEO_MS = 5 * 60_000;
 
-// Mismo color que el botón principal de cada bandeja (Aprobar verde,
-// Revisar celeste, Pagar naranja); rojo para las rechazadas por corregir.
+// Mismo color que el botón principal de cada bandeja y que el estado al
+// que lleva (Aprobar ámbar, Revisar azul, Pagar verde — ver
+// lib/estadosSolicitud.ts); rojo para las rechazadas por corregir.
 const ESTILO_POR_HREF: Record<string, { clase: string; texto: string }> = {
-  "/th/aprobaciones": { clase: "bg-green-600 text-white", texto: "por aprobar" },
+  "/th/aprobaciones": { clase: "bg-amber-500 text-amber-950", texto: "por aprobar" },
   "/coordinador/revision": { clase: "bg-sky-600 text-white", texto: "por revisar" },
-  "/nomina/pagos": { clase: "bg-orange-500 text-white", texto: "por pagar" },
+  "/nomina/pagos": { clase: "bg-green-600 text-white", texto: "por pagar" },
   "/th/mis-solicitudes": { clase: "bg-red-500 text-white", texto: "rechazadas por corregir" },
   "/mis-pasajes": { clase: "bg-red-500 text-white", texto: "rechazadas por corregir" },
 };

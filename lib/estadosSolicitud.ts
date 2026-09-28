@@ -15,9 +15,12 @@ export const DESCRIPCION_ESTADO: Record<string, string> = {
 // subconjuntos de estados) en cada pantalla de historial que muestra esta
 // columna. Un solo mapa con los 5 estados cubre a todas por igual.
 export const ESTILOS_ESTADO: Record<string, string> = {
-  PENDIENTE: "bg-amber-100 text-amber-800",
-  APROBADA: "bg-green-100 text-green-800",
+  // Siguen el camino al pago: naranja → ámbar → azul → verde (pagada es
+  // el único verde); rechazada, fuera del camino, en rojo. Mismos colores
+  // que el dashboard (GraficoBarrasMensual, TopColaboradores, KPIs).
+  PENDIENTE: "bg-orange-100 text-orange-800",
+  APROBADA: "bg-amber-100 text-amber-800",
   RECHAZADA: "bg-red-100 text-red-800",
   REVISADO: "bg-sky-100 text-sky-800",
-  PAGADA: "bg-orange-100 text-orange-800",
+  PAGADA: "bg-green-100 text-green-800",
 };

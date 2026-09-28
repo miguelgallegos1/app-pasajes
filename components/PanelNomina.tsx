@@ -447,10 +447,10 @@ export default function PanelNomina() {
             )}
         </div>
         {seleccionadas.size > 0 && (
-          <div className="flex-1 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex-1 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] text-orange-600 dark:text-orange-400 uppercase tracking-wide">Seleccionadas</p>
-              <p className="text-lg font-bold text-orange-700 dark:text-orange-300">
+              <p className="text-[11px] text-green-700 dark:text-green-400 uppercase tracking-wide">Seleccionadas</p>
+              <p className="text-lg font-bold text-green-800 dark:text-green-300">
                 {seleccionadas.size} · {formatearMoneda(totalSeleccionado)}
               </p>
             </div>
@@ -464,7 +464,7 @@ export default function PanelNomina() {
               </button>
               <button
                 onClick={() => setConfirmandoLote(true)}
-                className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-black px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
+                className="whitespace-nowrap text-xs sm:text-sm font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition shadow-sm hover:shadow-md"
               >
                 Pagar ({seleccionadas.size})
               </button>
@@ -498,7 +498,7 @@ export default function PanelNomina() {
             <div className="flex gap-1.5">
               <button
                 onClick={() => setIdAPagar(a.id)}
-                className="text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-full transition"
+                className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-full transition"
               >
                 Pagar
               </button>
@@ -583,7 +583,7 @@ export default function PanelNomina() {
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => setIdAPagar(a.id)}
-                          className="text-xs font-medium text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-full transition"
+                          className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-full transition"
                         >
                           Pagar
                         </button>
@@ -615,7 +615,7 @@ export default function PanelNomina() {
       )}
 
       <Modal abierto={!!idAPagar} onCerrar={() => setIdAPagar(null)} onConfirmar={confirmarPago} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
+            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar esta solicitud como pagada?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">{revisadaAPagar?.nombreColaborador} · {formatearMoneda(revisadaAPagar?.montoTotal ?? 0)}</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -630,7 +630,7 @@ export default function PanelNomina() {
               <button
                 onClick={confirmarPago}
                 disabled={pagando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
                 {pagando && <Spinner className="w-4 h-4" />}
                 {pagando ? "Pagando..." : "Sí, pagar"}
@@ -639,7 +639,7 @@ export default function PanelNomina() {
       </Modal>
 
       <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={confirmarPagoLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
+            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
             <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar {seleccionadas.size} solicitudes como pagadas?</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">Total a pagar: {formatearMoneda(totalSeleccionado)}</p>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -654,7 +654,7 @@ export default function PanelNomina() {
               <button
                 onClick={confirmarPagoLote}
                 disabled={pagandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
                 {pagandoLote && <Spinner className="w-4 h-4" />}
                 {pagandoLote ? "Guardando..." : "Confirmar todas"}

@@ -22,10 +22,10 @@ export type FilaTopColaborador = {
 };
 
 const SERIES = [
-  { clave: "pendientes", label: "Pendientes", color: "#eda100" },
-  { clave: "aprobadas", label: "Aprobadas", color: "#1baf7a" },
+  { clave: "pendientes", label: "Pendientes", color: "#eb6834" },
+  { clave: "aprobadas", label: "Aprobadas", color: "#eda100" },
   { clave: "revisadas", label: "Revisadas", color: "#2a78d6" },
-  { clave: "pagadas", label: "Pagadas", color: "#eb6834" },
+  { clave: "pagadas", label: "Pagadas", color: "#1baf7a" },
 ] as const;
 
 // Medalla para los 3 primeros; el resto lleva el puesto en gris.

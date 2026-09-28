@@ -14,6 +14,7 @@ import AvatarRuta from "./AvatarRuta";
 import { IconoChevron, IconoCheck } from "./Icons";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
 import { useToast } from "./Toast";
+import { ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 
 type SolicitudDia = {
   id: string;
@@ -25,13 +26,6 @@ type SolicitudDia = {
   estado: string;
 };
 
-const ESTILOS_ESTADO: Record<string, string> = {
-  PENDIENTE: "bg-amber-100 text-amber-800",
-  APROBADA: "bg-green-100 text-green-800",
-  RECHAZADA: "bg-red-100 text-red-800",
-  REVISADO: "bg-sky-100 text-sky-800",
-  PAGADA: "bg-orange-100 text-orange-800",
-};
 
 export default function PanelCopiarRutas({ esSupervisor }: { esSupervisor: boolean }) {
   const router = useRouter();
