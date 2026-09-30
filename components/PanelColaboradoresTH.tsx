@@ -36,14 +36,17 @@ type Colaborador = {
   sitioId: string;
   areaId: string;
   areaLabel: string;
+  sitioNombre: string;
+  areaNombre: string;
   tieneSolicitudes: boolean;
 };
 
-type CampoOrden = "numero" | "codigoNomina" | "nombreCompleto" | "supervisorNombre" | "estado";
+type CampoOrden = "numero" | "codigoNomina" | "nombreCompleto" | "ubicacion" | "supervisorNombre" | "estado";
 const VALOR_ORDEN: Record<CampoOrden, (c: Colaborador) => string | number> = {
   numero: (c) => c.numero,
   codigoNomina: (c) => c.codigoNomina ?? "",
   nombreCompleto: (c) => c.nombreCompleto,
+  ubicacion: (c) => `${c.sitioNombre} ${c.areaNombre}`,
   supervisorNombre: (c) => c.supervisorNombre ?? "",
   estado: (c) => c.estado,
 };
@@ -424,12 +427,13 @@ export default function PanelColaboradoresTH() {
 
       <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <div className="overflow-x-auto">
-          <table className="w-full text-xs min-w-[680px]">
+          <table className="w-full text-xs min-w-[820px]">
             <thead className="bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-left">
               <tr>
                 <EncabezadoOrdenable campo="numero" ordenActivo={orden} onOrdenar={ordenar} className="w-12">N°</EncabezadoOrdenable>
                 <EncabezadoOrdenable campo="codigoNomina" ordenActivo={orden} onOrdenar={ordenar}>Código</EncabezadoOrdenable>
                 <EncabezadoOrdenable campo="nombreCompleto" ordenActivo={orden} onOrdenar={ordenar}>Nombre</EncabezadoOrdenable>
+                <EncabezadoOrdenable campo="ubicacion" ordenActivo={orden} onOrdenar={ordenar}>Ubicación</EncabezadoOrdenable>
                 <EncabezadoOrdenable campo="supervisorNombre" ordenActivo={orden} onOrdenar={ordenar}>Supervisor</EncabezadoOrdenable>
                 <EncabezadoOrdenable campo="estado" ordenActivo={orden} onOrdenar={ordenar}>Estado</EncabezadoOrdenable>
                 <th className="px-4 py-3"></th>
@@ -454,6 +458,10 @@ export default function PanelColaboradoresTH() {
                         )}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className="block text-neutral-700 dark:text-neutral-200">{c.areaNombre}</span>
+                    <span className="block text-[10px] text-neutral-400 dark:text-neutral-500">{c.sitioNombre}</span>
                   </td>
                   <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{c.supervisorNombre ?? "—"}</td>
                   <td className="px-4 py-2">
@@ -481,7 +489,7 @@ export default function PanelColaboradoresTH() {
               ))}
               {colaboradoresFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10">
+                  <td colSpan={7} className="px-4 py-10">
                     <EstadoVacio
                       mensaje={
                         busqueda || empresaFiltro || sitioFiltro || areaFiltro

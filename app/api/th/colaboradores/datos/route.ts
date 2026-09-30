@@ -80,6 +80,10 @@ export async function GET() {
     sitioId: c.area.sitioId,
     areaId: c.areaId,
     areaLabel: `${c.area.sitio.empresa.nombre} · ${c.area.sitio.nombre} · ${c.area.nombre}`,
+    // Por separado para la columna "Ubicación" de la tabla (sitio y área,
+    // sin empresa).
+    sitioNombre: c.area.sitio.nombre,
+    areaNombre: c.area.nombre,
     tieneSolicitudes: c._count.solicitudes > 0,
   }));
 
