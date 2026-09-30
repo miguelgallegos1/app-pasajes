@@ -106,7 +106,7 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
 
   return (
     <div ref={contenedorRef} className="relative flex flex-col sm:flex-row items-center gap-4">
-      <svg viewBox="0 0 200 200" className="w-44 h-44 shrink-0" role="img" aria-label="Gasto por área">
+      <svg viewBox="0 0 200 200" className="w-40 h-40 shrink-0" role="img" aria-label="Gasto por área">
         <g
           style={{
             transform: montado ? "scale(1)" : "scale(0.85)",
@@ -180,17 +180,17 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
 
       {/* Leyenda — siempre visible con 2+ series. min-w-0: sin esto, como
           ítem flex no se achica por debajo del largo del nombre del área y
-          se desborda de la tarjeta en vez de recortarlo con "…". */}
+          se desborda de la tarjeta; el nombre largo pasa a otra línea. */}
       <div className="flex-1 w-full min-w-0 space-y-1.5">
         {cunas.map((c) => (
-          <div key={c.area} className="flex items-center justify-between gap-2 text-xs">
+          <div key={c.area} className="flex items-center justify-between gap-2 text-[11px]">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: colorDe(c.area, c.idx) }} />
-              <span title={c.area} className="truncate text-neutral-700 dark:text-neutral-300">{c.area}</span>
+              <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: colorDe(c.area, c.idx) }} />
+              <span className="leading-tight break-words text-neutral-700 dark:text-neutral-300">{c.area}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0 text-neutral-500 dark:text-neutral-400">
               <span className="font-semibold tabular-nums text-neutral-800 dark:text-neutral-200">{formatearMoneda(c.total)}</span>
-              <span className="text-[11px] tabular-nums w-8 text-right">{(c.fraccion * 100).toFixed(0)}%</span>
+              <span className="text-[10px] tabular-nums w-7 text-right">{(c.fraccion * 100).toFixed(0)}%</span>
             </div>
           </div>
         ))}
