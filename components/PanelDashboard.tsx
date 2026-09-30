@@ -282,7 +282,7 @@ export default function PanelDashboard() {
             <TarjetaGrafico
               titulo="Gasto por Área"
               subtitulo="Aprobado + Revisado + Pagado, período seleccionado"
-              degradado="from-fuchsia-500 to-pink-400"
+              degradado="from-orange-600 to-amber-500"
               icono={ICONO_DONA}
             >
               <GraficoPastelAreas key={version} datos={datos.gastoPorArea} />
@@ -292,7 +292,7 @@ export default function PanelDashboard() {
           <TarjetaGrafico
             titulo="Top 20 colaboradores"
             subtitulo="Los que más gastan en pasajes, últimos 6 meses"
-            degradado="from-red-500 to-rose-600"
+            degradado="from-orange-700 to-orange-500"
             icono={ICONO_DINERO}
           >
             <TopColaboradores key={version} datos={datos.topColaboradores} />

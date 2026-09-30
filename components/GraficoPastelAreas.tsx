@@ -2,15 +2,16 @@
 // Dona (pie con hueco) del gasto por Área. SVG propio, sin librería
 // externa. "Otras" (si aparece) siempre se pinta en gris neutro, nunca
 // con un color categórico nuevo — así nunca compite visualmente con una
-// área real. Colores validados con el script de accesibilidad del skill
-// de dataviz.
+// área real. Paleta cálida derivada del naranja de la app (naranja, ámbar,
+// terracota, durazno): se distinguen sobre todo por claridad, y el hueco
+// blanco entre porciones las separa.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { formatearMoneda } from "../lib/formato";
 
-const COLORES_AREA = ["#e87ba4", "#008300", "#4a3aa7", "#e34948"];
+const COLORES_AREA = ["#ea580c", "#fbbf24", "#9a3412", "#fdba74"];
 const COLOR_OTRAS = "#898781";
 
 const CX = 100;
