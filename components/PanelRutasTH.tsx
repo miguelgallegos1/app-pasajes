@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
-import { IconoAlerta, IconoChevron, IconoEliminar } from "./Icons";
+import { IconoAlerta, IconoChevron, IconoDescargar, IconoEliminar } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoEstadoActivo, CamposEmpresaSitioArea, chipEstadoActivo, chips, chipsEmpresaSitioArea, cumpleFiltroActivo, type FiltroActivo } from "./BarraFiltros";
@@ -402,6 +402,19 @@ export default function PanelRutasTH() {
     }
   };
 
+  // Mismos filtros que la tabla (Estado, Empresa/Sitio/Área y búsqueda): el
+  // Excel es exactamente lo que se está viendo, e indica qué rutas no están
+  // asignadas a nadie (para depurar rutas basura).
+  const urlExportar = () => {
+    const params = new URLSearchParams();
+    if (empresaFiltro) params.set("empresaId", empresaFiltro);
+    if (sitioFiltro) params.set("sitioId", sitioFiltro);
+    if (areaFiltro) params.set("areaId", areaFiltro);
+    if (estadoFiltro !== "ACTIVO") params.set("estado", estadoFiltro || "TODOS");
+    if (busqueda.trim()) params.set("q", busqueda.trim());
+    return `/api/th/rutas/exportar?${params.toString()}`;
+  };
+
   useAccionesHeader(
     <>
       {esSuperAdmin && seleccionadas.size > 0 && (
@@ -411,6 +424,14 @@ export default function PanelRutasTH() {
         >
           <IconoEliminar className="w-4 h-4 shrink-0" /> Eliminar ({seleccionadas.size})
         </button>
+      )}
+      {!sinAsignaciones && (
+        <a
+          href={urlExportar()}
+          className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-xs sm:text-sm font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 hover:border-orange-400 hover:text-orange-600 px-3 py-2 rounded-lg transition"
+        >
+          <IconoDescargar className="w-4 h-4" /> Exportar a Excel
+        </a>
       )}
       <button
         onClick={abrirCrear}
