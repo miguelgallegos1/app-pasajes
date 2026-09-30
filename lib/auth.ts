@@ -88,6 +88,17 @@ export const getSession = cache(async (): Promise<SesionUsuario | null> => {
   return (await sesionHabilitada(actual)) ? actual : null;
 });
 
+// "Primer nombre + primer apellido" para el menú de usuario del header,
+// que no necesita el nombre completo y ocupaba demasiado espacio. Para
+// colaboradores se arma bien (con los campos nombres/apellidos, ya
+// separados); para el resto de roles (Usuario.nombre es un solo texto
+// libre, sin esa separación) se usa acortarNombreLibre.
+function acortarNombre(nombres: string, apellidos: string): string {
+  const primerNombre = nombres.trim().split(/\s+/)[0] ?? "";
+  const primerApellido = partirApellidos(apellidos.trim().split(/\s+/).filter(Boolean), 1).apellidos[0] ?? "";
+  return [primerNombre, primerApellido].filter(Boolean).join(" ");
+}
+
 // Partículas que forman parte de un apellido compuesto ("De Santis",
 // "De la Torre", "Van Dijk", "San Martín"): sin esto, contar palabras
 // tomaba "De" como apellido y el apellido real como nombre.
@@ -141,7 +152,7 @@ export async function obtenerPrimerNombre(usuarioId: string, nombreCompleto: str
 // consultarlo por su cuenta.
 export async function obtenerPerfilSesion(
   session: SesionUsuario
-): Promise<{ nombre: string; fotoUrl: string | null; esSupervisor: boolean; empresa: string }> {
+): Promise<{ nombre: string; nombreCorto: string; fotoUrl: string | null; esSupervisor: boolean; empresa: string }> {
   if (session.rol === "COLABORADOR") {
     const colaborador = await obtenerColaboradorPorUsuarioId(session.id);
     const sitio = colaborador
@@ -149,6 +160,7 @@ export async function obtenerPerfilSesion(
       : null;
     return {
       nombre: colaborador?.nombreCompleto ?? "",
+      nombreCorto: colaborador ? acortarNombre(colaborador.nombres, colaborador.apellidos) : "",
       fotoUrl: colaborador?.fotoUrl ?? null,
       esSupervisor: colaborador?.esSupervisor ?? false,
       empresa: sitio?.empresa.nombre ?? "",
@@ -183,6 +195,7 @@ export async function obtenerPerfilSesion(
     (empresasAsignadas.length > 1 ? `${empresasAsignadas.length} empresas` : empresasAsignadas[0] ?? "");
   return {
     nombre: usuario?.nombre ?? "",
+    nombreCorto: acortarNombreLibre(usuario?.nombre ?? ""),
     fotoUrl: null,
     esSupervisor: false,
     empresa,

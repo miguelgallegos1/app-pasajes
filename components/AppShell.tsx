@@ -14,7 +14,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
-import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoAjustes, IconoNovedad } from "./Icons";
+import { IconoBuseta, IconoSalir, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoAjustes, IconoNovedad } from "./Icons";
 import MenuUsuario from "./MenuUsuario";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
@@ -22,7 +22,6 @@ import Footer from "./Footer";
 import CommandPalette, { type ItemPaleta } from "./CommandPalette";
 import Breadcrumbs from "./Breadcrumbs";
 import TarjetaActualizarDomicilio from "./TarjetaActualizarDomicilio";
-import BotonWhatsApp from "./BotonWhatsApp";
 import { AccionesHeaderContext } from "../lib/accionesHeader";
 import { CargaGlobalContext } from "../lib/cargaGlobal";
 import BarraCarga from "./BarraCarga";
@@ -181,19 +180,26 @@ function aplanarMenu(entradas: EntradaMenu[]): ItemPaleta[] {
   );
 }
 
-function Avatar({ fotoUrl, nombreCompleto, iniciales }: { fotoUrl?: string | null; nombreCompleto: string; iniciales: string }) {
-  return fotoUrl ? (
-    // <img>, no <Image>: fotoUrl es de origen libre (foto del colaborador,
-    // sin dominio fijo conocido) — next/image exige declarar ese dominio
-    // en remotePatterns, y no hay uno solo para cubrir todos los casos.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={fotoUrl} alt={nombreCompleto} className="w-8 h-8 rounded-full object-cover" />
-  ) : (
-    <div className="w-8 h-8 rounded-full bg-orange-500 text-black text-xs font-bold flex items-center justify-center shrink-0">
-      {iniciales}
-    </div>
-  );
-}
+// Color de cada ícono del menú según lo que representa (el mismo ícono
+// en distintos grupos, mismo color): cuadrito de fondo suave con el
+// ícono de color, y sólido con el ícono blanco en la pantalla actual.
+// Clases completas (no armadas con variables) para que Tailwind las vea.
+const COLOR_ICONO_MENU = new Map<IconoComponente, { suave: string; activo: string }>([
+  [IconoGrafico, { suave: "bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400", activo: "bg-violet-500 text-white" }],
+  [IconoCheck, { suave: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400", activo: "bg-emerald-500 text-white" }],
+  [IconoReloj, { suave: "bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400", activo: "bg-sky-500 text-white" }],
+  [IconoPersonas, { suave: "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400", activo: "bg-indigo-500 text-white" }],
+  [IconoRuta, { suave: "bg-orange-500/10 text-orange-600 dark:bg-orange-500/15 dark:text-orange-400", activo: "bg-orange-500 text-white" }],
+  [IconoBuseta, { suave: "bg-amber-500/15 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400", activo: "bg-amber-500 text-white" }],
+  [IconoDinero, { suave: "bg-green-500/10 text-green-600 dark:bg-green-500/15 dark:text-green-400", activo: "bg-green-600 text-white" }],
+  [IconoEdificio, { suave: "bg-slate-500/10 text-slate-600 dark:bg-slate-400/15 dark:text-slate-300", activo: "bg-slate-600 text-white" }],
+  [IconoUsuario, { suave: "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-400", activo: "bg-cyan-600 text-white" }],
+  [IconoControl, { suave: "bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400", activo: "bg-rose-500 text-white" }],
+  [IconoDescargar, { suave: "bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-400", activo: "bg-teal-600 text-white" }],
+  [IconoAjustes, { suave: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-400/15 dark:text-zinc-300", activo: "bg-zinc-600 text-white" }],
+  [IconoNovedad, { suave: "bg-pink-500/10 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400", activo: "bg-pink-500 text-white" }],
+]);
+const COLOR_ICONO_POR_DEFECTO = { suave: "bg-neutral-500/10 text-neutral-600 dark:text-neutral-300", activo: "bg-orange-500 text-white" };
 
 const esRechazadas = (c: ContadorMenu) => c.href === "/mis-pasajes" || c.href === "/th/mis-solicitudes";
 
@@ -225,6 +231,7 @@ function ItemLink({
 }) {
   const contador = contadores.find((c) => c.href === item.href);
   const Icono = item.icono;
+  const color = COLOR_ICONO_MENU.get(Icono) ?? COLOR_ICONO_POR_DEFECTO;
   return (
     <Link
       href={item.href}
@@ -239,13 +246,15 @@ function ItemLink({
       prefetch={false}
       title={colapsado ? item.label : undefined}
       aria-label={colapsado ? item.label : undefined}
-      className={`relative flex items-center gap-2.5 py-2.5 rounded-lg text-sm font-medium transition ${colapsado ? "justify-center px-0" : "px-3"} ${
+      className={`relative flex items-center gap-2.5 py-1.5 rounded-lg text-sm font-medium transition ${colapsado ? "justify-center px-0" : "px-2"} ${
         activo
           ? "bg-orange-500/10 text-orange-700 font-semibold dark:bg-orange-500/15 dark:text-orange-400"
           : "text-neutral-600 hover:bg-neutral-100 hover:shadow-sm dark:text-neutral-300 dark:hover:bg-neutral-800/70"
       }`}
     >
-      <Icono className="w-4 h-4 shrink-0" />
+      <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${activo ? `${color.activo} shadow-sm` : color.suave}`}>
+        <Icono className="w-4 h-4" />
+      </span>
       {!colapsado && item.label}
       {contador &&
         (colapsado ? (
@@ -350,6 +359,7 @@ function ItemsMenu({
 export default function AppShell({
   rol,
   nombreCompleto,
+  nombreCorto,
   fotoUrl,
   empresa = "",
   esSupervisor = false,
@@ -359,6 +369,9 @@ export default function AppShell({
 }: {
   rol: string;
   nombreCompleto: string;
+  // Primer nombre + primer apellido, para el menú de usuario — el
+  // completo ocupaba demasiado espacio (ver lib/auth.ts).
+  nombreCorto: string;
   fotoUrl?: string | null;
   // Empresa a la que pertenece, para el menú de usuario (ver
   // obtenerPerfilSesion en lib/auth.ts); vacía si no aplica.
@@ -502,7 +515,7 @@ export default function AppShell({
           <button
             onClick={() => setMenuAbierto(true)}
             aria-label={totalPendientes > 0 ? `Abrir menú (${totalPendientes} pendientes)` : "Abrir menú"}
-            className="relative md:hidden shrink-0 p-2 text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 shadow-md shadow-neutral-300/50 dark:text-neutral-300 dark:hover:text-white dark:bg-neutral-800/80 dark:hover:bg-neutral-800 dark:shadow-black/30 rounded-lg transition"
+            className="relative md:hidden shrink-0 p-2 text-white bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-md shadow-orange-500/30 dark:shadow-orange-900/40 rounded-xl transition"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
@@ -541,7 +554,7 @@ export default function AppShell({
               <path d={menuColapsado ? "M13 10l2 2-2 2" : "M15 10l-2 2 2 2"} />
             </svg>
           </button>
-          {/* <img>, no <Image>: mismo motivo que en el Avatar de más abajo
+          {/* <img>, no <Image>: logo local fijo
               — /logo.png tiene su propio Cache-Control en next.config.ts. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt={APP_NOMBRE} className="w-8 h-8 md:w-9 md:h-9 object-contain shrink-0" />
@@ -560,6 +573,7 @@ export default function AppShell({
           </button>
           <MenuUsuario
             nombreCompleto={nombreCompleto}
+            nombreCorto={nombreCorto}
             iniciales={iniciales}
             fotoUrl={fotoUrl}
             empresa={empresa}
@@ -584,29 +598,6 @@ export default function AppShell({
           <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
             <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} contadores={contadores} colapsado={menuColapsado} />
           </nav>
-          <div className={`p-3 border-t border-neutral-200 dark:border-neutral-800/70 flex items-center gap-2 ${menuColapsado ? "flex-col" : "justify-between"}`}>
-            {rol === "COLABORADOR" ? (
-              <BotonWhatsApp />
-            ) : (
-              <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
-            )}
-            <div className={`flex items-center gap-1 ${menuColapsado ? "flex-col" : ""}`}>
-            <button
-              onClick={abrirBiometria}
-              title="Acceso biométrico"
-              className="text-neutral-500 hover:text-orange-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-orange-400 dark:hover:bg-neutral-800 p-1.5 rounded-lg transition"
-            >
-              <IconoHuella className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setConfirmandoSalir(true)}
-              title="Cerrar sesión"
-              className="text-neutral-500 hover:text-red-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-red-400 dark:hover:bg-neutral-800 p-1.5 rounded-lg transition"
-            >
-              <IconoSalir className="w-4 h-4" />
-            </button>
-            </div>
-          </div>
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -643,21 +634,6 @@ export default function AppShell({
                 contadores={contadores}
               />
             </nav>
-            {rol === "COLABORADOR" && (
-              <BotonWhatsApp variante="fila" onClick={() => setMenuAbierto(false)} />
-            )}
-            <button
-              onClick={() => { setMenuAbierto(false); abrirBiometria(); }}
-              className="flex items-center gap-2 text-sm text-neutral-500 hover:text-orange-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-orange-400 dark:hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
-            >
-              <IconoHuella className="w-4 h-4" /> Acceso biométrico
-            </button>
-            <button
-              onClick={() => { setMenuAbierto(false); setConfirmandoSalir(true); }}
-              className="flex items-center gap-2 text-sm text-neutral-500 hover:text-red-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-red-400 dark:hover:bg-neutral-900 rounded-lg px-3 py-2.5 transition"
-            >
-              <IconoSalir className="w-4 h-4" /> Cerrar sesión
-            </button>
           </div>
         </div>
 
