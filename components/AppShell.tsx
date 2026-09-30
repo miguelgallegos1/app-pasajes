@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
 import { IconoBuseta, IconoSalir, IconoHuella, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoAjustes, IconoNovedad } from "./Icons";
-import BotonTema from "./BotonTema";
+import MenuUsuario from "./MenuUsuario";
 import Modal from "./Modal";
 import Spinner from "./Spinner";
 import Footer from "./Footer";
@@ -350,8 +350,8 @@ function ItemsMenu({
 export default function AppShell({
   rol,
   nombreCompleto,
-  nombreCorto,
   fotoUrl,
+  empresa = "",
   esSupervisor = false,
   novedades = [],
   usuarioId,
@@ -359,10 +359,10 @@ export default function AppShell({
 }: {
   rol: string;
   nombreCompleto: string;
-  // Primer nombre + primer apellido, para el saludo del header — el
-  // completo ocupaba demasiado espacio (ver lib/auth.ts).
-  nombreCorto: string;
   fotoUrl?: string | null;
+  // Empresa a la que pertenece, para el menú de usuario (ver
+  // obtenerPerfilSesion en lib/auth.ts); vacía si no aplica.
+  empresa?: string;
   esSupervisor?: boolean;
   // Novedades vigentes para este rol (calculadas en el layout, sin base de
   // datos — ver lib/novedades.ts); el aviso flotante muestra las no vistas.
@@ -497,7 +497,7 @@ export default function AppShell({
           "top" que usan el loading bar y los encabezados de tabla sticky
           (top-14 md:top-16) coincide siempre con la altura real del header,
           en vez de ser una aproximación que se puede desalinear. */}
-      <header className="flex items-center justify-between gap-3 pl-2 pr-4 md:pl-3 md:pr-6 h-14 md:h-16 bg-white border-b border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 sticky top-0 z-30 shrink-0">
+      <header className="flex items-center justify-between gap-3 pl-2 pr-4 md:pl-3 md:pr-6 h-14 md:h-16 bg-gradient-to-r from-orange-100 via-white to-amber-50 border-b border-orange-300 dark:from-orange-950 dark:via-neutral-900 dark:to-neutral-900 dark:border-orange-600/40 sticky top-0 z-30 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setMenuAbierto(true)}
@@ -545,10 +545,8 @@ export default function AppShell({
               — /logo.png tiene su propio Cache-Control en next.config.ts. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt={APP_NOMBRE} className="w-8 h-8 md:w-9 md:h-9 object-contain shrink-0" />
-          <div className="min-w-0">
-            <p className="font-bold text-base leading-tight truncate">{APP_NOMBRE}</p>
-            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-tight truncate">{ETIQUETAS_ROL[rol] ?? rol}</p>
-          </div>
+          {/* Sin el rol debajo: header más limpio, el rol está en el menú de usuario. */}
+          <p className="min-w-0 font-bold text-lg md:text-xl tracking-tight leading-tight truncate">{APP_NOMBRE}</p>
         </div>
         <div className="flex items-center gap-1 min-w-0 shrink-0">
           <button
@@ -560,9 +558,16 @@ export default function AppShell({
             <span className="text-xs font-medium">Buscar</span>
             <kbd className="text-[10px] font-semibold border border-neutral-300 dark:border-neutral-700 rounded px-1 py-0.5 ml-0.5">Ctrl K</kbd>
           </button>
-          <span title={nombreCompleto} className="hidden md:block text-xs text-neutral-600 dark:text-neutral-300 whitespace-nowrap mr-1">{nombreCorto}</span>
-          <BotonTema />
-          <Avatar fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
+          <MenuUsuario
+            nombreCompleto={nombreCompleto}
+            iniciales={iniciales}
+            fotoUrl={fotoUrl}
+            empresa={empresa}
+            etiquetaRol={ETIQUETAS_ROL[rol] ?? rol}
+            esColaborador={rol === "COLABORADOR"}
+            onBiometria={abrirBiometria}
+            onCerrarSesion={() => setConfirmandoSalir(true)}
+          />
         </div>
       </header>
       {paletaAbierta && <CommandPalette items={itemsPaleta} rol={rol} onCerrar={() => setPaletaAbierta(false)} />}

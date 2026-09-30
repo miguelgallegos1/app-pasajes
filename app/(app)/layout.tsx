@@ -21,8 +21,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       rol={session.rol}
       usuarioId={session.id}
       nombreCompleto={perfil.nombre}
-      nombreCorto={perfil.nombreCorto}
       fotoUrl={perfil.fotoUrl}
+      empresa={perfil.empresa}
       esSupervisor={perfil.esSupervisor}
       // Solo filtra un array del código por rol y fecha: sin consultas.
       novedades={novedadesVigentes(session.rol)}

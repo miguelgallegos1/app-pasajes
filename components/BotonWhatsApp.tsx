@@ -16,16 +16,15 @@
 import { useEffect, useState } from "react";
 import { IconoWhatsApp } from "./Icons";
 
-export default function BotonWhatsApp({
-  variante = "icono",
-  onClick,
-}: {
-  variante?: "icono" | "fila";
-  onClick?: () => void;
-}) {
+// Link de WhatsApp a TH del colaborador de la sesión, o null si nadie
+// configuró un número (o mientras carga). También lo usa el menú de
+// usuario del header (MenuUsuario.tsx). `activo` en false no consulta
+// nada: para roles que no son Colaborador.
+export function useLinkWhatsAppTH(activo = true): string | null {
   const [numero, setNumero] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!activo) return;
     let cancelado = false;
     fetch("/api/mis-pasajes/whatsapp-th")
       .then((res) => (res.ok ? res.json() : null))
@@ -36,12 +35,22 @@ export default function BotonWhatsApp({
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [activo]);
 
-  if (!numero) return null;
-
+  if (!activo || !numero) return null;
   const mensaje = encodeURIComponent("Hola, tengo una consulta sobre mis pasajes.");
-  const href = `https://wa.me/${numero}?text=${mensaje}`;
+  return `https://wa.me/${numero}?text=${mensaje}`;
+}
+
+export default function BotonWhatsApp({
+  variante = "icono",
+  onClick,
+}: {
+  variante?: "icono" | "fila";
+  onClick?: () => void;
+}) {
+  const href = useLinkWhatsAppTH();
+  if (!href) return null;
 
   if (variante === "fila") {
     return (
