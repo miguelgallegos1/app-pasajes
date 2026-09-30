@@ -262,7 +262,7 @@ export default function PanelDashboard() {
                     <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-4 ring-white/70 dark:ring-white/10" style={{ backgroundColor: t.color }} />
                     <p className={`text-xs font-bold uppercase tracking-wide ${t.texto}`}>{t.label}</p>
                   </div>
-                  <p className="relative text-3xl sm:text-4xl font-extrabold tracking-tight text-neutral-900 dark:text-white mt-2">{kpi.cantidad}</p>
+                  <p className="relative text-2xl font-bold tracking-tight tabular-nums text-neutral-900 dark:text-white mt-1.5">{kpi.cantidad}</p>
                   <p className={`relative text-sm font-semibold ${t.texto} mt-0.5`}>{formatearMoneda(kpi.total)}</p>
                 </div>
               );

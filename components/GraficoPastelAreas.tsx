@@ -177,17 +177,19 @@ export default function GraficoPastelAreas({ datos }: { datos: { area: string; t
         </text>
       </svg>
 
-      {/* Leyenda — siempre visible con 2+ series */}
-      <div className="flex-1 w-full space-y-1.5">
+      {/* Leyenda — siempre visible con 2+ series. min-w-0: sin esto, como
+          ítem flex no se achica por debajo del largo del nombre del área y
+          se desborda de la tarjeta en vez de recortarlo con "…". */}
+      <div className="flex-1 w-full min-w-0 space-y-1.5">
         {cunas.map((c) => (
-          <div key={c.area} className="flex items-center justify-between gap-2 text-sm">
+          <div key={c.area} className="flex items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: colorDe(c.area, c.idx) }} />
-              <span className="truncate text-neutral-700 dark:text-neutral-300">{c.area}</span>
+              <span title={c.area} className="truncate text-neutral-700 dark:text-neutral-300">{c.area}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0 text-neutral-500 dark:text-neutral-400">
-              <span className="font-semibold text-neutral-800 dark:text-neutral-200">{formatearMoneda(c.total)}</span>
-              <span className="text-xs">{(c.fraccion * 100).toFixed(0)}%</span>
+              <span className="font-semibold tabular-nums text-neutral-800 dark:text-neutral-200">{formatearMoneda(c.total)}</span>
+              <span className="text-[11px] tabular-nums w-8 text-right">{(c.fraccion * 100).toFixed(0)}%</span>
             </div>
           </div>
         ))}
