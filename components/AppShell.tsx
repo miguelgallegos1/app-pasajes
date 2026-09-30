@@ -35,8 +35,6 @@ import { useContadorMenu, type ContadorMenu } from "../lib/useContadorMenu";
 // primera vez que alguien abre el modal, no en cada página de la app.
 const ModalBiometria = dynamic(() => import("./ModalBiometria"), { ssr: false });
 
-const CLAVE_MENU_COLAPSADO = "menuColapsado";
-
 type IconoComponente = (props: { className?: string }) => React.ReactElement;
 // descripcion: subtítulo de la pantalla, para el breadcrumb (Breadcrumbs.tsx)
 // — antes vivía repetido dentro de cada Panel, debajo de su propio <h1>.
@@ -246,7 +244,9 @@ function ItemLink({
       prefetch={false}
       title={colapsado ? item.label : undefined}
       aria-label={colapsado ? item.label : undefined}
-      className={`relative flex items-center gap-2.5 py-1.5 rounded-lg text-sm font-medium transition ${colapsado ? "justify-center px-0" : "px-2"} ${
+      // px-2.5 fijo (no justify-center al colapsar): así el ícono queda en
+      // el mismo lugar en los dos modos y no salta mientras el ancho anima.
+      className={`relative flex items-center gap-2.5 py-1.5 px-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
         activo
           ? "bg-orange-500/10 text-orange-700 font-semibold dark:bg-orange-500/15 dark:text-orange-400"
           : "text-neutral-600 hover:bg-neutral-100 hover:shadow-sm dark:text-neutral-300 dark:hover:bg-neutral-800/70"
@@ -255,7 +255,7 @@ function ItemLink({
       <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${activo ? `${color.activo} shadow-sm` : color.suave}`}>
         <Icono className="w-4 h-4" />
       </span>
-      {!colapsado && item.label}
+      {!colapsado && <span className="truncate">{item.label}</span>}
       {contador &&
         (colapsado ? (
           // Colapsado no cabe el número: un punto del mismo color en la
@@ -329,19 +329,19 @@ function ItemsMenu({
                   <BadgeContador key={c.href} contador={c} />
                 ))}
               </span>
-              <IconoChevron className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${abierto ? "rotate-90" : ""}`} />
+              <IconoChevron className={`w-3.5 h-3.5 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${abierto ? "rotate-90" : ""}`} />
             </button>
             {/* Truco de CSS grid (0fr -> 1fr) para animar a "altura automática"
                 sin tener que medirla con JS: el contenido siempre está montado
                 (así el navegador puede calcular su altura real), y es el propio
                 grid el que la anima al abrir/cerrar. */}
             <div
-              className="grid transition-[grid-template-rows] duration-200 ease-out"
+              className="grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
               style={{ gridTemplateRows: abierto ? "1fr" : "0fr" }}
             >
               <div className="overflow-hidden">
                 <div
-                  className={`space-y-1 pb-1 transition-opacity duration-150 ${abierto ? "opacity-100 delay-75" : "opacity-0"}`}
+                  className={`space-y-1 pb-1 transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${abierto ? "opacity-100 translate-y-0 delay-75" : "opacity-0 -translate-y-1"}`}
                 >
                   {entrada.items.map((item) => (
                     <ItemLink key={item.href} item={item} activo={pathname === item.href} onClick={onClickItem} contadores={contadores} />
@@ -386,29 +386,18 @@ export default function AppShell({
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false);
   // Escritorio: menú lateral reducido a íconos, solo si el usuario lo
-  // pide. Se recuerda en este navegador (es una preferencia de vista, no
-  // un dato). Se lee después de montar para no desalinear el HTML del
-  // servidor con el del cliente.
+  // pide. Siempre arranca expandido: antes se recordaba en el navegador y,
+  // si alguien lo colapsaba una vez (sin querer), quedaba así para siempre.
   const [menuColapsado, setMenuColapsado] = useState(false);
   useEffect(() => {
     try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- preferencia guardada en el navegador
-      if (localStorage.getItem(CLAVE_MENU_COLAPSADO) === "1") setMenuColapsado(true);
+      // Limpia la preferencia vieja que guardaba el colapso.
+      localStorage.removeItem("menuColapsado");
     } catch {
-      // Sin acceso a localStorage (modo privado, etc.): queda abierto.
+      // Sin acceso a localStorage (modo privado, etc.): nada que limpiar.
     }
   }, []);
-  const alternarMenuColapsado = () => {
-    setMenuColapsado((actual) => {
-      const nuevo = !actual;
-      try {
-        localStorage.setItem(CLAVE_MENU_COLAPSADO, nuevo ? "1" : "0");
-      } catch {
-        // Igual cambia en pantalla; solo no se recuerda.
-      }
-      return nuevo;
-    });
-  };
+  const alternarMenuColapsado = () => setMenuColapsado((actual) => !actual);
   // Botón principal de la pantalla actual (ej. "+ Nueva ruta"), publicado
   // por el propio Panel vía useAccionesHeader — se muestra en la misma
   // fila que el breadcrumb, a la derecha (ver lib/accionesHeader.tsx).
@@ -505,7 +494,7 @@ export default function AppShell({
           se desmonta, ver components/BarraCarga.tsx y lib/cargaGlobal.tsx. */}
       <BarraCarga visible={cargasActivas.size > 0} />
       <VigilanteSesion />
-      {/* ---------- Header (todo el ancho, todas las pantallas): logo+nombre+rol a la izquierda, usuario a la derecha ---------- */}
+      {/* ---------- Header (todo el ancho, todas las pantallas): logo + nombre de la app a la izquierda; buscar y menú de usuario (MenuUsuario) a la derecha ---------- */}
       {/* Alto fijo (h-14/h-16), no por padding+contenido: así el offset
           "top" que usan el loading bar y los encabezados de tabla sticky
           (top-14 md:top-16) coincide siempre con la altura real del header,
@@ -546,7 +535,7 @@ export default function AppShell({
             aria-label={menuColapsado ? "Expandir menú" : "Colapsar menú"}
             aria-pressed={menuColapsado}
             title={menuColapsado ? "Expandir menú" : "Colapsar menú"}
-            className="hidden md:inline-flex shrink-0 p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-neutral-800 rounded-lg transition"
+            className="hidden md:inline-flex shrink-0 p-2 text-neutral-500 hover:text-orange-600 hover:bg-orange-100 active:bg-orange-200 dark:text-neutral-400 dark:hover:text-orange-400 dark:hover:bg-orange-500/15 dark:active:bg-orange-500/25 rounded-lg transition"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -594,7 +583,7 @@ export default function AppShell({
             <nav> scrollea por dentro. Se mantiene el scroll de la ventana
             (no un <main> con overflow propio) para no romper los
             encabezados de tabla sticky que usan top-14/md:top-16. */}
-        <aside className={`hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100dvh-4rem)] self-start ${menuColapsado ? "w-16" : "w-60"} transition-[width] duration-200 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0`}>
+        <aside className={`hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100dvh-4rem)] self-start ${menuColapsado ? "w-16" : "w-60"} transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0`}>
           <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
             <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} contadores={contadores} colapsado={menuColapsado} />
           </nav>
@@ -603,14 +592,14 @@ export default function AppShell({
         <div className="flex-1 flex flex-col min-w-0">
         {/* ---------- Cajón de menú (móvil), siempre montado para poder animar la entrada/salida ---------- */}
         <div
-          className={`fixed inset-0 z-50 md:hidden transition-opacity duration-300 ${
+          className={`fixed inset-0 z-50 md:hidden transition-opacity duration-300 ease-out motion-reduce:transition-none ${
             menuAbierto ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         >
           <div className="absolute inset-0 bg-black/50" onClick={() => setMenuAbierto(false)} />
           <div
             className={`absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 p-4 flex flex-col overflow-y-auto
-              transition-transform duration-300 ease-out
+              transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none
               ${menuAbierto ? "translate-x-0" : "-translate-x-full"}
             `}
           >

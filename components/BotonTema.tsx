@@ -1,6 +1,7 @@
 // components/BotonTema.tsx
-// Botón sol/luna para forzar el tema claro u oscuro. Reutilizable en el
-// header de la app y en la pantalla de login.
+// Botón sol/luna para forzar el tema claro u oscuro, en la pantalla de
+// login. Dentro de la app, el tema se cambia desde el menú de usuario
+// (MenuUsuario.tsx).
 
 "use client";
 

@@ -1,7 +1,7 @@
 // components/MenuUsuario.tsx
 // Avatar del header (con el punto verde de sesión activa) que abre la
 // tarjeta de perfil: foto/iniciales, nombre corto con el rol al lado,
-// empresa debajo, accesos rápidos en cuadros de color (Acceso biométrico,
+// empresa debajo, accesos rápidos en cuadros (Acceso biométrico,
 // Tema y — solo Colaborador, si TH configuró un número — WhatsApp a TH) y
 // Cerrar sesión abajo. Es el único lugar de la app con estas acciones (ya
 // no están en el menú lateral). Se cierra con clic afuera, con Escape o al
@@ -35,57 +35,26 @@ function AvatarPerfil({ fotoUrl, nombreCompleto, iniciales, grande }: { fotoUrl?
   );
 }
 
-// Cada acción con su propio color (fondo suave + ícono en un círculo de
-// color sólido), para que se reconozcan de un vistazo.
-function Cuadro({
-  icono,
-  texto,
-  tono,
-  onClick,
-  href,
-}: {
-  icono: ReactNode;
-  texto: string;
-  tono: { cuadro: string; circulo: string };
-  onClick?: () => void;
-  href?: string;
-}) {
-  const clases = `flex flex-col items-center justify-center gap-2 rounded-xl border px-1 py-3 text-[11px] font-semibold transition ${tono.cuadro}`;
-  const contenido = (
-    <>
-      <span className={`w-9 h-9 rounded-full flex items-center justify-center text-white shadow-sm ${tono.circulo}`}>{icono}</span>
-      {texto}
-    </>
-  );
+// Cuadros neutros (ícono gris); al pasar el mouse o presionar se ponen
+// naranja, el color de la app. WhatsApp mantiene su verde en el ícono
+// para que se reconozca al instante.
+function Cuadro({ icono, texto, onClick, href }: { icono: ReactNode; texto: string; onClick?: () => void; href?: string }) {
+  const clases = `group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 px-1 py-3 text-[11px] font-medium text-neutral-700 dark:text-neutral-200 transition hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 active:bg-orange-100 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10 dark:hover:text-orange-300 dark:active:bg-orange-500/20`;
   return href ? (
     <a href={href} target="_blank" rel="noopener noreferrer" role="menuitem" onClick={onClick} className={clases}>
-      {contenido}
+      {icono}
+      {texto}
     </a>
   ) : (
     <button type="button" role="menuitem" onClick={onClick} className={clases}>
-      {contenido}
+      {icono}
+      {texto}
     </button>
   );
 }
 
-const TONO_BIOMETRIA = {
-  cuadro: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 hover:border-violet-300 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20",
-  circulo: "bg-gradient-to-br from-violet-500 to-indigo-600",
-};
-// El cuadro de Tema muestra el modo al que vas a cambiar: sol ámbar para
-// pasar a claro, luna azul noche para pasar a oscuro.
-const TONO_A_OSCURO = {
-  cuadro: "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 hover:border-indigo-300",
-  circulo: "bg-gradient-to-br from-indigo-700 to-slate-900",
-};
-const TONO_A_CLARO = {
-  cuadro: "border-amber-500/25 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20",
-  circulo: "bg-gradient-to-br from-amber-400 to-orange-500",
-};
-const TONO_WHATSAPP = {
-  cuadro: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-300 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20",
-  circulo: "bg-[#25D366]",
-};
+// Ícono gris que se pone naranja junto con el cuadro (group-hover).
+const CLASE_ICONO = "w-5 h-5 text-neutral-500 dark:text-neutral-400 transition group-hover:text-orange-600 group-active:text-orange-600 dark:group-hover:text-orange-400";
 
 export default function MenuUsuario({
   nombreCompleto,
@@ -157,58 +126,63 @@ export default function MenuUsuario({
         <AvatarPerfil fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} />
       </button>
 
-      {abierto && (
-        <div
-          role="menu"
-          aria-label="Mi cuenta"
-          className="absolute right-0 z-40 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 animate-[dropdown-in_0.15s_ease-out] dark:bg-neutral-900 dark:ring-white/10"
-        >
-          <div className="flex items-center gap-3 px-4 pt-4 pb-3.5 bg-gradient-to-br from-orange-100/80 via-orange-50/40 to-transparent dark:from-orange-500/15 dark:via-orange-500/5">
-            <AvatarPerfil fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} grande />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                <p title={nombreCompleto} className="text-[13px] font-semibold text-neutral-900 dark:text-white leading-tight truncate">
-                  {nombreCorto || nombreCompleto}
-                </p>
-                <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-800 dark:text-orange-300 whitespace-nowrap">
-                  {etiquetaRol}
-                </span>
-              </div>
-              {empresa && <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400 leading-tight truncate">{empresa}</p>}
+      {/* Siempre montado (no {abierto && ...}) para que también se anime al
+          cerrar, no solo al abrir: se desvanece y se encoge hacia el avatar.
+          Cerrado queda invisible e inerte (ni clic ni foco con Tab). */}
+      <div
+        role="menu"
+        aria-label="Mi cuenta"
+        aria-hidden={!abierto}
+        inert={!abierto}
+        className={`absolute right-0 z-40 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10 transition-[opacity,transform,visibility] motion-reduce:transition-none ${
+          abierto
+            ? "visible opacity-100 translate-y-0 scale-100 duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            : "invisible opacity-0 -translate-y-1.5 scale-95 duration-200 ease-[cubic-bezier(0.4,0,1,1)]"
+        }`}
+      >
+        <div className="flex items-center gap-3 px-4 pt-4 pb-3.5 bg-gradient-to-br from-orange-100/80 via-orange-50/40 to-transparent dark:from-orange-500/15 dark:via-orange-500/5">
+          <AvatarPerfil fotoUrl={fotoUrl} nombreCompleto={nombreCompleto} iniciales={iniciales} grande />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <p title={nombreCompleto} className="text-[13px] font-semibold text-neutral-900 dark:text-white leading-tight truncate">
+                {nombreCorto || nombreCompleto}
+              </p>
+              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-800 dark:text-orange-300 whitespace-nowrap">
+                {etiquetaRol}
+              </span>
             </div>
-          </div>
-
-          <div className={`grid ${columnas} gap-2 px-3 pt-1 pb-3`}>
-            <Cuadro icono={<IconoHuella className="w-[18px] h-[18px]" />} texto="Biometría" tono={TONO_BIOMETRIA} onClick={elegir(onBiometria)} />
-            <Cuadro
-              icono={oscuro ? <IconoSol className="w-[18px] h-[18px]" /> : <IconoLuna className="w-[18px] h-[18px]" />}
-              texto={oscuro ? "Modo claro" : "Modo oscuro"}
-              tono={oscuro ? TONO_A_CLARO : TONO_A_OSCURO}
-              onClick={alternarTema}
-            />
-            {linkWhatsApp && (
-              <Cuadro
-                icono={<IconoWhatsApp className="w-[18px] h-[18px]" />}
-                texto="WhatsApp TH"
-                tono={TONO_WHATSAPP}
-                href={linkWhatsApp}
-                onClick={() => setAbierto(false)}
-              />
-            )}
-          </div>
-
-          <div className="px-3 pb-3">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={elegir(onCerrarSesion)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition"
-            >
-              <IconoSalir className="w-4 h-4" /> Cerrar sesión
-            </button>
+            {empresa && <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug">{empresa}</p>}
           </div>
         </div>
-      )}
+
+        <div className={`grid ${columnas} gap-2 px-3 pt-1 pb-3`}>
+          <Cuadro icono={<IconoHuella className={CLASE_ICONO} />} texto="Biometría" onClick={elegir(onBiometria)} />
+          <Cuadro
+            icono={oscuro ? <IconoSol className={CLASE_ICONO} /> : <IconoLuna className={CLASE_ICONO} />}
+            texto={oscuro ? "Modo claro" : "Modo oscuro"}
+            onClick={alternarTema}
+          />
+          {linkWhatsApp && (
+            <Cuadro
+              icono={<IconoWhatsApp className="w-5 h-5 text-[#25D366]" />}
+              texto="WhatsApp TH"
+              href={linkWhatsApp}
+              onClick={() => setAbierto(false)}
+            />
+          )}
+        </div>
+
+        <div className="px-3 pb-3">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={elegir(onCerrarSesion)}
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition"
+          >
+            <IconoSalir className="w-4 h-4" /> Cerrar sesión
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
