@@ -1,7 +1,8 @@
 // components/PanelParametros.tsx
 // Parámetros generales del sistema:
 // - Desde cuántos días atrás se puede elegir una fecha en el calendario de
-//   nueva solicitud (propia, la que crea TH en nombre de un colaborador, y
+//   nueva solicitud — se elige tocando el día en un calendario
+//   (CalendarioDiasAtras), no escribiendo el número (propia, la que crea TH en nombre de un colaborador, y
 //   "copiar rutas"). Antes estaba quemado en el código (-2 días).
 // - En qué pantallas aparece "Seleccionar todas (N)" para procesar en
 //   bloque todo lo filtrado (no solo la página visible).
@@ -12,6 +13,7 @@ import { useState, useEffect } from "react";
 import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
+import CalendarioDiasAtras from "./CalendarioDiasAtras";
 
 type PantallaSeleccion = "aprobar" | "revisar" | "pagar";
 
@@ -27,7 +29,7 @@ export default function PanelParametros() {
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorInicial, setErrorInicial] = useState("");
   useReportarCarga(cargandoInicial);
-  const [diasAtras, setDiasAtras] = useState("2");
+  const [diasAtras, setDiasAtras] = useState(2);
   const [seleccionTotal, setSeleccionTotal] = useState<Record<PantallaSeleccion, boolean>>({ aprobar: false, revisar: false, pagar: true });
   const [guardandoSeleccion, setGuardandoSeleccion] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -43,7 +45,7 @@ export default function PanelParametros() {
           return;
         }
         const data = await res.json();
-        setDiasAtras(String(data.diasAtrasSolicitud));
+        setDiasAtras(data.diasAtrasSolicitud);
         if (data.seleccionTotal) setSeleccionTotal(data.seleccionTotal);
       })
       .catch(() => {
@@ -58,9 +60,9 @@ export default function PanelParametros() {
   }, []);
 
   const guardar = async () => {
-    const valor = Number(diasAtras);
+    const valor = diasAtras;
     if (!Number.isInteger(valor) || valor < 0 || valor > 365) {
-      setError("Ingresa un número entero entre 0 y 365");
+      setError("Elige un día de hasta 365 días atrás");
       return;
     }
     setGuardando(true);
@@ -118,31 +120,16 @@ export default function PanelParametros() {
         // tarjeta chica que se acomoda al lado de la siguiente — a futuro,
         // sumar otro parámetro no empieza a ocupar media pantalla cada uno.
         <div className="flex flex-wrap gap-3">
-          <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 dark:ring-white/10 w-full sm:w-64 space-y-3">
+          <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl p-4 shadow-sm ring-1 ring-black/5 dark:ring-white/10 w-full sm:w-80 space-y-3">
             <div>
               <h2 className="font-semibold text-xs">Calendario de nueva solicitud</h2>
               <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Desde cuántos días atrás se puede elegir una fecha al registrar, crear en nombre de un colaborador, o
-                copiar rutas a otro día.
+                Toca el día más antiguo que se puede elegir al registrar, crear en nombre de un colaborador, o
+                copiar rutas a otro día. La app calcula cuántos días atrás es.
               </p>
             </div>
 
-            <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                Días atrás permitidos
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={365}
-                value={diasAtras}
-                onChange={(e) => setDiasAtras(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-2.5 py-2 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
-              />
-              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">
-                0 = solo hoy en adelante. Ej: 2 permite hoy, ayer y anteayer.
-              </p>
-            </div>
+            <CalendarioDiasAtras diasAtras={diasAtras} onCambiar={(n) => { setDiasAtras(n); setError(""); }} />
 
             {error && <p className="text-xs text-red-600">{error}</p>}
 
