@@ -499,7 +499,7 @@ export default function AppShell({
           "top" que usan el loading bar y los encabezados de tabla sticky
           (top-14 md:top-16) coincide siempre con la altura real del header,
           en vez de ser una aproximación que se puede desalinear. */}
-      <header className="flex items-center justify-between gap-3 pl-2 pr-4 md:pl-3 md:pr-6 h-14 md:h-16 bg-gradient-to-r from-orange-100 via-white to-amber-50 border-b border-orange-300 dark:from-orange-950 dark:via-neutral-900 dark:to-neutral-900 dark:border-orange-600/40 sticky top-0 z-30 shrink-0">
+      <header className="flex items-center justify-between gap-3 pl-2 pr-4 md:pl-3 md:pr-6 h-14 md:h-16 bg-white border-b border-neutral-200/80 shadow-[0_4px_18px_-6px_rgba(0,0,0,0.14)] dark:bg-neutral-900 dark:border-neutral-800/70 dark:shadow-[0_4px_18px_-6px_rgba(0,0,0,0.7)] sticky top-0 z-30 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => setMenuAbierto(true)}
