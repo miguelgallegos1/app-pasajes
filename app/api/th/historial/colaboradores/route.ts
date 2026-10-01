@@ -1,5 +1,5 @@
 // app/api/th/historial/colaboradores/route.ts
-// GET: total de rutas + valor por colaborador (Aprobadas + Pagadas) dentro
+// GET: total de rutas + valor por colaborador (Aprobadas + Revisadas + Pagadas) dentro
 // del alcance de TH. Paginado por colaborador (vista "Por colaborador"
 // del Historial de aprobaciones).
 
@@ -44,9 +44,9 @@ export async function GET(req: Request) {
   }
 
   const filtroEstado =
-    estado === "APROBADA" || estado === "PAGADA"
-      ? { estado: estado as "APROBADA" | "PAGADA" }
-      : { estado: { in: ["APROBADA", "PAGADA"] as Array<"APROBADA" | "PAGADA"> } };
+    estado === "APROBADA" || estado === "REVISADO" || estado === "PAGADA"
+      ? { estado: estado as "APROBADA" | "REVISADO" | "PAGADA" }
+      : { estado: { in: ["APROBADA", "REVISADO", "PAGADA"] as Array<"APROBADA" | "REVISADO" | "PAGADA"> } };
 
   const filtro: Record<string, unknown> = {
     // Colaborador elegido en el buscador (antes esta vista lo ignoraba).

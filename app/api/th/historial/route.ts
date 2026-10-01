@@ -1,5 +1,5 @@
 // app/api/th/historial/route.ts
-// GET: historial de Aprobadas/Pagadas dentro del alcance del TH,
+// GET: historial de Aprobadas/Revisadas/Pagadas dentro del alcance del TH,
 // filtrable por fecha, Empresa/Sitio/Área, estado, supervisor y
 // colaborador. Paginado y ordenado en el servidor.
 
@@ -46,9 +46,9 @@ export async function GET(req: Request) {
   }
 
   const filtroEstado =
-    estado === "APROBADA" || estado === "PAGADA"
-      ? { estado: estado as "APROBADA" | "PAGADA" }
-      : { estado: { in: ["APROBADA", "PAGADA"] as Array<"APROBADA" | "PAGADA"> } };
+    estado === "APROBADA" || estado === "REVISADO" || estado === "PAGADA"
+      ? { estado: estado as "APROBADA" | "REVISADO" | "PAGADA" }
+      : { estado: { in: ["APROBADA", "REVISADO", "PAGADA"] as Array<"APROBADA" | "REVISADO" | "PAGADA"> } };
 
   const filtro = {
     fecha: { gte: desdeFecha, lte: hastaFecha },

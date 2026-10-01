@@ -1,5 +1,5 @@
 // app/api/th/historial/exportar/route.ts
-// GET: exporta a Excel el historial (Aprobadas + Pagadas) dentro del
+// GET: exporta a Excel el historial (Aprobadas + Revisadas + Pagadas) dentro del
 // alcance del TH, con los mismos filtros que la pantalla.
 
 import { NextResponse } from "next/server";
@@ -48,9 +48,9 @@ export async function GET(req: Request) {
   }
 
   const filtroEstado =
-    estado === "APROBADA" || estado === "PAGADA"
-      ? { estado: estado as "APROBADA" | "PAGADA" }
-      : { estado: { in: ["APROBADA", "PAGADA"] as Array<"APROBADA" | "PAGADA"> } };
+    estado === "APROBADA" || estado === "REVISADO" || estado === "PAGADA"
+      ? { estado: estado as "APROBADA" | "REVISADO" | "PAGADA" }
+      : { estado: { in: ["APROBADA", "REVISADO", "PAGADA"] as Array<"APROBADA" | "REVISADO" | "PAGADA"> } };
 
   const filtro = {
     fecha: { gte: desdeFecha, lte: hastaFecha },

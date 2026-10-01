@@ -71,7 +71,7 @@ const MENU_TALENTO_HUMANO: GrupoMenu = {
   grupo: "Talento Humano",
   items: [
     { label: "Bandeja de aprobaciones", href: "/th/aprobaciones", descripcion: "Solicitudes de colaboradores esperando aprobación", icono: IconoCheck },
-    { label: "Historial de aprobaciones", href: "/th/historial", descripcion: "Solicitudes aprobadas y pagadas", icono: IconoReloj },
+    { label: "Historial de aprobaciones", href: "/th/historial", descripcion: "Solicitudes aprobadas, revisadas y pagadas", icono: IconoReloj },
     { label: "Colaboradores", href: "/th/colaboradores", descripcion: "Crea y administra los colaboradores de tu Empresa/Sitio/Área", icono: IconoPersonas },
     { label: "Asignar equipo", href: "/th/colaboradores/asignaciones", descripcion: "Elegir un supervisor y marca quiénes de su área le reportan", icono: IconoPersonas },
     { label: "Rutas", href: "/th/rutas", descripcion: "Cada Área puede tener varias rutas (una por cada trayecto)", icono: IconoRuta },

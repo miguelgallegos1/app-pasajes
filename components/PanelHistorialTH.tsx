@@ -46,14 +46,44 @@ type CampoOrden = "fecha" | "nombreColaborador" | "rutaLabel" | "montoTotal" | "
 const OPCIONES_ESTADO = [
   { value: "", label: "Todos" },
   { value: "APROBADA", label: "Aprobada" },
+  { value: "REVISADO", label: "Revisado" },
   { value: "PAGADA", label: "Pagada" },
 ];
+
+// El Estado de la última búsqueda queda guardado EN ESTE NAVEGADOR y sale
+// preseleccionado la próxima vez (solo el selector: igual hay que pulsar
+// Buscar). No afecta a otros usuarios ni a otros equipos.
+const CLAVE_ESTADO = "filtro:historial-th-estado";
+
+function leerEstadoGuardado(): string {
+  try {
+    const guardado = window.localStorage.getItem(CLAVE_ESTADO) ?? "";
+    return OPCIONES_ESTADO.some((o) => o.value === guardado) ? guardado : "";
+  } catch {
+    return "";
+  }
+}
+
+function guardarEstado(estado: string) {
+  try {
+    if (estado) window.localStorage.setItem(CLAVE_ESTADO, estado);
+    else window.localStorage.removeItem(CLAVE_ESTADO);
+  } catch {
+    // localStorage no disponible (privado/bloqueado): simplemente no se recuerda.
+  }
+}
 
 export default function PanelHistorialTH() {
   // Filtros (fechas, Empresa/Sitio/Área, Supervisor, Colaborador): nada se
   // busca hasta pulsar Buscar — ver lib/useBuscadorHistorial.ts.
   const buscador = useBuscadorHistorial({ conSupervisor: true });
   const [estado, setEstado] = useState("");
+  // Se lee tras montar (no en useState): el servidor no ve localStorage y
+  // el selector no coincidiría al hidratar.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- valor guardado en el navegador
+    setEstado(leerEstadoGuardado());
+  }, []);
 
   const { orden, ordenar: ordenarBase } = useOrdenServidor<CampoOrden>("historial-th");
   const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaRespuesta } = useHistorialLista<Fila>(
@@ -158,6 +188,7 @@ export default function PanelHistorialTH() {
   const rebuscar = () => setPedidoBusqueda((n) => n + 1);
 
   const buscarConFiltros = () => {
+    guardarEstado(estado);
     if (buscador.aplicar({ estado })) rebuscar();
   };
 
