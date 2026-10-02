@@ -8,14 +8,18 @@
 
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Modal from "./Modal";
+import ModalGestionar from "./ModalGestionar";
+import CampoPin from "./CampoPin";
+import ModalConfirmar from "./ModalConfirmar";
 import Spinner from "./Spinner";
-import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar, IconoLupa, IconoChevron } from "./Icons";
+import { IconoAlerta, IconoCheck, IconoLupa, IconoChevron } from "./Icons";
 import { useToast } from "./Toast";
 import { ETIQUETAS_ROL } from "../lib/roles";
+import { usePin } from "../lib/usePin";
 import MenuAcciones from "./MenuAcciones";
 import { useAccionesHeader } from "../lib/accionesHeader";
 import BuscadorFichaColaborador, { type Ficha } from "./BuscadorFichaColaborador";
@@ -23,7 +27,7 @@ import BarraFiltros, { CampoEstadoActivo, CampoFiltro, chipEstadoActivo, chipOpc
 import Paginacion from "./Paginacion";
 
 type Asignacion = { id: string; etiqueta: string; empresaId: string | null; sitioId: string | null; areaId: string | null };
-type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; fichaPropia: Ficha | null; asignaciones: Asignacion[] };
+type Usuario = { id: string; numero: number; nombre: string; rol: string; activo: boolean; codigoNomina: string; fichaPropia: Ficha | null; asignaciones: Asignacion[] };
 type Area = { id: string; nombre: string };
 type Sitio = { id: string; nombre: string; areas: Area[] };
 type Empresa = { id: string; nombre: string; sitios: Sitio[] };
@@ -47,9 +51,8 @@ export default function PanelUsuariosAdmin({
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nombre, setNombre] = useState("");
-  const [pin, setPin] = useState("");
-  const [generandoPin, setGenerandoPin] = useState(false);
-  const [pinCopiado, setPinCopiado] = useState(false);
+  const [codigoNomina, setCodigoNomina] = useState("");
+  const pinAcceso = usePin();
   const [reseteandoPin, setReseteandoPin] = useState(false);
   const [confirmandoResetPin, setConfirmandoResetPin] = useState(false);
   const [rol, setRol] = useState("ADMIN_TH");
@@ -61,57 +64,25 @@ export default function PanelUsuariosAdmin({
 
   const [idAreas, setIdAreas] = useState<string | null>(null);
 
-  // Evita que una respuesta fuera de orden (Resetear -> Cancelar ->
-  // Resetear de nuevo, muy seguido) termine mostrando un PIN de una
-  // petición vieja como si fuera el actual.
-  const peticionPinRef = useRef(0);
 
-  const generarPin = async () => {
-    const idPeticion = ++peticionPinRef.current;
-    setGenerandoPin(true);
-    setPinCopiado(false);
-    try {
-      const res = await fetch("/api/auth/generar-pin", { method: "POST" });
-      if (idPeticion !== peticionPinRef.current) return;
-      if (res.ok) {
-        const data = await res.json();
-        setPin(data.pin);
-      } else {
-        toast.error("No se pudo generar un PIN, intenta de nuevo");
-      }
-    } catch {
-      if (idPeticion === peticionPinRef.current) {
-        toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-      }
-    } finally {
-      if (idPeticion === peticionPinRef.current) setGenerandoPin(false);
-    }
-  };
 
-  const copiarPin = async () => {
-    try {
-      await navigator.clipboard.writeText(pin);
-      setPinCopiado(true);
-      setTimeout(() => setPinCopiado(false), 2000);
-    } catch {
-      toast.error("No se pudo copiar, cópialo manualmente");
-    }
-  };
 
   const abrirCrear = () => {
     setEditandoId(null);
     setNombre("");
-    setPin("");
+    setCodigoNomina("");
+    pinAcceso.limpiar();
     setRol("ADMIN_TH");
     setError("");
     setModalAbierto(true);
-    generarPin();
+    pinAcceso.generar();
   };
 
   const abrirEditar = (u: Usuario) => {
     setEditandoId(u.id);
     setNombre(u.nombre);
-    setPin("");
+    setCodigoNomina(u.codigoNomina);
+    pinAcceso.limpiar();
     setReseteandoPin(false);
     setConfirmandoResetPin(false);
     setRol(u.rol);
@@ -125,7 +96,11 @@ export default function PanelUsuariosAdmin({
       setError("El nombre es obligatorio");
       return;
     }
-    if ((!editandoId || reseteandoPin) && !/^\d{6}$/.test(pin)) {
+    if (!codigoNomina.trim() && rol !== "SUPER_ADMIN") {
+      setError("El código de nómina es obligatorio");
+      return;
+    }
+    if ((!editandoId || reseteandoPin) && !/^\d{6}$/.test(pinAcceso.pin)) {
       setError("El PIN debe tener exactamente 6 dígitos");
       return;
     }
@@ -136,8 +111,8 @@ export default function PanelUsuariosAdmin({
     const url = editandoId ? `/api/admin/usuarios/${editandoId}` : "/api/admin/usuarios";
     const method = editandoId ? "PATCH" : "POST";
     const body = editandoId
-      ? { nombre, rol, colaboradorPropioId: fichaPropia?.id ?? null, ...(reseteandoPin ? { pin } : {}) }
-      : { nombre, pin, rol };
+      ? { nombre, codigoNomina, rol, colaboradorPropioId: fichaPropia?.id ?? null, ...(reseteandoPin ? { pin: pinAcceso.pin } : {}) }
+      : { nombre, codigoNomina, pin: pinAcceso.pin, rol };
 
     try {
       const res = await fetch(url, {
@@ -361,38 +336,7 @@ export default function PanelUsuariosAdmin({
             </h2>
 
             {!editandoId && (
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                  PIN de acceso
-                </label>
-                <div className="mt-1.5 flex gap-1.5">
-                  <input
-                    value={generandoPin ? "" : pin}
-                    readOnly
-                    placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 dark:text-white outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={copiarPin}
-                    disabled={!pin || generandoPin}
-                    title="Copiar PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
-                  >
-                    {pinCopiado ? <IconoCheck className="w-4 h-4" /> : <IconoCopiar className="w-4 h-4" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={generarPin}
-                    disabled={generandoPin}
-                    title="Generar otro PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
-                  >
-                    <IconoRefrescar className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Cópialo y comunícaselo al usuario para su primer ingreso</p>
-              </div>
+              <CampoPin pin={pinAcceso} etiqueta="PIN de acceso" ayuda="Cópialo y comunícaselo al usuario para su primer ingreso" />
             )}
 
             {editandoId && !reseteandoPin && (
@@ -406,49 +350,13 @@ export default function PanelUsuariosAdmin({
             )}
 
             {editandoId && reseteandoPin && (
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                    Nuevo PIN de acceso
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => { setReseteandoPin(false); setPin(""); }}
-                    className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 transition"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-                <div className="mt-1.5 flex gap-1.5">
-                  <input
-                    value={generandoPin ? "" : pin}
-                    readOnly
-                    placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 dark:text-white outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={copiarPin}
-                    disabled={!pin || generandoPin}
-                    title="Copiar PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
-                  >
-                    {pinCopiado ? <IconoCheck className="w-4 h-4" /> : <IconoCopiar className="w-4 h-4" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={generarPin}
-                    disabled={generandoPin}
-                    title="Generar otro PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
-                  >
-                    <IconoRefrescar className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-amber-600 mt-1">
-                  El PIN anterior deja de funcionar en cuanto guardes. Cópialo y comunícaselo al usuario.
-                </p>
-              </div>
+              <CampoPin
+                pin={pinAcceso}
+                etiqueta="Nuevo PIN de acceso"
+                ayuda="El PIN anterior deja de funcionar en cuanto guardes. Cópialo y comunícaselo al usuario."
+                advertencia
+                onCancelar={() => { setReseteandoPin(false); pinAcceso.limpiar(); }}
+              />
             )}
 
             <div>
@@ -459,6 +367,21 @@ export default function PanelUsuariosAdmin({
                 className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: ANA RODRÍGUEZ"
               />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                Código de nómina{rol === "SUPER_ADMIN" ? " (opcional)" : ""}
+              </label>
+              <input
+                value={codigoNomina}
+                onChange={(e) => setCodigoNomina(e.target.value.toUpperCase())}
+                className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
+                placeholder="Ej: 001234"
+              />
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
+                Si tiene una ficha de colaborador con este código, el PIN de esa ficha no le da acceso: ingresa con este usuario.
+              </p>
             </div>
 
             <div>
@@ -525,109 +448,52 @@ export default function PanelUsuariosAdmin({
       </Modal>
 
       {/* Modal: advertencia antes de resetear el PIN */}
-      <Modal
+      <ModalConfirmar
         abierto={confirmandoResetPin}
         onCerrar={() => setConfirmandoResetPin(false)}
-        onConfirmar={() => { setConfirmandoResetPin(false); setReseteandoPin(true); generarPin(); }}
-        variante="centro"
-        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl"
+        onConfirmar={() => { setConfirmandoResetPin(false); setReseteandoPin(true); pinAcceso.generar(); }}
+        procesando={false}
+        tono="ambar"
+        icono={IconoAlerta}
+        titulo="¿Resetear el PIN de acceso?"
+        textoConfirmar="Sí, resetear"
+        textoProcesando="Sí, resetear"
       >
-        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
-        <p className="font-semibold text-neutral-900 dark:text-white">¿Resetear el PIN de acceso?</p>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           El PIN actual dejará de funcionar en cuanto guardes los cambios. Vas a tener que comunicarle el nuevo PIN al usuario.
         </p>
-        <div className="flex gap-2 justify-center pt-1">
-          <button
-            type="button"
-            onClick={() => setConfirmandoResetPin(false)}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => { setConfirmandoResetPin(false); setReseteandoPin(true); generarPin(); }}
-            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition"
-          >
-            Sí, resetear
-          </button>
-        </div>
-      </Modal>
+      </ModalConfirmar>
 
       {/* Modal: Gestionar (Desactivar/Reactivar + Eliminar) */}
-      <Modal abierto={!!gestionando && !confirmandoEliminar} onCerrar={() => setGestionando(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">{gestionando?.nombre}</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{ETIQUETAS_ROL[gestionando?.rol ?? ""] ?? gestionando?.rol}</p>
-            </div>
+      <ModalGestionar
+        abierto={!!gestionando && !confirmandoEliminar}
+        onCerrar={() => setGestionando(null)}
+        titulo={gestionando?.nombre}
+        subtitulo={ETIQUETAS_ROL[gestionando?.rol ?? ""] ?? gestionando?.rol}
+        error={errorGestion}
+        procesando={procesando}
+        activo={gestionando?.activo}
+        onCambiarActivo={cambiarEstado}
+        ayudaDesactivar="No podrá iniciar sesión, pero conserva su historial. Se puede reactivar luego."
+        ayudaReactivar="Vuelve a poder iniciar sesión normalmente."
+        onEliminar={() => setConfirmandoEliminar(true)}
+        ayudaEliminar="Solo funciona si nunca aprobó ni pagó nada. Si tiene historial, esta opción se bloqueará automáticamente."
+      />
 
-            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
-
-            <div className="space-y-2">
-              {gestionando?.activo ? (
-                <button
-                  onClick={() => cambiarEstado(false)}
-                  disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-                >
-                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Desactivar</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">No podrá iniciar sesión, pero conserva su historial. Se puede reactivar luego.</p>
-                </button>
-              ) : (
-                <button
-                  onClick={() => cambiarEstado(true)}
-                  disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-                >
-                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reactivar</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Vuelve a poder iniciar sesión normalmente.</p>
-                </button>
-              )}
-
-              <button
-                onClick={() => setConfirmandoEliminar(true)}
-                disabled={procesando}
-                className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Solo funciona si nunca aprobó ni pagó nada. Si tiene historial, esta opción se bloqueará automáticamente.
-                </p>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setGestionando(null)}
-              disabled={procesando}
-              className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
-            >
-              Cancelar
-            </button>
-      </Modal>
-
-      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} onConfirmar={eliminarUsuario} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar a {gestionando?.nombre}?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
-            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoEliminar(false)}
-                disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={eliminarUsuario}
-                disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
-              >
-                {procesando ? "Eliminando..." : "Sí, eliminar"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoEliminar}
+        onCerrar={() => setConfirmandoEliminar(false)}
+        onConfirmar={eliminarUsuario}
+        procesando={procesando}
+        error={errorGestion}
+        tono="rojo"
+        icono={IconoAlerta}
+        titulo={<>¿Eliminar a {gestionando?.nombre}?</>}
+        textoConfirmar="Sí, eliminar"
+        textoProcesando="Eliminando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
+      </ModalConfirmar>
 
       {/* Modal: Gestionar áreas asignadas (solo TH) */}
       <ModalAreasTH abierto={!!idAreas} usuario={usuarioAreas ?? null} empresas={empresas} onCerrar={() => setIdAreas(null)} />
@@ -940,28 +806,18 @@ function ModalAreasTH({
         </button>
       </div>
 
-      <Modal abierto={!!idAQuitar} onCerrar={() => setIdAQuitar(null)} onConfirmar={quitar} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-        <p className="font-semibold text-neutral-900 dark:text-white">¿Quitar este acceso?</p>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">
-          {asignaciones.find((a) => a.id === idAQuitar)?.etiqueta}
-        </p>
-        <div className="flex gap-2 justify-center pt-1">
-          <button
-            onClick={() => setIdAQuitar(null)}
-            disabled={quitando}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={quitar}
-            disabled={quitando}
-            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
-          >
-            {quitando ? "Quitando..." : "Quitar"}
-          </button>
-        </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={!!idAQuitar}
+        onCerrar={() => setIdAQuitar(null)}
+        onConfirmar={quitar}
+        procesando={quitando}
+        tono="rojo"
+        titulo="¿Quitar este acceso?"
+        textoConfirmar="Quitar"
+        textoProcesando="Quitando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{asignaciones.find((a) => a.id === idAQuitar)?.etiqueta}</p>
+      </ModalConfirmar>
 
       <Modal
         abierto={!!confirmacion}

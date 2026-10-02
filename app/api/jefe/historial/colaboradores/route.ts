@@ -4,13 +4,8 @@
 // Paginado por colaborador — la agregación se hace en la base de datos.
 
 import { NextResponse } from "next/server";
+import { filtroHistorial, respuestaPorColaborador } from "../../../../../lib/filtroHistorial";
 import { getSession } from "../../../../../lib/auth";
-import { fechaValida } from "../../../../../lib/fechas";
-import { agregarPorColaborador } from "../../../../../lib/agregacionColaborador";
-import { ordenarColaboradores, leerPagina } from "../../../../../lib/ordenHistorial";
-
-const POR_PAGINA = 15;
-const ESTADOS_VALIDOS = ["PENDIENTE", "APROBADA", "RECHAZADA", "REVISADO", "PAGADA"] as const;
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -19,43 +14,9 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const desde = searchParams.get("desde");
-  const hasta = searchParams.get("hasta");
-  const empresaId = searchParams.get("empresaId");
-  const sitioId = searchParams.get("sitioId");
-  const areaId = searchParams.get("areaId");
-  const estadoParam = searchParams.get("estado");
-  const colaboradorId = searchParams.get("colaboradorId");
-  const pagina = leerPagina(searchParams);
+  const resultado = await filtroHistorial(session, searchParams, { estados: ["PENDIENTE", "APROBADA", "RECHAZADA", "REVISADO", "PAGADA"], conAlcance: false });
+  if ("error" in resultado) return resultado.error;
+  const { filtro } = resultado;
 
-  if (!desde || !hasta) {
-    return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
-  }
-  const desdeFecha = fechaValida(desde);
-  const hastaFecha = fechaValida(hasta);
-  if (!desdeFecha || !hastaFecha) {
-    return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
-  }
-
-  const filtro: Record<string, unknown> = {
-    fecha: { gte: desdeFecha, lte: hastaFecha },
-  };
-  if (areaId) filtro.ruta = { areaId };
-  else if (sitioId) filtro.ruta = { sitioId };
-  else if (empresaId) filtro.ruta = { empresaId };
-  if (colaboradorId) filtro.colaboradorId = colaboradorId;
-  if (estadoParam && (ESTADOS_VALIDOS as readonly string[]).includes(estadoParam)) filtro.estado = estadoParam;
-
-  // Se ordena la lista COMPLETA (columna elegida en la tabla) antes de
-  // paginar, no solo la página visible.
-  const todos = ordenarColaboradores(await agregarPorColaborador(filtro), searchParams);
-  const total = todos.length;
-  const pagina_ = todos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
-
-  return NextResponse.json({
-    items: pagina_.map((c) => ({ id: c.colaboradorId, nombre: c.nombreColaborador, cantidad: c.cantidad, total: c.total })),
-    total,
-    totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),
-    pagina,
-  });
+  return respuestaPorColaborador(filtro, searchParams);
 }

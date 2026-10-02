@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "../../../../../lib/db";
-import { getSession } from "../../../../../lib/auth";
+import { getSession, normalizarCodigoNomina } from "../../../../../lib/auth";
 import { calcularPinLookup } from "../../../../../lib/pin";
 
 const ROLES_VALIDOS = ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"];
@@ -21,10 +21,21 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { nombre, activo, pin, rol, colaboradorPropioId } = await req.json().catch(() => ({}));
+  const { nombre, activo, pin, rol, colaboradorPropioId, codigoNomina } = await req.json().catch(() => ({}));
 
   const data: Record<string, unknown> = {};
   if (typeof nombre === "string" && nombre.trim()) data.nombre = nombre.trim().toUpperCase();
+  // Código de nómina (ver Usuario.codigoNomina): obligatorio salvo Super
+  // Admin. Solo se valida cuando viene (el formulario de edición siempre lo
+  // manda; otras acciones, como activar/desactivar, no lo tocan).
+  if (codigoNomina !== undefined) {
+    const codigo = typeof codigoNomina === "string" ? normalizarCodigoNomina(codigoNomina) : "";
+    const rolFinal = typeof rol === "string" ? rol : (await db.usuario.findUnique({ where: { id }, select: { rol: true } }))?.rol;
+    if (!codigo && rolFinal !== "SUPER_ADMIN") {
+      return NextResponse.json({ error: "El código de nómina es obligatorio" }, { status: 400 });
+    }
+    data.codigoNomina = codigo || null;
+  }
   // Ficha de colaborador propia (opcional): null la desvincula.
   if (colaboradorPropioId === null) data.colaboradorPropioId = null;
   else if (typeof colaboradorPropioId === "string") {
@@ -110,8 +121,15 @@ export async function PATCH(
     if (esConflicto) {
       const campos = (e as { meta?: { target?: unknown } }).meta?.target;
       const porFicha = JSON.stringify(campos ?? "").includes("colaboradorPropioId");
+      const porCodigo = JSON.stringify(campos ?? "").includes("codigoNomina");
       return NextResponse.json(
-        { error: porFicha ? "Esa ficha de colaborador ya está vinculada a otro usuario" : "Ese PIN ya está en uso, elige otro" },
+        {
+          error: porFicha
+            ? "Esa ficha de colaborador ya está vinculada a otro usuario"
+            : porCodigo
+            ? "Ese código de nómina ya lo tiene otro usuario"
+            : "Ese PIN ya está en uso, elige otro",
+        },
         { status: 400 }
       );
     }

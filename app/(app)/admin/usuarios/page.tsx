@@ -36,6 +36,7 @@ export default async function AdminUsuariosPage() {
     nombre: u.nombre,
     rol: u.rol,
     activo: u.activo,
+    codigoNomina: u.codigoNomina ?? "",
     fichaPropia: u.colaboradorPropio
       ? { id: u.colaboradorPropio.id, label: `${u.colaboradorPropio.nombreCompleto} (${u.colaboradorPropio.codigoNomina ?? "Sin código"})` }
       : null,

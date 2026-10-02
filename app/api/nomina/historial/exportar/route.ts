@@ -7,8 +7,8 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
+import { filtroHistorial } from "../../../../../lib/filtroHistorial";
 import { getSession } from "../../../../../lib/auth";
-import { fechaValida } from "../../../../../lib/fechas";
 import { construirLibroExcel, nombreArchivoExcel } from "../../../../../lib/exportarExcel";
 
 export async function GET(req: Request) {
@@ -18,30 +18,9 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const desde = searchParams.get("desde");
-  const hasta = searchParams.get("hasta");
-  const empresaId = searchParams.get("empresaId");
-  const sitioId = searchParams.get("sitioId");
-  const areaId = searchParams.get("areaId");
-  const colaboradorId = searchParams.get("colaboradorId");
-
-  if (!desde || !hasta) {
-    return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
-  }
-  const desdeFecha = fechaValida(desde);
-  const hastaFecha = fechaValida(hasta);
-  if (!desdeFecha || !hastaFecha) {
-    return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
-  }
-
-  const filtro: Record<string, unknown> = {
-    estado: "PAGADA",
-    fecha: { gte: desdeFecha, lte: hastaFecha },
-  };
-  if (colaboradorId) filtro.colaboradorId = colaboradorId;
-  else if (areaId) filtro.ruta = { areaId };
-  else if (sitioId) filtro.ruta = { sitioId };
-  else if (empresaId) filtro.ruta = { empresaId };
+  const resultado = await filtroHistorial(session, searchParams, { estados: ["PAGADA"], conAlcance: false });
+  if ("error" in resultado) return resultado.error;
+  const { filtro, desde, hasta } = resultado;
 
   const grupos = await db.solicitudPasaje.groupBy({
     by: ["colaboradorId"],

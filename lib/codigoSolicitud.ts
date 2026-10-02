@@ -21,23 +21,13 @@ function codigoAleatorio(): string {
   return codigo;
 }
 
-export async function generarCodigoSolicitud(): Promise<string> {
-  for (let intento = 0; intento < INTENTOS_MAXIMOS; intento++) {
-    const codigo = codigoAleatorio();
-    const existe = await db.solicitudPasaje.findUnique({ where: { codigo }, select: { id: true } });
-    if (!existe) return codigo;
-  }
-  throw new Error("No se pudo generar un código único para la solicitud");
-}
-
-// Igual que generarCodigoSolicitud(), pero para crear/copiar VARIAS
-// solicitudes de una vez: generar y verificar un código a la vez (una
-// consulta por fila) es lo que hacía que crear 50-100 solicitudes en
+// Códigos para crear/copiar VARIAS solicitudes de una vez: generar y
+// verificar un código a la vez (una consulta por fila) es lo que hacía que crear 50-100 solicitudes en
 // lote tardara decenas de segundos. Acá se generan todos los candidatos
 // en memoria y se verifican contra la base en una sola consulta — las
-// colisiones son rarísimas (34^4 combinaciones posibles) así que el caso
+// colisiones son rarísimas (32^4 combinaciones posibles) así que el caso
 // normal es una sola vuelta.
-export async function generarCodigosSolicitud(cantidad: number): Promise<string[]> {
+async function generarCodigosSolicitud(cantidad: number): Promise<string[]> {
   const codigos = new Set<string>();
   for (let ronda = 0; ronda < INTENTOS_MAXIMOS && codigos.size < cantidad; ronda++) {
     while (codigos.size < cantidad) codigos.add(codigoAleatorio());

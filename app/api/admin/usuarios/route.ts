@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
-import { getSession } from "../../../../lib/auth";
+import { getSession, normalizarCodigoNomina } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
 
 const ROLES_PERMITIDOS = ["ADMIN_TH", "COORDINADOR", "NOMINA", "JEFE", "SUPER_ADMIN"];
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const { nombre, email, pin, rol } = await req.json().catch(() => ({}));
+  const { nombre, email, pin, rol, codigoNomina } = await req.json().catch(() => ({}));
 
   if (!nombre?.trim() || !pin || !rol) {
     return NextResponse.json({ error: "Nombre, PIN y rol son obligatorios" }, { status: 400 });
@@ -26,6 +26,11 @@ export async function POST(req: Request) {
   }
   if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
     return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
+  }
+  // Código de nómina: obligatorio salvo Super Admin (ver Usuario.codigoNomina).
+  const codigo = typeof codigoNomina === "string" ? normalizarCodigoNomina(codigoNomina) : "";
+  if (!codigo && rol !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "El código de nómina es obligatorio" }, { status: 400 });
   }
 
   const pinLookup = calcularPinLookup(pin);
@@ -44,14 +49,18 @@ export async function POST(req: Request) {
 
   try {
     const nuevo = await db.usuario.create({
-      data: { nombre: nombre.trim().toUpperCase(), email: email?.trim() ? email.trim().toLowerCase() : null, pinHash, pinLookup, rol },
+      data: { nombre: nombre.trim().toUpperCase(), email: email?.trim() ? email.trim().toLowerCase() : null, pinHash, pinLookup, rol, codigoNomina: codigo || null },
       // select: nunca devolver pinHash/pinLookup al navegador.
       select: { id: true, nombre: true, rol: true, activo: true },
     });
     return NextResponse.json(nuevo, { status: 201 });
   } catch (e) {
     if (e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002") {
-      return NextResponse.json({ error: "Ese email ya está en uso por otro usuario" }, { status: 400 });
+      const porCodigo = JSON.stringify((e as { meta?: { target?: unknown } }).meta?.target ?? "").includes("codigoNomina");
+      return NextResponse.json(
+        { error: porCodigo ? "Ese código de nómina ya lo tiene otro usuario" : "Ese email ya está en uso por otro usuario" },
+        { status: 400 }
+      );
     }
     throw e;
   }

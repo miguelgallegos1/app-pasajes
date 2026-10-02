@@ -23,7 +23,7 @@ export type Novedad = {
   roles?: string[];
 };
 
-export const NOVEDADES: Novedad[] = [
+const NOVEDADES: Novedad[] = [
   {
     id: "2026-09-mis-solicitudes-th",
     fecha: "2026-09-26",

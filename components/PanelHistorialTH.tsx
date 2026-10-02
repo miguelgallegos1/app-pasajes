@@ -15,19 +15,16 @@ import TablaEsqueleto from "./TablaEsqueleto";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
-import Modal from "./Modal";
-import Spinner from "./Spinner";
+import { ModalMotivo } from "./ModalConfirmar";
 import { useToast } from "./Toast";
 import { formatearFecha } from "../lib/fechas";
-import { useOrdenServidor, agregarOrdenAParams } from "../lib/useOrdenTabla";
-import { useHistorialLista } from "../lib/useHistorialLista";
+import { useHistorialVistas } from "../lib/useHistorialVistas";
 import { useBuscadorHistorial } from "../lib/useBuscadorHistorial";
 import BuscadorHistorial, { Campo, AvisoSinBusqueda } from "./BuscadorHistorial";
 import { chipOpcion } from "./BarraFiltros";
 import { IconoImprimir, IconoDevolver, IconoDescargar } from "./Icons";
 import SelectorVista from "./SelectorVista";
-import TablaColaboradores, { type FilaColaborador, type CampoOrdenColaborador } from "./TablaColaboradores";
-import { useReportarCarga } from "../lib/cargaGlobal";
+import TablaColaboradores from "./TablaColaboradores";
 
 type Fila = {
   id: string;
@@ -85,66 +82,16 @@ export default function PanelHistorialTH() {
     setEstado(leerEstadoGuardado());
   }, []);
 
-  const { orden, ordenar: ordenarBase } = useOrdenServidor<CampoOrden>("historial-th");
-  const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaRespuesta } = useHistorialLista<Fila>(
-    (paginaNueva) => {
-      // Siempre con la foto de la última búsqueda (no lo que se está
-      // cambiando en pantalla).
-      if (!buscador.aplicados) return null;
-      const params = new URLSearchParams(buscador.aplicados);
-      params.set("pagina", String(paginaNueva));
-      agregarOrdenAParams(params, orden);
-      return `/api/th/historial?${params.toString()}`;
-    }
-  );
+  const h = useHistorialVistas<Fila, CampoOrden>({
+    aplicados: buscador.aplicados,
+    api: "/api/th/historial",
+    claveOrden: "historial-th",
+    claveOrdenColaborador: "th-historial-colaborador",
+  });
+  const { items, totalMonto, totalRegistros, pagina, totalPaginas, cargando, error, buscar, ultimaRespuesta, orden, ordenar } = h.lista;
+  const { vista, cambiarVista, urlExportar, puedeExportar, hayDatos, ocupado, rebuscar } = h;
+  const colab = h.colaborador;
   const toast = useToast();
-
-  // --- Vista "Por colaborador" (mismo patrón que revisiones y pagos): una
-  // fila por colaborador, paginada y ordenada en el servidor; el detalle se
-  // pide solo al expandir. La vista Lista sigue con useHistorialLista.
-  const [vista, setVista] = useState<"lista" | "colaborador">("lista");
-  const [filasColaborador, setFilasColaborador] = useState<FilaColaborador[] | null>(null);
-  const [paginaColab, setPaginaColab] = useState(1);
-  const [totalPaginasColab, setTotalPaginasColab] = useState(1);
-  const [cargandoColab, setCargandoColab] = useState(false);
-  const [errorColab, setErrorColab] = useState("");
-  useReportarCarga(cargandoColab);
-  const { orden: ordenColab, ordenar: ordenarColabBase } = useOrdenServidor<CampoOrdenColaborador>("th-historial-colaborador");
-
-  const buscarColab = async (paginaNueva = 1) => {
-    if (!buscador.aplicados) return;
-    setCargandoColab(true);
-    setErrorColab("");
-    const params = new URLSearchParams(buscador.aplicados);
-    params.set("pagina", String(paginaNueva));
-    agregarOrdenAParams(params, ordenColab);
-    try {
-      const res = await fetch(`/api/th/historial/colaboradores?${params.toString()}`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setErrorColab(data.error ?? "No se pudo cargar el historial");
-        return;
-      }
-      setFilasColaborador(data.items);
-      setTotalPaginasColab(data.totalPaginas);
-      setPaginaColab(paginaNueva);
-    } catch {
-      setErrorColab("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-    } finally {
-      setCargandoColab(false);
-    }
-  };
-
-  // Detalle de UN colaborador (con los mismos filtros aplicados), solo al expandirlo.
-  const cargarItemsColaborador = async (idColaborador: string): Promise<Fila[]> => {
-    const params = new URLSearchParams(buscador.aplicados ?? "");
-    params.set("colaboradorId", idColaborador);
-    params.set("pagina", "1");
-    const res = await fetch(`/api/th/historial?${params.toString()}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.items;
-  };
 
   const [idARevertir, setIdARevertir] = useState<string | null>(null);
   const [motivoRevertir, setMotivoRevertir] = useState("");
@@ -161,52 +108,13 @@ export default function PanelHistorialTH() {
     return `/th/historial/imprimir?${params.toString()}`;
   };
 
-  // Exporta con los filtros de la ÚLTIMA búsqueda (sin paginar), y solo se
-  // habilita si esa búsqueda trajo resultados — evita un Excel vacío.
-  const urlExportar = () => {
-    const params = new URLSearchParams(buscador.aplicados ?? "");
-    agregarOrdenAParams(params, orden);
-    return `/api/th/historial/exportar?${params.toString()}`;
-  };
-  const ocupado = cargando || cargandoColab;
-  const hayDatos = vista === "lista" ? totalRegistros > 0 : (filasColaborador?.length ?? 0) > 0;
-  const puedeExportar = !ocupado && !!buscador.aplicados && hayDatos;
   // El conteo de pagadas viene de la búsqueda en Lista; en Por colaborador
   // se habilita si hay resultados (la constancia usa los mismos filtros).
   const puedeImprimir = !ocupado && (vista === "lista" ? pagadasImprimibles > 0 : !!buscador.aplicados && hayDatos);
 
-  // buscar() arma la URL con el estado de ESTE render: tras aplicar los
-  // filtros (o cambiar el orden), la consulta sale en el render siguiente.
-  const [pedidoBusqueda, setPedidoBusqueda] = useState(0);
-  useEffect(() => {
-    if (!pedidoBusqueda) return;
-    if (vista === "lista") buscar(1);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- dispara una consulta de red
-    else buscarColab(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pedidoBusqueda]);
-  const rebuscar = () => setPedidoBusqueda((n) => n + 1);
-
   const buscarConFiltros = () => {
     guardarEstado(estado);
     if (buscador.aplicar({ estado })) rebuscar();
-  };
-
-  // El orden lo aplica el servidor a TODO el rango: al cambiarlo se vuelve
-  // a pedir la página 1 (ordenar en memoria solo reordenaba la página visible).
-  const ordenar = (campo: CampoOrden) => {
-    ordenarBase(campo);
-    if (buscador.aplicados) rebuscar();
-  };
-  const ordenarColab = (campo: CampoOrdenColaborador) => {
-    ordenarColabBase(campo);
-    if (buscador.aplicados) rebuscar();
-  };
-
-  const cambiarVista = (v: "lista" | "colaborador") => {
-    setVista(v);
-    setFilasColaborador(null);
-    if (buscador.aplicados) rebuscar();
   };
 
   const abrirRevertir = (id: string) => {
@@ -285,16 +193,16 @@ export default function PanelHistorialTH() {
 
       {vista === "colaborador" && (
         <>
-          {errorColab && <p className="text-sm text-red-600">{errorColab}</p>}
-          {cargandoColab ? (
+          {h.error && <p className="text-sm text-red-600">{h.error}</p>}
+          {colab.cargando ? (
             <TablaEsqueleto columnas={3} />
-          ) : filasColaborador && (
+          ) : colab.filas && (
             <div className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
               <TablaColaboradores
-                filas={filasColaborador}
-                cargarItems={cargarItemsColaborador}
+                filas={colab.filas}
+                cargarItems={colab.cargarItems}
                 clave={(s) => s.id}
-                ordenServidor={{ orden: ordenColab, ordenar: ordenarColab }}
+                ordenServidor={{ orden: colab.orden, ordenar: colab.ordenar }}
                 columnas={[
                   { encabezado: "Código", render: (s) => <span className="font-mono">{s.codigoNomina ?? "—"}</span> },
                   { encabezado: "Fecha", render: (s) => formatearFecha(s.fecha) },
@@ -312,7 +220,7 @@ export default function PanelHistorialTH() {
                 ]}
                 vacio="Sin resultados para esos filtros"
               />
-              <Paginacion paginaActual={paginaColab} totalPaginas={totalPaginasColab} onCambiarPagina={buscarColab} deshabilitado={cargandoColab} />
+              <Paginacion paginaActual={colab.pagina} totalPaginas={colab.totalPaginas} onCambiarPagina={colab.buscar} deshabilitado={colab.cargando} />
             </div>
           )}
         </>
@@ -349,7 +257,7 @@ export default function PanelHistorialTH() {
                         <span>{s.nombreColaborador}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-neutral-600">{s.rutaLabel}</td>
+                    <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{s.rutaLabel}</td>
                     <td className="px-4 py-3">{formatearMoneda(s.montoTotal)}</td>
                     <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{s.aprobadoPor ?? "—"}</td>
                     <td className="px-4 py-3">
@@ -394,40 +302,20 @@ export default function PanelHistorialTH() {
         </div>
       )}
 
-      <Modal abierto={!!idARevertir} onCerrar={() => setIdARevertir(null)} onConfirmar={confirmarRevertir} className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl">
-        <div>
-          <h2 className="font-semibold text-neutral-900 dark:text-white">Revertir a Pendiente</h2>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            La solicitud vuelve a la cola de aprobación. Úsalo solo para corregir un error de control.
-          </p>
-        </div>
-        <textarea
-          value={motivoRevertir}
-          onChange={(e) => setMotivoRevertir(e.target.value.toUpperCase())}
-          rows={3}
-          autoFocus
-          className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
-          placeholder="Ej: Se aprobó por error, ruta incorrecta..."
-        />
-        {errorRevertir && <p className="text-sm text-red-600">{errorRevertir}</p>}
-        <div className="flex gap-2 justify-end pt-1">
-          <button
-            onClick={() => setIdARevertir(null)}
-            disabled={revirtiendo}
-            className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={confirmarRevertir}
-            disabled={revirtiendo}
-            className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-          >
-            {revirtiendo && <Spinner className="w-4 h-4" />}
-            {revirtiendo ? "Guardando..." : "Revertir"}
-          </button>
-        </div>
-      </Modal>
+      <ModalMotivo
+        abierto={!!idARevertir}
+        onCerrar={() => setIdARevertir(null)}
+        onConfirmar={confirmarRevertir}
+        procesando={revirtiendo}
+        error={errorRevertir}
+        titulo="Revertir a Pendiente"
+        descripcion="La solicitud vuelve a la cola de aprobación. Úsalo solo para corregir un error de control."
+        motivo={motivoRevertir}
+        onCambiarMotivo={setMotivoRevertir}
+        placeholder="Ej: Se aprobó por error, ruta incorrecta..."
+        textoConfirmar="Revertir"
+        textoProcesando="Guardando..."
+      />
     </div>
   );
 }

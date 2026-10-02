@@ -135,6 +135,14 @@ model Usuario {
   // Super Admin en Admin -> Usuarios. Una ficha, un solo usuario.
   colaboradorPropio   Colaborador? @relation("FichaPropia", fields: [colaboradorPropioId], references: [id])
   colaboradorPropioId String?      @unique
+  // Código de nómina de la persona (lo pone Super Admin; obligatorio al
+  // crear y al editar, salvo Super Admin — en la base admite vacío por los
+  // usuarios creados antes de este campo y por Super Admin). Se guarda en
+  // mayúsculas y sin espacios. Si una ficha de colaborador tiene este
+  // mismo código, el PIN de esa ficha no da acceso a la app (ver
+  // verificarAccesoColaborador en lib/auth.ts): la persona ingresa con su
+  // usuario.
+  codigoNomina String?       @unique
   asignaciones AsignacionTH[]
   credencialesBiometricas CredencialBiometrica[]
   suscripcionesPush PushSubscription[]

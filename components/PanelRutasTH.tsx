@@ -6,12 +6,15 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
+import { useSeleccion } from "../lib/useSeleccion";
 import { IconoAlerta, IconoChevron, IconoDescargar, IconoEliminar } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoEstadoActivo, CamposEmpresaSitioArea, chipEstadoActivo, chips, chipsEmpresaSitioArea, cumpleFiltroActivo, type FiltroActivo } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import Modal from "./Modal";
+import ModalGestionar from "./ModalGestionar";
+import ModalConfirmar from "./ModalConfirmar";
 import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
@@ -202,31 +205,11 @@ export default function PanelRutasTH() {
   };
 
   // ---------- Eliminar en bloque (solo Super Admin) ----------
-  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const [confirmandoLote, setConfirmandoLote] = useState(false);
   const [eliminandoLote, setEliminandoLote] = useState(false);
   const [errorLote, setErrorLote] = useState("");
 
-  const todasEnPaginaSeleccionadas =
-    rutasPagina.length > 0 && rutasPagina.every((r) => seleccionadas.has(r.id));
-
-  const alternarSeleccion = (id: string) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (copia.has(id)) copia.delete(id);
-      else copia.add(id);
-      return copia;
-    });
-  };
-
-  const alternarSeleccionarTodo = () => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (todasEnPaginaSeleccionadas) rutasPagina.forEach((r) => copia.delete(r.id));
-      else rutasPagina.forEach((r) => copia.add(r.id));
-      return copia;
-    });
-  };
+  const { seleccionadas, setSeleccionadas, todasEnPaginaSeleccionadas, alternarSeleccion, alternarSeleccionarTodo } = useSeleccion(rutasPagina);
 
   const eliminarLote = async () => {
     setEliminandoLote(true);
@@ -718,105 +701,53 @@ export default function PanelRutasTH() {
             </div>
       </Modal>
 
-      <Modal abierto={!!idGestionar && !confirmandoEliminar} onCerrar={() => setIdGestionar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">{rutaGestionar?.nombre}</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Elige qué hacer con esta ruta</p>
-            </div>
+      <ModalGestionar
+        abierto={!!idGestionar && !confirmandoEliminar}
+        onCerrar={() => setIdGestionar(null)}
+        titulo={rutaGestionar?.nombre}
+        subtitulo="Elige qué hacer con esta ruta"
+        error={errorGestion}
+        procesando={procesando}
+        activo={rutaGestionar?.activo}
+        onCambiarActivo={cambiarEstado}
+        ayudaDesactivar="Deja de estar disponible para nuevas solicitudes. Se puede reactivar luego."
+        ayudaReactivar="Vuelve a estar disponible para nuevas solicitudes."
+        onEliminar={() => setConfirmandoEliminar(true)}
+        ayudaEliminar="La borra por completo. No se puede deshacer."
+        motivoNoEliminar={rutaGestionar?.tieneSolicitudes ? "No disponible: tiene solicitudes registradas en su historial." : null}
+      />
 
-            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
+      <ModalConfirmar
+        abierto={confirmandoEliminar}
+        onCerrar={() => setConfirmandoEliminar(false)}
+        onConfirmar={eliminarPermanente}
+        procesando={procesando}
+        error={errorGestion}
+        tono="rojo"
+        icono={IconoAlerta}
+        titulo={<>¿Eliminar &quot;{rutaGestionar?.nombre}&quot;?</>}
+        textoConfirmar="Sí, eliminar"
+        textoProcesando="Eliminando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
+      </ModalConfirmar>
 
-            <div className="space-y-2">
-              {rutaGestionar?.activo ? (
-                <button
-                  onClick={() => cambiarEstado(false)}
-                  disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-                >
-                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Desactivar</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Deja de estar disponible para nuevas solicitudes. Se puede reactivar luego.</p>
-                </button>
-              ) : (
-                <button
-                  onClick={() => cambiarEstado(true)}
-                  disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-                >
-                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reactivar</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Vuelve a estar disponible para nuevas solicitudes.</p>
-                </button>
-              )}
-
-              <button
-                onClick={() => setConfirmandoEliminar(true)}
-                disabled={procesando || rutaGestionar?.tieneSolicitudes}
-                className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {rutaGestionar?.tieneSolicitudes
-                    ? "No disponible: tiene solicitudes registradas en su historial."
-                    : "La borra por completo. No se puede deshacer."}
-                </p>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setIdGestionar(null)}
-              disabled={procesando}
-              className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
-            >
-              Cancelar
-            </button>
-      </Modal>
-
-      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} onConfirmar={eliminarPermanente} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar &quot;{rutaGestionar?.nombre}&quot;?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
-            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoEliminar(false)}
-                disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={eliminarPermanente}
-                disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
-              >
-                {procesando ? "Eliminando..." : "Sí, eliminar"}
-              </button>
-            </div>
-      </Modal>
-
-      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={eliminarLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar {seleccionadas.size} ruta(s)?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Esta acción no se puede deshacer. Las que tengan solicitudes registradas se omiten automáticamente.
-            </p>
-            {errorLote && <p className="text-sm text-red-600">{errorLote}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoLote(false)}
-                disabled={eliminandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={eliminarLote}
-                disabled={eliminandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
-              >
-                {eliminandoLote ? "Eliminando..." : "Sí, eliminar"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoLote}
+        onCerrar={() => setConfirmandoLote(false)}
+        onConfirmar={eliminarLote}
+        procesando={eliminandoLote}
+        error={errorLote}
+        tono="rojo"
+        icono={IconoAlerta}
+        titulo={<>¿Eliminar {seleccionadas.size} ruta(s)?</>}
+        textoConfirmar="Sí, eliminar"
+        textoProcesando="Eliminando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          Esta acción no se puede deshacer. Las que tengan solicitudes registradas se omiten automáticamente.
+        </p>
+      </ModalConfirmar>
     </div>
   );
 }

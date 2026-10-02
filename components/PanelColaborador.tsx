@@ -7,14 +7,15 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
+import { useSeleccion } from "../lib/useSeleccion";
 import { DESCRIPCION_ESTADO, ESTILOS_ESTADO } from "../lib/estadosSolicitud";
 import CalendarioSelector from "./CalendarioSelector";
 import { useFechaMinimaSolicitud } from "./useFechaMinimaSolicitud";
 import ComboboxBuscable from "./ComboboxBuscable";
 import Modal from "./Modal";
+import ModalConfirmar from "./ModalConfirmar";
 import Paginacion from "./Paginacion";
 import { formatearFecha, fechaHoyTexto } from "../lib/fechas";
-import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
 import EstadoVacio from "./EstadoVacio";
@@ -57,7 +58,6 @@ const VALOR_ORDEN: Record<CampoOrden, (s: Solicitud) => string | number> = {
   montoTotal: (s) => s.montoTotal,
   estado: (s) => s.estado,
 };
-
 
 const CLASE_CAMPO =
   "mt-1.5 w-full rounded-xl border border-neutral-200 px-3.5 py-3 text-sm text-neutral-900 dark:text-white " +
@@ -194,7 +194,6 @@ export default function PanelColaborador({ modo = "colaborador" }: { modo?: "col
   };
 
   // ---------- Eliminar en bloque ----------
-  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
   const [confirmandoLote, setConfirmandoLote] = useState(false);
   const [eliminandoLote, setEliminandoLote] = useState(false);
   const [errorLote, setErrorLote] = useState("");
@@ -204,7 +203,6 @@ export default function PanelColaborador({ modo = "colaborador" }: { modo?: "col
   const [confirmando, setConfirmando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
-
 
   // Usados solo en modo edición (una solicitud existente = un colaborador,
   // una ruta). El modo creación usa los estados de "lote" más abajo.
@@ -292,38 +290,7 @@ export default function PanelColaborador({ modo = "colaborador" }: { modo?: "col
     // eslint-disable-next-line react-hooks/exhaustive-deps -- puedeGestionar depende de modo/colaboradorId
     [solicitudesPagina, modo, colaboradorId]
   );
-  const todasEnPaginaSeleccionadas =
-    solicitudesEliminablesPagina.length > 0 && solicitudesEliminablesPagina.every((s) => seleccionadas.has(s.id));
-
-  const alternarSeleccion = (id: string) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (copia.has(id)) copia.delete(id);
-      else copia.add(id);
-      return copia;
-    });
-  };
-
-  const alternarSeleccionarTodo = () => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (todasEnPaginaSeleccionadas) solicitudesEliminablesPagina.forEach((s) => copia.delete(s.id));
-      else solicitudesEliminablesPagina.forEach((s) => copia.add(s.id));
-      return copia;
-    });
-  };
-
-  // Selección en grupo desde la vista "Por colaborador": si ya están
-  // todas seleccionadas las quita, si no las agrega todas — mismo criterio
-  // que "Seleccionar todos" en Lista.
-  const alternarGrupoSeleccion = (ids: string[]) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      const todas = ids.every((id) => copia.has(id));
-      ids.forEach((id) => (todas ? copia.delete(id) : copia.add(id)));
-      return copia;
-    });
-  };
+  const { seleccionadas, setSeleccionadas, todasEnPaginaSeleccionadas, alternarSeleccion, alternarSeleccionarTodo, alternarGrupoSeleccion } = useSeleccion(solicitudesEliminablesPagina);
 
   const eliminarLote = async () => {
     setEliminandoLote(true);
@@ -980,60 +947,36 @@ export default function PanelColaborador({ modo = "colaborador" }: { modo?: "col
             </div>
       </Modal>
 
-      <Modal abierto={confirmando} onCerrar={() => setConfirmando(false)} onConfirmar={confirmarRegistro} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><IconoPregunta className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">
-              {modoEdicionId
-                ? "¿Guardar los cambios?"
-                : `¿Registrar ${itemsLote.length} solicitud${itemsLote.length === 1 ? "" : "es"}?`}
-            </p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              {modoEdicionId
-                ? `${formatearFecha(fecha)} · ${formatearMoneda(valorSeleccionado ?? 0)}`
-                : `${formatearFecha(fecha)} · ${formatearMoneda(totalLote)}`}
-            </p>
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmando(false)}
-                disabled={enviando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-                <button
-                  onClick={confirmarRegistro}
-                  disabled={enviando}
-                  className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-                >
-                  {enviando && <Spinner className="w-4 h-4" />}
-                  {enviando ? "Guardando..." : "Sí, guardar"}
-                </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmando}
+        onCerrar={() => setConfirmando(false)}
+        onConfirmar={confirmarRegistro}
+        procesando={enviando}
+        tono="naranja"
+        icono={IconoPregunta}
+        titulo={modoEdicionId ? "¿Guardar los cambios?" : `¿Registrar ${itemsLote.length} solicitud${itemsLote.length === 1 ? "" : "es"}?`}
+        textoConfirmar="Sí, guardar"
+        textoProcesando="Guardando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          {formatearFecha(fecha)} · {formatearMoneda(modoEdicionId ? (valorSeleccionado ?? 0) : totalLote)}
+        </p>
+      </ModalConfirmar>
 
-      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={eliminarLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar {seleccionadas.size} solicitud{seleccionadas.size === 1 ? "" : "es"}?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
-            {errorLote && <p className="text-sm text-red-600">{errorLote}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoLote(false)}
-                disabled={eliminandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={eliminarLote}
-                disabled={eliminandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {eliminandoLote && <Spinner className="w-4 h-4" />}
-                {eliminandoLote ? "Eliminando..." : "Sí, eliminar"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoLote}
+        onCerrar={() => setConfirmandoLote(false)}
+        onConfirmar={eliminarLote}
+        procesando={eliminandoLote}
+        error={errorLote}
+        tono="rojo"
+        icono={IconoAlerta}
+        titulo={<>¿Eliminar {seleccionadas.size} solicitud{seleccionadas.size === 1 ? "" : "es"}?</>}
+        textoConfirmar="Sí, eliminar"
+        textoProcesando="Eliminando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
+      </ModalConfirmar>
     </div>
   );
 }

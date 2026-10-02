@@ -5,6 +5,7 @@
 // por solicitud) para que la pantalla siga rindiendo bien aunque el
 // historial crezca con el tiempo.
 
+import type { Prisma } from "../app/generated/prisma/client";
 import { db } from "./db";
 
 type ResumenColaborador = {
@@ -14,7 +15,7 @@ type ResumenColaborador = {
   total: number;
 };
 
-export async function agregarPorColaborador(where: Record<string, unknown>): Promise<ResumenColaborador[]> {
+export async function agregarPorColaborador(where: Prisma.SolicitudPasajeWhereInput): Promise<ResumenColaborador[]> {
   const grupos = await db.solicitudPasaje.groupBy({
     by: ["colaboradorId"],
     where,

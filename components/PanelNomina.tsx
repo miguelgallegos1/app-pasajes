@@ -8,6 +8,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
+import { useSeleccion } from "../lib/useSeleccion";
+import { agruparPorColaborador, opcionesUnicas } from "../lib/agrupar";
 import { IconoDinero, IconoDevolver } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
@@ -15,14 +17,13 @@ import SelectorVista from "./SelectorVista";
 import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
-import Modal from "./Modal";
+import ModalConfirmar, { ModalMotivo } from "./ModalConfirmar";
 import { formatearFecha } from "../lib/fechas";
-import Spinner from "./Spinner";
 import { enviarEnTandas, resumenEnvio } from "../lib/enviarEnTandas";
 import BotonSeleccionarTodas from "./BotonSeleccionarTodas";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
-import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
+import TablaColaboradores from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useNavegacionFilas } from "../lib/useNavegacionFilas";
@@ -59,14 +60,6 @@ const VALOR_ORDEN: Record<CampoOrden, (r: Revisada) => string | number> = {
 
 const POR_PAGINA = 15;
 
-function opcionesUnicas<T>(items: T[], idKey: keyof T, labelKey: keyof T) {
-  const vistos = new Map<string, string>();
-  for (const item of items) {
-    const id = String(item[idKey]);
-    if (!vistos.has(id)) vistos.set(id, String(item[labelKey]));
-  }
-  return Array.from(vistos.entries()).map(([id, label]) => ({ id, label }));
-}
 
 export default function PanelNomina() {
   const toast = useToast();
@@ -171,68 +164,15 @@ export default function PanelNomina() {
     [revisadasFiltradas]
   );
 
-  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
-  const todasEnPaginaSeleccionadas =
-    revisadasPagina.length > 0 && revisadasPagina.every((a) => seleccionadas.has(a.id));
+  const { seleccionadas, setSeleccionadas, todasEnPaginaSeleccionadas, alternarSeleccion, alternarSeleccionarTodo, alternarGrupoSeleccion } = useSeleccion(revisadasPagina);
 
   const totalSeleccionado = useMemo(
     () => revisadas.filter((a) => seleccionadas.has(a.id)).reduce((acc, a) => acc + a.montoTotal, 0),
     [revisadas, seleccionadas]
   );
 
-  const alternarSeleccion = (id: string) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (copia.has(id)) copia.delete(id);
-      else copia.add(id);
-      return copia;
-    });
-  };
-
-  const alternarSeleccionarTodo = () => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (todasEnPaginaSeleccionadas) revisadasPagina.forEach((a) => copia.delete(a.id));
-      else revisadasPagina.forEach((a) => copia.add(a.id));
-      return copia;
-    });
-  };
-
-  // Selección en grupo desde la vista "Por colaborador": si ya están
-  // todas seleccionadas las quita, si no las agrega todas — así se puede
-  // marcar un colaborador entero (o "Seleccionar todos") sin expandirlo.
-  const alternarGrupoSeleccion = (ids: string[]) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      const todas = ids.every((id) => copia.has(id));
-      ids.forEach((id) => (todas ? copia.delete(id) : copia.add(id)));
-      return copia;
-    });
-  };
-
-  // --- Agrupación por colaborador (client-side: la cola de acción es un
-  // conjunto acotado, ya está completa en memoria) ---
-  const gruposPorColaborador = useMemo(() => {
-    const mapa = new Map<string, { nombre: string; items: Revisada[] }>();
-    for (const r of revisadasFiltradas) {
-      if (!mapa.has(r.colaboradorId)) mapa.set(r.colaboradorId, { nombre: r.nombreColaborador, items: [] });
-      mapa.get(r.colaboradorId)!.items.push(r);
-    }
-    return mapa;
-  }, [revisadasFiltradas]);
-
-  const filasColaborador: FilaColaborador[] = useMemo(
-    () =>
-      Array.from(gruposPorColaborador.entries())
-        .map(([id, g]) => ({
-          id,
-          nombre: g.nombre,
-          cantidad: g.items.length,
-          total: g.items.reduce((acc, i) => acc + i.montoTotal, 0),
-        }))
-        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
-    [gruposPorColaborador]
-  );
+  // Vista "Por colaborador": un grupo por colaborador, derivado en el cliente.
+  const { filas: filasColaborador, itemsDe } = useMemo(() => agruparPorColaborador(revisadasFiltradas), [revisadasFiltradas]);
 
   const [idAPagar, setIdAPagar] = useState<string | null>(null);
   const [pagando, setPagando] = useState(false);
@@ -477,14 +417,14 @@ export default function PanelNomina() {
         <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
         <TablaColaboradores
           filas={filasColaborador}
-          cargarItems={(colaboradorId) => gruposPorColaborador.get(colaboradorId)?.items ?? []}
+          cargarItems={itemsDe}
           clave={(a) => a.id}
           porPagina={POR_PAGINA}
           claveOrden="nomina-pagos-colaborador"
           seleccion={{
             seleccionadas,
             alternar: alternarSeleccion,
-            idsDe: (colaboradorId) => (gruposPorColaborador.get(colaboradorId)?.items ?? []).map((a) => a.id),
+            idsDe: (colaboradorId) => itemsDe(colaboradorId).map((a) => a.id),
             alternarGrupo: alternarGrupoSeleccion,
           }}
           columnas={[
@@ -614,123 +554,65 @@ export default function PanelNomina() {
       </>
       )}
 
-      <Modal abierto={!!idAPagar} onCerrar={() => setIdAPagar(null)} onConfirmar={confirmarPago} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar esta solicitud como pagada?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">{revisadaAPagar?.nombreColaborador} · {formatearMoneda(revisadaAPagar?.montoTotal ?? 0)}</p>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setIdAPagar(null)}
-                disabled={pagando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarPago}
-                disabled={pagando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {pagando && <Spinner className="w-4 h-4" />}
-                {pagando ? "Pagando..." : "Sí, pagar"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={!!idAPagar}
+        onCerrar={() => setIdAPagar(null)}
+        onConfirmar={confirmarPago}
+        procesando={pagando}
+        error={error}
+        tono="verde"
+        icono={IconoDinero}
+        titulo="¿Marcar esta solicitud como pagada?"
+        textoConfirmar="Sí, pagar"
+        textoProcesando="Pagando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{revisadaAPagar?.nombreColaborador} · {formatearMoneda(revisadaAPagar?.montoTotal ?? 0)}</p>
+      </ModalConfirmar>
 
-      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={confirmarPagoLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto"><IconoDinero className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar {seleccionadas.size} solicitudes como pagadas?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Total a pagar: {formatearMoneda(totalSeleccionado)}</p>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoLote(false)}
-                disabled={pagandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarPagoLote}
-                disabled={pagandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {pagandoLote && <Spinner className="w-4 h-4" />}
-                {pagandoLote ? "Guardando..." : "Confirmar todas"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoLote}
+        onCerrar={() => setConfirmandoLote(false)}
+        onConfirmar={confirmarPagoLote}
+        procesando={pagandoLote}
+        error={error}
+        tono="verde"
+        icono={IconoDinero}
+        titulo={<>¿Marcar {seleccionadas.size} solicitudes como pagadas?</>}
+        textoConfirmar="Confirmar todas"
+        textoProcesando="Guardando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Total a pagar: {formatearMoneda(totalSeleccionado)}</p>
+      </ModalConfirmar>
 
-      <Modal abierto={confirmandoLoteNovedad} onCerrar={() => setConfirmandoLoteNovedad(false)} onConfirmar={confirmarNovedadLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">Novedad en {seleccionadas.size} solicitudes</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Todas vuelven a Aprobada para que Coordinación las revise de nuevo.
-              </p>
-            </div>
-            <textarea
-              value={motivoLoteNovedad}
-              onChange={(e) => setMotivoLoteNovedad(e.target.value.toUpperCase())}
-              rows={3}
-              autoFocus
-              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
-              placeholder="Ej: El monto no coincide con la ruta registrada..."
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                onClick={() => setConfirmandoLoteNovedad(false)}
-                disabled={enviandoLoteNovedad}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarNovedadLote}
-                disabled={enviandoLoteNovedad}
-                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {enviandoLoteNovedad && <Spinner className="w-4 h-4" />}
-                {enviandoLoteNovedad ? "Enviando..." : "Devolver todas"}
-              </button>
-            </div>
-      </Modal>
+      <ModalMotivo
+        abierto={confirmandoLoteNovedad}
+        onCerrar={() => setConfirmandoLoteNovedad(false)}
+        onConfirmar={confirmarNovedadLote}
+        procesando={enviandoLoteNovedad}
+        error={error}
+        titulo={<>Novedad en {seleccionadas.size} solicitudes</>}
+        descripcion="Todas vuelven a Aprobada para que Coordinación las revise de nuevo."
+        motivo={motivoLoteNovedad}
+        onCambiarMotivo={setMotivoLoteNovedad}
+        placeholder="Ej: El monto no coincide con la ruta registrada..."
+        textoConfirmar="Devolver todas"
+        textoProcesando="Enviando..."
+      />
 
-      <Modal abierto={!!idANovedad} onCerrar={() => setIdANovedad(null)} onConfirmar={confirmarNovedad} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">Reportar novedad</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                La solicitud vuelve a Aprobada para que Coordinación la revise de nuevo
-              </p>
-            </div>
-            <textarea
-              value={motivoNovedad}
-              onChange={(e) => setMotivoNovedad(e.target.value.toUpperCase())}
-              rows={3}
-              autoFocus
-              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
-              placeholder="Ej: El monto no coincide con la ruta registrada..."
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                onClick={() => setIdANovedad(null)}
-                disabled={enviandoNovedad}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarNovedad}
-                disabled={enviandoNovedad}
-                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {enviandoNovedad && <Spinner className="w-4 h-4" />}
-                {enviandoNovedad ? "Enviando..." : "Devolver"}
-              </button>
-            </div>
-      </Modal>
+      <ModalMotivo
+        abierto={!!idANovedad}
+        onCerrar={() => setIdANovedad(null)}
+        onConfirmar={confirmarNovedad}
+        procesando={enviandoNovedad}
+        error={error}
+        titulo="Reportar novedad"
+        descripcion="La solicitud vuelve a Aprobada para que Coordinación la revise de nuevo"
+        motivo={motivoNovedad}
+        onCambiarMotivo={setMotivoNovedad}
+        placeholder="Ej: El monto no coincide con la ruta registrada..."
+        textoConfirmar="Devolver"
+        textoProcesando="Enviando..."
+      />
     </div>
   );
 }

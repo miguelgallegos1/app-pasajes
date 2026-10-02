@@ -16,8 +16,7 @@ import { APP_NOMBRE } from "../lib/config";
 import { ETIQUETAS_ROL } from "../lib/roles";
 import { IconoBuseta, IconoSalir, IconoCheck, IconoReloj, IconoPersonas, IconoRuta, IconoDinero, IconoEdificio, IconoUsuario, IconoGrafico, IconoControl, IconoChevron, IconoDescargar, IconoLupa, IconoAjustes, IconoNovedad } from "./Icons";
 import MenuUsuario from "./MenuUsuario";
-import Modal from "./Modal";
-import Spinner from "./Spinner";
+import ModalConfirmar from "./ModalConfirmar";
 import Footer from "./Footer";
 import CommandPalette, { type ItemPaleta } from "./CommandPalette";
 import Breadcrumbs from "./Breadcrumbs";
@@ -646,32 +645,19 @@ export default function AppShell({
       {rol === "COLABORADOR" && <TarjetaActualizarDomicilio />}
       <AvisoNovedades novedades={novedades} usuarioId={usuarioId} />
 
-      <Modal abierto={confirmandoSalir} onCerrar={() => setConfirmandoSalir(false)} onConfirmar={cerrarSesion} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-        <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
-          <IconoSalir className="w-5 h-5" />
-        </div>
-        <div>
-          <p className="font-semibold text-neutral-900 dark:text-white">¿Cerrar sesión?</p>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">Vas a tener que ingresar tu PIN de nuevo para volver a entrar.</p>
-        </div>
-        <div className="flex gap-2 justify-center pt-1">
-          <button
-            onClick={() => setConfirmandoSalir(false)}
-            disabled={cerrandoSesion}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={cerrarSesion}
-            disabled={cerrandoSesion}
-            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl transition disabled:opacity-70 flex items-center justify-center gap-1.5"
-          >
-            {cerrandoSesion && <Spinner className="w-3.5 h-3.5" />}
-            {cerrandoSesion ? "Saliendo..." : "Sí, salir"}
-          </button>
-        </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoSalir}
+        onCerrar={() => setConfirmandoSalir(false)}
+        onConfirmar={cerrarSesion}
+        procesando={cerrandoSesion}
+        tono="rojo"
+        icono={IconoSalir}
+        titulo="¿Cerrar sesión?"
+        textoConfirmar="Sí, salir"
+        textoProcesando="Saliendo..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Vas a tener que ingresar tu PIN de nuevo para volver a entrar.</p>
+      </ModalConfirmar>
     </div>
     </CargaGlobalContext.Provider>
     </AccionesHeaderContext.Provider>

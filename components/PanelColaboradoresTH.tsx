@@ -5,15 +5,19 @@
 
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoEstadoActivo, CamposEmpresaSitioArea, chipEstadoActivo, chips, chipsEmpresaSitioArea, cumpleFiltroActivo, type FiltroActivo } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import Modal from "./Modal";
+import ModalGestionar from "./ModalGestionar";
+import CampoPin from "./CampoPin";
+import ModalConfirmar from "./ModalConfirmar";
 import Spinner from "./Spinner";
 import { useReportarCarga } from "../lib/cargaGlobal";
-import { IconoCopiar, IconoAlerta, IconoCheck, IconoRefrescar } from "./Icons";
+import { usePin } from "../lib/usePin";
+import { IconoAlerta } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import MenuAcciones from "./MenuAcciones";
@@ -180,12 +184,7 @@ export default function PanelColaboradoresTH() {
   const [nombres, setNombres] = useState("");
   const [codigoNomina, setCodigoNomina] = useState("");
   const [areaId, setAreaId] = useState("");
-  const [pin, setPin] = useState("");
-  // Firma del servidor para ESTE pin: al guardar solo se aceptan PINs
-  // generados por el sistema (ver lib/pinFirmado.ts).
-  const [pinFirma, setPinFirma] = useState("");
-  const [generandoPin, setGenerandoPin] = useState(false);
-  const [pinCopiado, setPinCopiado] = useState(false);
+  const pinAcceso = usePin();
   const [reseteandoPin, setReseteandoPin] = useState(false);
   const [confirmandoResetPin, setConfirmandoResetPin] = useState(false);
   const [esSupervisor, setEsSupervisor] = useState(false);
@@ -198,43 +197,8 @@ export default function PanelColaboradoresTH() {
   const [errorGestion, setErrorGestion] = useState("");
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
 
-  // Evita que una respuesta fuera de orden (Resetear -> Cancelar ->
-  // Resetear de nuevo, muy seguido) termine mostrando un PIN de una
-  // petición vieja como si fuera el actual.
-  const peticionPinRef = useRef(0);
 
-  const generarPin = async () => {
-    const idPeticion = ++peticionPinRef.current;
-    setGenerandoPin(true);
-    setPinCopiado(false);
-    try {
-      const res = await fetch("/api/auth/generar-pin", { method: "POST" });
-      if (idPeticion !== peticionPinRef.current) return;
-      if (res.ok) {
-        const data = await res.json();
-        setPin(data.pin);
-        setPinFirma(data.firma);
-      } else {
-        toast.error("No se pudo generar un PIN, intenta de nuevo");
-      }
-    } catch {
-      if (idPeticion === peticionPinRef.current) {
-        toast.error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
-      }
-    } finally {
-      if (idPeticion === peticionPinRef.current) setGenerandoPin(false);
-    }
-  };
 
-  const copiarPin = async () => {
-    try {
-      await navigator.clipboard.writeText(pin);
-      setPinCopiado(true);
-      setTimeout(() => setPinCopiado(false), 2000);
-    } catch {
-      toast.error("No se pudo copiar, cópialo manualmente");
-    }
-  };
 
   const abrirCrear = () => {
     setEditandoId(null);
@@ -242,12 +206,11 @@ export default function PanelColaboradoresTH() {
     setNombres("");
     setCodigoNomina("");
     setAreaId("");
-    setPin("");
+    pinAcceso.limpiar();
     setEsSupervisor(false);
     setEstadoEdicion("ACTIVO");
     setError("");
     setModalAbierto(true);
-    generarPin();
   };
 
   // Llegar desde "+ Nuevo colaborador" en Asignar equipo trae ?nuevo=1 —
@@ -267,7 +230,7 @@ export default function PanelColaboradoresTH() {
     setNombres(c.nombres);
     setCodigoNomina(c.codigoNomina ?? "");
     setAreaId(c.areaId);
-    setPin("");
+    pinAcceso.limpiar();
     setReseteandoPin(false);
     setConfirmandoResetPin(false);
     setEsSupervisor(c.esSupervisor);
@@ -281,7 +244,11 @@ export default function PanelColaboradoresTH() {
       setError("Apellidos, Nombres, Código de nómina y Área son obligatorios");
       return;
     }
-    if ((!editandoId || reseteandoPin) && !/^\d{6}$/.test(pin)) {
+    if (!editandoId && !pinAcceso.esUsuario && !/^\d{6}$/.test(pinAcceso.pin)) {
+      setError("Genera el PIN de acceso antes de guardar");
+      return;
+    }
+    if (reseteandoPin && !/^\d{6}$/.test(pinAcceso.pin)) {
       setError("El PIN debe tener exactamente 6 dígitos");
       return;
     }
@@ -299,9 +266,16 @@ export default function PanelColaboradoresTH() {
           areaId,
           esSupervisor,
           estado: estadoEdicion,
-          ...(reseteandoPin ? { pin, pinFirma } : {}),
+          ...(reseteandoPin ? { pin: pinAcceso.pin, pinFirma: pinAcceso.firma } : {}),
         }
-      : { apellidos, nombres, codigoNomina, areaId, pin, pinFirma, esSupervisor };
+      : {
+          apellidos,
+          nombres,
+          codigoNomina,
+          areaId,
+          esSupervisor,
+          ...(pinAcceso.esUsuario ? {} : { pin: pinAcceso.pin, pinFirma: pinAcceso.firma }),
+        };
 
     try {
       const res = await fetch(url, {
@@ -316,9 +290,12 @@ export default function PanelColaboradoresTH() {
         toast.error(data.error ?? "No se pudo guardar el colaborador");
         return;
       }
+      const creado = editandoId ? null : await res.json().catch(() => ({}));
       setModalAbierto(false);
       toast.exito(
-        editandoId ? (reseteandoPin ? "Colaborador actualizado y PIN reseteado" : "Colaborador actualizado") : "Colaborador creado"
+        editandoId
+          ? reseteandoPin ? "Colaborador actualizado y PIN reseteado" : "Colaborador actualizado"
+          : creado?.sinPin ? "Colaborador creado sin PIN: ya es usuario de la app" : "Colaborador creado"
       );
       await cargarDatos();
     } catch {
@@ -523,41 +500,6 @@ export default function PanelColaboradoresTH() {
               {editandoId ? "Editar colaborador" : "Nuevo colaborador"}
             </h2>
 
-            {!editandoId && (
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                  PIN de acceso
-                </label>
-                <div className="mt-1.5 flex gap-1.5">
-                  <input
-                    value={generandoPin ? "" : pin}
-                    readOnly
-                    placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 dark:text-white outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={copiarPin}
-                    disabled={!pin || generandoPin}
-                    title="Copiar PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
-                  >
-                    {pinCopiado ? <IconoCheck className="w-4 h-4" /> : <IconoCopiar className="w-4 h-4" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={generarPin}
-                    disabled={generandoPin}
-                    title="Generar otro PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
-                  >
-                    <IconoRefrescar className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Cópialo y comunícaselo al colaborador para su primer ingreso</p>
-              </div>
-            )}
-
             {editandoId && !reseteandoPin && (
               <button
                 type="button"
@@ -569,49 +511,13 @@ export default function PanelColaboradoresTH() {
             )}
 
             {editandoId && reseteandoPin && (
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                    Nuevo PIN de acceso
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => { setReseteandoPin(false); setPin(""); }}
-                    className="text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 transition"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-                <div className="mt-1.5 flex gap-1.5">
-                  <input
-                    value={generandoPin ? "" : pin}
-                    readOnly
-                    placeholder={generandoPin ? "Generando..." : "······"}
-                    className="flex-1 min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3.5 py-3 text-lg font-bold tracking-[0.4em] text-neutral-900 dark:text-white outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={copiarPin}
-                    disabled={!pin || generandoPin}
-                    title="Copiar PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
-                  >
-                    {pinCopiado ? <IconoCheck className="w-4 h-4" /> : <IconoCopiar className="w-4 h-4" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={generarPin}
-                    disabled={generandoPin}
-                    title="Generar otro PIN"
-                    className="shrink-0 w-11 flex items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40"
-                  >
-                    <IconoRefrescar className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-amber-600 mt-1">
-                  El PIN anterior deja de funcionar en cuanto guardes. Cópialo y comunícaselo al colaborador.
-                </p>
-              </div>
+              <CampoPin
+                pin={pinAcceso}
+                etiqueta="Nuevo PIN de acceso"
+                ayuda="El PIN anterior deja de funcionar en cuanto guardes. Cópialo y comunícaselo al colaborador."
+                advertencia
+                onCancelar={() => { setReseteandoPin(false); pinAcceso.limpiar(); }}
+              />
             )}
 
             <div>
@@ -620,7 +526,12 @@ export default function PanelColaboradoresTH() {
               </label>
               <input
                 value={codigoNomina}
-                onChange={(e) => setCodigoNomina(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setCodigoNomina(e.target.value.toUpperCase());
+                  // El PIN (o el aviso de "ya es usuario") se generó para el
+                  // código anterior: hay que volver a generarlo.
+                  if (!editandoId && (pinAcceso.pin || pinAcceso.esUsuario || pinAcceso.generando)) pinAcceso.limpiar();
+                }}
                 className="mt-1.5 w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none"
                 placeholder="Ej: EMP-00123"
                 autoFocus
@@ -664,7 +575,7 @@ export default function PanelColaboradoresTH() {
               </div>
               {editandoId && (
                 <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1.5">
-                  Para asignarle rutas exclusivas, usá la pantalla{" "}
+                  Para asignarle rutas exclusivas, usa la pantalla{" "}
                   <a href="/th/rutas/asignaciones" className="text-orange-600 hover:text-orange-700 font-medium">
                     Asignar rutas
                   </a>
@@ -729,13 +640,37 @@ export default function PanelColaboradoresTH() {
               </div>
               {editandoId && (
                 <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1.5">
-                  Para asignarle su equipo, usá la pantalla{" "}
+                  Para asignarle su equipo, usa la pantalla{" "}
                   <a href="/th/colaboradores/asignaciones" className="text-orange-600 hover:text-orange-700 font-medium">
                     Asignar equipo
                   </a>
                 </p>
               )}
             </div>
+
+            {/* PIN de acceso: se genera al final, con los datos ya llenos
+                (abrir el formulario no consume ninguna generación). */}
+            {!editandoId && (pinAcceso.pin ? (
+              <CampoPin pin={pinAcceso} etiqueta="PIN de acceso" ayuda="Cópialo y comunícaselo al colaborador para su primer ingreso" />
+            ) : pinAcceso.esUsuario ? (
+              <p className="text-xs rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 px-3.5 py-3">
+                Este código de nómina es de un usuario de la app: su ficha se crea sin PIN y no podrá ingresar con ella. Para que pida sus pasajes, relaciona la ficha en Admin → Usuarios.
+              </p>
+            ) : (
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">PIN de acceso</label>
+                <button
+                  type="button"
+                  onClick={() => pinAcceso.generar(codigoNomina)}
+                  disabled={pinAcceso.generando || !apellidos.trim() || !nombres.trim() || !codigoNomina.trim() || !areaId}
+                  className="mt-1.5 w-full px-4 py-3 text-sm font-semibold rounded-xl border border-orange-300 dark:border-orange-500/40 text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 disabled:opacity-40 disabled:hover:bg-transparent transition flex items-center justify-center gap-2"
+                >
+                  {pinAcceso.generando && <Spinner className="w-4 h-4" />}
+                  {pinAcceso.generando ? "Generando..." : "Generar PIN"}
+                </button>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">Completa código, apellidos, nombres y área para generarlo.</p>
+              </div>
+            ))}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -758,110 +693,52 @@ export default function PanelColaboradoresTH() {
       </Modal>
 
       {/* Modal: advertencia antes de resetear el PIN */}
-      <Modal
+      <ModalConfirmar
         abierto={confirmandoResetPin}
         onCerrar={() => setConfirmandoResetPin(false)}
-        onConfirmar={() => { setConfirmandoResetPin(false); setReseteandoPin(true); generarPin(); }}
-        variante="centro"
-        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl"
+        onConfirmar={() => { setConfirmandoResetPin(false); setReseteandoPin(true); pinAcceso.generar(); }}
+        procesando={false}
+        tono="ambar"
+        icono={IconoAlerta}
+        titulo="¿Resetear el PIN de acceso?"
+        textoConfirmar="Sí, resetear"
+        textoProcesando="Sí, resetear"
       >
-        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
-        <p className="font-semibold text-neutral-900 dark:text-white">¿Resetear el PIN de acceso?</p>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">
           El PIN actual dejará de funcionar en cuanto guardes los cambios. Vas a tener que comunicarle el nuevo PIN al colaborador.
         </p>
-        <div className="flex gap-2 justify-center pt-1">
-          <button
-            type="button"
-            onClick={() => setConfirmandoResetPin(false)}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => { setConfirmandoResetPin(false); setReseteandoPin(true); generarPin(); }}
-            className="flex-1 px-4 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition"
-          >
-            Sí, resetear
-          </button>
-        </div>
-      </Modal>
+      </ModalConfirmar>
 
-      <Modal abierto={!!idGestionar && !confirmandoEliminar} onCerrar={() => setIdGestionar(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">{colaboradorGestionar?.nombreCompleto}</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Elige qué hacer con este colaborador</p>
-            </div>
+      <ModalGestionar
+        abierto={!!idGestionar && !confirmandoEliminar}
+        onCerrar={() => setIdGestionar(null)}
+        titulo={colaboradorGestionar?.nombreCompleto}
+        subtitulo="Elige qué hacer con este colaborador"
+        error={errorGestion}
+        procesando={procesando}
+        activo={colaboradorGestionar ? colaboradorGestionar.estado === "ACTIVO" : undefined}
+        onCambiarActivo={(activo) => cambiarEstado(activo ? "ACTIVO" : "INACTIVO")}
+        ayudaDesactivar="No podrá iniciar sesión, pero conserva su historial. Se puede reactivar luego."
+        ayudaReactivar="Vuelve a poder iniciar sesión normalmente."
+        onEliminar={() => setConfirmandoEliminar(true)}
+        ayudaEliminar="Borra su cuenta y perfil por completo. No se puede deshacer."
+        motivoNoEliminar={colaboradorGestionar?.tieneSolicitudes ? "No disponible: tiene solicitudes registradas en su historial." : null}
+      />
 
-            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
-
-            <div className="space-y-2">
-              {colaboradorGestionar?.estado === "ACTIVO" ? (
-                <button
-                  onClick={() => cambiarEstado("INACTIVO")}
-                  disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-                >
-                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Desactivar</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">No podrá iniciar sesión, pero conserva su historial. Se puede reactivar luego.</p>
-                </button>
-              ) : (
-                <button
-                  onClick={() => cambiarEstado("ACTIVO")}
-                  disabled={procesando}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-                >
-                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reactivar</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Vuelve a poder iniciar sesión normalmente.</p>
-                </button>
-              )}
-
-              <button
-                onClick={() => setConfirmandoEliminar(true)}
-                disabled={procesando || colaboradorGestionar?.tieneSolicitudes}
-                className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {colaboradorGestionar?.tieneSolicitudes
-                    ? "No disponible: tiene solicitudes registradas en su historial."
-                    : "Borra su cuenta y perfil por completo. No se puede deshacer."}
-                </p>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setIdGestionar(null)}
-              disabled={procesando}
-              className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
-            >
-              Cancelar
-            </button>
-      </Modal>
-
-      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} onConfirmar={eliminarPermanente} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar a {colaboradorGestionar?.nombreCompleto}?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
-            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoEliminar(false)}
-                disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={eliminarPermanente}
-                disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
-              >
-                {procesando ? "Eliminando..." : "Sí, eliminar"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoEliminar}
+        onCerrar={() => setConfirmandoEliminar(false)}
+        onConfirmar={eliminarPermanente}
+        procesando={procesando}
+        error={errorGestion}
+        tono="rojo"
+        icono={IconoAlerta}
+        titulo={<>¿Eliminar a {colaboradorGestionar?.nombreCompleto}?</>}
+        textoConfirmar="Sí, eliminar"
+        textoProcesando="Eliminando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
+      </ModalConfirmar>
     </div>
   );
 }

@@ -10,6 +10,8 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import Modal from "./Modal";
+import ModalGestionar from "./ModalGestionar";
+import ModalConfirmar from "./ModalConfirmar";
 import MenuAcciones from "./MenuAcciones";
 import { IconoAlerta, IconoLupa, IconoX, IconoChevron } from "./Icons";
 import Spinner from "./Spinner";
@@ -688,82 +690,36 @@ export default function PanelEmpresas() {
       </Modal>
 
       {/* Modal: Gestionar (Desactivar/Reactivar solo Empresa, + Eliminar en los 3) */}
-      <Modal abierto={!!gestionando && !confirmandoEliminar} onCerrar={() => setGestionando(null)} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">{gestionando?.nombre}</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Elige qué hacer</p>
-            </div>
+      <ModalGestionar
+        abierto={!!gestionando && !confirmandoEliminar}
+        onCerrar={() => setGestionando(null)}
+        titulo={gestionando?.nombre}
+        subtitulo="Elige qué hacer"
+        error={errorGestion}
+        procesando={procesando}
+        activo={gestionando?.tipo === "empresa" ? (gestionando.activo ?? false) : undefined}
+        onCambiarActivo={cambiarEstadoEmpresa}
+        ayudaDesactivar="No aparecerá disponible para nuevos sitios/rutas. Se puede reactivar luego."
+        ayudaReactivar="Vuelve a estar disponible."
+        onEliminar={() => setConfirmandoEliminar(true)}
+        ayudaEliminar="La borra por completo. No se puede deshacer."
+        motivoNoEliminar={gestionando?.tieneHijos ? `No disponible: tiene ${ETIQUETA_HIJOS[gestionando.tipo]} asociados.` : null}
+      />
 
-            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
-
-            <div className="space-y-2">
-              {gestionando?.tipo === "empresa" && (
-                gestionando?.activo ? (
-                  <button
-                    onClick={() => cambiarEstadoEmpresa(false)}
-                    disabled={procesando}
-                    className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-                  >
-                    <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Desactivar</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">No aparecerá disponible para nuevos sitios/rutas. Se puede reactivar luego.</p>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => cambiarEstadoEmpresa(true)}
-                    disabled={procesando}
-                    className="w-full text-left px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition disabled:opacity-50"
-                  >
-                    <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reactivar</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Vuelve a estar disponible.</p>
-                  </button>
-                )
-              )}
-
-              <button
-                onClick={() => setConfirmandoEliminar(true)}
-                disabled={procesando || gestionando?.tieneHijos}
-                className="w-full text-left px-4 py-3 rounded-xl border border-red-200 hover:bg-red-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <p className="text-sm font-medium text-red-600">Eliminar definitivamente</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {gestionando?.tieneHijos
-                    ? `No disponible: tiene ${ETIQUETA_HIJOS[gestionando!.tipo]} asociados.`
-                    : "La borra por completo. No se puede deshacer."}
-                </p>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setGestionando(null)}
-              disabled={procesando}
-              className="w-full text-center text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl py-2.5 transition"
-            >
-              Cancelar
-            </button>
-      </Modal>
-
-      <Modal abierto={confirmandoEliminar} onCerrar={() => setConfirmandoEliminar(false)} onConfirmar={eliminar} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto"><IconoAlerta className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Eliminar {gestionando?.nombre}?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
-            {errorGestion && <p className="text-sm text-red-600">{errorGestion}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoEliminar(false)}
-                disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={eliminar}
-                disabled={procesando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl disabled:opacity-50 transition"
-              >
-                {procesando ? "Eliminando..." : "Sí, eliminar"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoEliminar}
+        onCerrar={() => setConfirmandoEliminar(false)}
+        onConfirmar={eliminar}
+        procesando={procesando}
+        error={errorGestion}
+        tono="rojo"
+        icono={IconoAlerta}
+        titulo={<>¿Eliminar {gestionando?.nombre}?</>}
+        textoConfirmar="Sí, eliminar"
+        textoProcesando="Eliminando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Esta acción no se puede deshacer.</p>
+      </ModalConfirmar>
     </div>
   );
 }

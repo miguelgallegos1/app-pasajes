@@ -7,14 +7,16 @@
 // crean juntas en una sola transacción. Antes se guardaban las filas
 // buenas y se saltaban las malas: al corregir y volver a subir, las ya
 // creadas fallaban por código repetido y sus PIN no se volvían a ver.
-// Solo Super Admin: crea cuentas de acceso reales (con PIN).
+// Solo Super Admin: crea cuentas de acceso reales (con PIN). Las filas
+// cuyo código de nómina es el de un usuario de la app (Usuario.codigoNomina)
+// se crean SIN PIN: esa persona ingresa con su usuario.
 
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { randomInt } from "crypto";
 import { db } from "../../../../../lib/db";
-import { getSession } from "../../../../../lib/auth";
-import { calcularPinLookup } from "../../../../../lib/pin";
+import { getSession, normalizarCodigoNomina } from "../../../../../lib/auth";
+import { calcularPinLookup, credencialesSinAcceso } from "../../../../../lib/pin";
 import { leerLibroExcel, texto, valorBooleanoSiNo, TOPE_FILAS_IMPORTACION } from "../../../../../lib/excelImport";
 import { construirMapaAreas, clavearArea } from "../../../../../lib/areasLookup";
 
@@ -51,15 +53,20 @@ export async function POST(req: Request) {
     )
   );
 
-  const [mapaAreas, usuariosSinMigrar, colaboradoresExistentes] = await Promise.all([
+  const [mapaAreas, usuariosSinMigrar, colaboradoresExistentes, usuariosConCodigo] = await Promise.all([
     construirMapaAreas(),
     db.usuario.findMany({ where: { pinLookup: null }, select: { pinHash: true } }),
     codigosDelArchivo.length
       ? db.colaborador.findMany({ where: { codigoNomina: { in: codigosDelArchivo } }, select: { codigoNomina: true } })
       : Promise.resolve([]),
+    codigosDelArchivo.length
+      ? db.usuario.findMany({ where: { codigoNomina: { in: codigosDelArchivo.map(normalizarCodigoNomina) } }, select: { codigoNomina: true } })
+      : Promise.resolve([]),
   ]);
   const pinLookupsUsados = new Set<string>();
   const codigosUsados = new Set(colaboradoresExistentes.map((c) => c.codigoNomina));
+  // Códigos que ya son de un usuario de la app: esas fichas van sin PIN.
+  const codigosDeUsuarios = new Set(usuariosConCodigo.map((u) => u.codigoNomina));
 
   async function pinDisponible(pin: string): Promise<boolean> {
     const pinLookup = calcularPinLookup(pin);
@@ -90,6 +97,7 @@ export async function POST(req: Request) {
     sitioId: string;
     areaId: string;
     pin: string | null; // null = se genera después de validar todo
+    esUsuario: boolean; // ya es usuario de la app: se crea sin PIN
   };
   const errores: ErrorFila[] = [];
   const validas: FilaValida[] = [];
@@ -134,7 +142,9 @@ export async function POST(req: Request) {
     }
     codigosUsados.add(codigoNomina);
 
-    if (pinPropuesto) {
+    const esUsuario = codigosDeUsuarios.has(normalizarCodigoNomina(codigoNomina));
+    // Si ya es usuario de la app, el PIN de la fila no se usa (va sin PIN).
+    if (pinPropuesto && !esUsuario) {
       if (!/^\d{6}$/.test(pinPropuesto)) {
         errores.push({ fila: numeroFila, estado: "ERROR", mensaje: "El PIN debe tener exactamente 6 dígitos" });
         continue;
@@ -154,7 +164,8 @@ export async function POST(req: Request) {
       esSupervisor,
       sitioId: area.sitioId,
       areaId: area.id,
-      pin: pinPropuesto || null,
+      pin: esUsuario ? null : pinPropuesto || null,
+      esUsuario,
     });
   }
 
@@ -166,8 +177,12 @@ export async function POST(req: Request) {
   }
 
   // --- 2) Generar los PIN que faltan y preparar los datos (sin escribir) ---
-  const preparadas: { fila: number; pin: string; pinHash: string; pinLookup: string; nombreCompleto: string; v: FilaValida }[] = [];
+  const preparadas: { fila: number; pin: string | null; pinHash: string; pinLookup: string; nombreCompleto: string; v: FilaValida }[] = [];
   for (const v of validas) {
+    if (v.esUsuario) {
+      preparadas.push({ fila: v.fila, pin: null, ...(await credencialesSinAcceso()), nombreCompleto: `${v.apellidos} ${v.nombres}`, v });
+      continue;
+    }
     const pin = v.pin ?? (await generarPinUnico());
     if (!pin) {
       return NextResponse.json({
@@ -222,8 +237,8 @@ export async function POST(req: Request) {
   const resultados = preparadas.map((p) => ({
     fila: p.fila,
     estado: "OK" as const,
-    mensaje: "Creado",
-    pin: p.pin,
+    mensaje: p.v.esUsuario ? "Creado sin PIN: ya es usuario de la app (relaciona su ficha en Admin → Usuarios)" : "Creado",
+    pin: p.pin ?? undefined,
     nombreCompleto: p.nombreCompleto,
     codigoNomina: p.v.codigoNomina,
   }));

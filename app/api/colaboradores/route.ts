@@ -1,13 +1,15 @@
 // app/api/colaboradores/route.ts
 // POST: TH (o Super Admin) crea un colaborador nuevo dentro de SU alcance.
 // Crea el Usuario (con PIN hasheado y único) y el perfil de Colaborador juntos.
+// Si el código de nómina es el de un usuario de la app (Usuario.codigoNomina),
+// la ficha se crea SIN PIN: esa persona ingresa con su usuario.
 
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "../../../lib/db";
-import { getSession } from "../../../lib/auth";
+import { getSession, esCodigoDeUsuario } from "../../../lib/auth";
 import { obtenerAreasPermitidasTH } from "../../../lib/alcanceTH";
-import { calcularPinLookup } from "../../../lib/pin";
+import { calcularPinLookup, credencialesSinAcceso } from "../../../lib/pin";
 import { pinFirmadoValido } from "../../../lib/pinFirmado";
 
 export async function POST(req: Request) {
@@ -18,19 +20,22 @@ export async function POST(req: Request) {
 
   const { apellidos, nombres, codigoNomina, areaId, pin, pinFirma, esSupervisor, supervisorId, rutaIds } = await req.json().catch(() => ({}));
 
-  if (!apellidos?.trim() || !nombres?.trim() || !codigoNomina?.trim() || !areaId || !pin) {
+  if (!apellidos?.trim() || !nombres?.trim() || !codigoNomina?.trim() || !areaId) {
     return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
   }
   const apellidosNormalizados = apellidos.trim().toUpperCase();
   const nombresNormalizados = nombres.trim().toUpperCase();
   const nombreCompletoNormalizado = `${apellidosNormalizados} ${nombresNormalizados}`;
   const codigoNormalizado = codigoNomina.trim().toUpperCase();
-  if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
-    return NextResponse.json({ error: "El PIN debe tener exactamente 6 dígitos" }, { status: 400 });
-  }
-  // Solo PINs generados por el sistema (ver lib/pinFirmado.ts).
-  if (!(await pinFirmadoValido(pin, pinFirma, session.id))) {
-    return NextResponse.json({ error: "El PIN debe generarse con el botón Generar. Genera uno nuevo e inténtalo de nuevo." }, { status: 400 });
+  const sinPin = await esCodigoDeUsuario(codigoNormalizado);
+  if (!sinPin) {
+    if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
+      return NextResponse.json({ error: "Genera el PIN de acceso antes de guardar" }, { status: 400 });
+    }
+    // Solo PINs generados por el sistema (ver lib/pinFirmado.ts).
+    if (!(await pinFirmadoValido(pin, pinFirma, session.id))) {
+      return NextResponse.json({ error: "El PIN debe generarse con el botón Generar. Genera uno nuevo e inténtalo de nuevo." }, { status: 400 });
+    }
   }
 
   // El área elegida debe estar dentro del alcance de este TH
@@ -58,15 +63,16 @@ export async function POST(req: Request) {
 
   // El PIN debe ser único en TODO el sistema. Primero la vía rápida
   // (indexada); luego, solo por las cuentas aún no migradas, con bcrypt.
-  const pinLookup = calcularPinLookup(pin);
-  const yaExiste = await db.usuario.findFirst({ where: { pinLookup } });
-  if (yaExiste) {
-    return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
-  }
-  const usuariosSinMigrar = await db.usuario.findMany({ where: { pinLookup: null }, select: { pinHash: true } });
-  for (const u of usuariosSinMigrar) {
-    if (await bcrypt.compare(pin, u.pinHash)) {
+  if (!sinPin) {
+    const yaExiste = await db.usuario.findFirst({ where: { pinLookup: calcularPinLookup(pin) } });
+    if (yaExiste) {
       return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
+    }
+    const usuariosSinMigrar = await db.usuario.findMany({ where: { pinLookup: null }, select: { pinHash: true } });
+    for (const u of usuariosSinMigrar) {
+      if (await bcrypt.compare(pin, u.pinHash)) {
+        return NextResponse.json({ error: "Ese PIN ya está en uso, elige otro" }, { status: 400 });
+      }
     }
   }
 
@@ -77,7 +83,9 @@ export async function POST(req: Request) {
       )
     : [];
 
-  const pinHash = await bcrypt.hash(pin, 10);
+  const { pinHash, pinLookup } = sinPin
+    ? await credencialesSinAcceso()
+    : { pinHash: await bcrypt.hash(pin, 10), pinLookup: calcularPinLookup(pin) };
 
   try {
     // Creación del usuario+colaborador y la asignación de rutas exclusivas
@@ -118,7 +126,7 @@ export async function POST(req: Request) {
     });
 
     // Solo el id: la respuesta no debe incluir pinHash/pinLookup del usuario.
-    return NextResponse.json({ id: nuevo.colaborador!.id }, { status: 201 });
+    return NextResponse.json({ id: nuevo.colaborador!.id, sinPin }, { status: 201 });
   } catch (e) {
     if (e instanceof Object && "code" in e && (e as { code?: string }).code === "P2002") {
       return NextResponse.json({ error: "Ese código de nómina ya está en uso por otro colaborador" }, { status: 400 });

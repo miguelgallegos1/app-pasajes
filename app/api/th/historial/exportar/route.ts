@@ -4,10 +4,8 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../../lib/db";
+import { filtroHistorial } from "../../../../../lib/filtroHistorial";
 import { getSession } from "../../../../../lib/auth";
-import { obtenerCondicionRutaTH } from "../../../../../lib/alcanceTH";
-import { ubicacionDesdeParams, condicionRuta } from "../../../../../lib/filtroUbicacion";
-import { fechaValida } from "../../../../../lib/fechas";
 import {
   construirLibroExcel,
   limitarFilasExportacion,
@@ -16,7 +14,6 @@ import {
   nombreArchivoExcel,
 } from "../../../../../lib/exportarExcel";
 import { nombresDeUsuarios } from "../../../../../lib/nombresActores";
-import { SIN_SUPERVISOR } from "../../../../../lib/sinSupervisor";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -25,44 +22,9 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  // Empresa/Sitio/Área elegidos en el buscador (se suman al alcance del usuario).
-  const ubicacion = ubicacionDesdeParams(searchParams);
-  const desde = searchParams.get("desde");
-  const hasta = searchParams.get("hasta");
-  const estado = searchParams.get("estado");
-  const colaboradorId = searchParams.get("colaboradorId");
-  const supervisorId = searchParams.get("supervisorId");
-
-  if (!desde || !hasta) {
-    return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
-  }
-  const desdeFecha = fechaValida(desde);
-  const hastaFecha = fechaValida(hasta);
-  if (!desdeFecha || !hastaFecha) {
-    return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
-  }
-
-  const { sinRestriccion, condicion } = await obtenerCondicionRutaTH(session.id, session.rol);
-  if (condicion === null) {
-    return NextResponse.json({ error: "No tienes áreas asignadas" }, { status: 403 });
-  }
-
-  const filtroEstado =
-    estado === "APROBADA" || estado === "REVISADO" || estado === "PAGADA"
-      ? { estado: estado as "APROBADA" | "REVISADO" | "PAGADA" }
-      : { estado: { in: ["APROBADA", "REVISADO", "PAGADA"] as Array<"APROBADA" | "REVISADO" | "PAGADA"> } };
-
-  const filtro = {
-    fecha: { gte: desdeFecha, lte: hastaFecha },
-    ...condicionRuta(sinRestriccion, condicion, ubicacion),
-    ...(colaboradorId ? { colaboradorId } : {}),
-    ...(supervisorId === SIN_SUPERVISOR
-      ? { colaborador: { supervisorId: null } }
-      : supervisorId
-      ? { colaborador: { supervisorId } }
-      : {}),
-    ...filtroEstado,
-  };
+  const resultado = await filtroHistorial(session, searchParams, { estados: ["APROBADA", "REVISADO", "PAGADA"], conAlcance: true });
+  if ("error" in resultado) return resultado.error;
+  const { filtro, desde, hasta } = resultado;
 
   const solicitudes = await db.solicitudPasaje.findMany({
     where: filtro,

@@ -7,22 +7,23 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
+import { useSeleccion } from "../lib/useSeleccion";
+import { agruparPorColaborador } from "../lib/agrupar";
 import { IconoCheck, IconoDevolver } from "./Icons";
 import BarraFiltros, { CampoFiltro, type ChipFiltro } from "./BarraFiltros";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
 import Paginacion from "./Paginacion";
-import Modal from "./Modal";
+import ModalConfirmar, { ModalMotivo } from "./ModalConfirmar";
 import ComboboxBuscable from "./ComboboxBuscable";
 import RangoFechasSelector from "./RangoFechasSelector";
 import SelectorVista, { type VistaListado } from "./SelectorVista";
 import { formatearFecha, fechaUTCATexto } from "../lib/fechas";
-import Spinner from "./Spinner";
 import { enviarEnTandas, resumenEnvio } from "../lib/enviarEnTandas";
 import BotonSeleccionarTodas from "./BotonSeleccionarTodas";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
-import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
+import TablaColaboradores from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useNavegacionFilas } from "../lib/useNavegacionFilas";
@@ -198,70 +199,14 @@ export default function PanelTH() {
     [pendientesFiltradas]
   );
 
-  // Vista "Por colaborador": un grupo por cada colaborador con al menos
-  // una pendiente, derivado en el cliente (misma idea que Mis Pasajes).
-  const gruposColaborador = useMemo(() => {
-    const mapa = new Map<string, { nombre: string; solicitudes: Pendiente[] }>();
-    for (const p of pendientesFiltradas) {
-      if (!mapa.has(p.colaboradorId)) mapa.set(p.colaboradorId, { nombre: p.nombreColaborador, solicitudes: [] });
-      mapa.get(p.colaboradorId)!.solicitudes.push(p);
-    }
-    return mapa;
-  }, [pendientesFiltradas]);
+  // Vista "Por colaborador": un grupo por colaborador, derivado en el cliente.
+  const { filas: filasColaborador, itemsDe } = useMemo(() => agruparPorColaborador(pendientesFiltradas), [pendientesFiltradas]);
 
-  const filasColaborador: FilaColaborador[] = useMemo(
-    () =>
-      Array.from(gruposColaborador.entries())
-        .map(([id, g]) => ({
-          id,
-          nombre: g.nombre,
-          cantidad: g.solicitudes.length,
-          total: g.solicitudes.reduce((acc, s) => acc + s.montoTotal, 0),
-        }))
-        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
-    [gruposColaborador]
-  );
-
-  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
-  const todasEnPaginaSeleccionadas =
-    pendientesPagina.length > 0 && pendientesPagina.every((s) => seleccionadas.has(s.id));
+  const { seleccionadas, setSeleccionadas, todasEnPaginaSeleccionadas, alternarSeleccion, alternarSeleccionarTodo, alternarGrupoSeleccion } = useSeleccion(pendientesPagina);
   const totalSeleccionado = useMemo(
     () => pendientes.filter((s) => seleccionadas.has(s.id)).reduce((acc, s) => acc + s.montoTotal, 0),
     [pendientes, seleccionadas]
   );
-
-  const alternarSeleccion = (id: string) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (copia.has(id)) copia.delete(id);
-      else copia.add(id);
-      return copia;
-    });
-  };
-
-  const alternarSeleccionarTodo = () => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (todasEnPaginaSeleccionadas) {
-        pendientesPagina.forEach((s) => copia.delete(s.id));
-      } else {
-        pendientesPagina.forEach((s) => copia.add(s.id));
-      }
-      return copia;
-    });
-  };
-
-  // Selección en grupo desde la vista "Por colaborador": si ya están
-  // todas seleccionadas las quita, si no las agrega todas — así se puede
-  // marcar un colaborador entero (o "Seleccionar todos") sin expandirlo.
-  const alternarGrupoSeleccion = (ids: string[]) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      const todas = ids.every((id) => copia.has(id));
-      ids.forEach((id) => (todas ? copia.delete(id) : copia.add(id)));
-      return copia;
-    });
-  };
 
   const [idAAprobar, setIdAAprobar] = useState<string | null>(null);
   const [aprobandoLote, setAprobandoLote] = useState(false);
@@ -497,14 +442,14 @@ export default function PanelTH() {
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <TablaColaboradores
             filas={filasColaborador}
-            cargarItems={(colaboradorId) => gruposColaborador.get(colaboradorId)?.solicitudes ?? []}
+            cargarItems={itemsDe}
             clave={(s) => s.id}
             porPagina={POR_PAGINA}
             claveOrden="th-aprobaciones-colaborador"
             seleccion={{
               seleccionadas,
               alternar: alternarSeleccion,
-              idsDe: (colaboradorId) => (gruposColaborador.get(colaboradorId)?.solicitudes ?? []).map((s) => s.id),
+              idsDe: (colaboradorId) => itemsDe(colaboradorId).map((s) => s.id),
               alternarGrupo: alternarGrupoSeleccion,
             }}
             columnas={[
@@ -664,122 +609,63 @@ export default function PanelTH() {
         )}
       </div>
 
-      <Modal abierto={!!idAAprobar} onCerrar={() => setIdAAprobar(null)} onConfirmar={confirmarAprobar} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Aprobar esta solicitud?</p>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setIdAAprobar(null)}
-                disabled={aprobando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarAprobar}
-                disabled={aprobando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-amber-950 rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {aprobando && <Spinner className="w-4 h-4" />}
-                {aprobando ? "Aprobando..." : "Aprobar"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={!!idAAprobar}
+        onCerrar={() => setIdAAprobar(null)}
+        onConfirmar={confirmarAprobar}
+        procesando={aprobando}
+        error={error}
+        tono="ambar"
+        icono={IconoCheck}
+        titulo="¿Aprobar esta solicitud?"
+        textoConfirmar="Aprobar"
+        textoProcesando="Aprobando..."
+      />
 
-      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={confirmarAprobarLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Aprobar {seleccionadas.size} solicitudes?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Total: {formatearMoneda(totalSeleccionado)}</p>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoLote(false)}
-                disabled={aprobandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarAprobarLote}
-                disabled={aprobandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-amber-950 rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {aprobandoLote && <Spinner className="w-4 h-4" />}
-                {aprobandoLote ? "Aprobando..." : "Aprobar todas"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoLote}
+        onCerrar={() => setConfirmandoLote(false)}
+        onConfirmar={confirmarAprobarLote}
+        procesando={aprobandoLote}
+        error={error}
+        tono="ambar"
+        icono={IconoCheck}
+        titulo={<>¿Aprobar {seleccionadas.size} solicitudes?</>}
+        textoConfirmar="Aprobar todas"
+        textoProcesando="Aprobando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Total: {formatearMoneda(totalSeleccionado)}</p>
+      </ModalConfirmar>
 
-      <Modal abierto={confirmandoLoteDevolver} onCerrar={() => setConfirmandoLoteDevolver(false)} onConfirmar={confirmarDevolucionLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">Devolver {seleccionadas.size} solicitudes</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Todas siguen pendientes; cada colaborador verá esta misma nota y podrá corregir.
-              </p>
-            </div>
-            <textarea
-              value={comentarioLoteDevolver}
-              onChange={(e) => setComentarioLoteDevolver(e.target.value.toUpperCase())}
-              rows={3}
-              autoFocus
-              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
-              placeholder="Ej: Ruta incorrecta para tu área, favor corregir..."
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                onClick={() => setConfirmandoLoteDevolver(false)}
-                disabled={devolviendoLote}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarDevolucionLote}
-                disabled={devolviendoLote}
-                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {devolviendoLote && <Spinner className="w-4 h-4" />}
-                {devolviendoLote ? "Enviando..." : "Devolver todas"}
-              </button>
-            </div>
-      </Modal>
+      <ModalMotivo
+        abierto={confirmandoLoteDevolver}
+        onCerrar={() => setConfirmandoLoteDevolver(false)}
+        onConfirmar={confirmarDevolucionLote}
+        procesando={devolviendoLote}
+        error={error}
+        titulo={<>Devolver {seleccionadas.size} solicitudes</>}
+        descripcion="Todas siguen pendientes; cada colaborador verá esta misma nota y podrá corregir."
+        motivo={comentarioLoteDevolver}
+        onCambiarMotivo={setComentarioLoteDevolver}
+        placeholder="Ej: Ruta incorrecta para tu área, favor corregir..."
+        textoConfirmar="Devolver todas"
+        textoProcesando="Enviando..."
+      />
 
-      <Modal abierto={!!idADevolver} onCerrar={() => setIdADevolver(null)} onConfirmar={confirmarDevolucion} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">Devolver para corrección</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                La solicitud sigue pendiente; el colaborador verá esta nota y podrá corregirla
-              </p>
-            </div>
-            <textarea
-              value={comentarioDevolucion}
-              onChange={(e) => setComentarioDevolucion(e.target.value.toUpperCase())}
-              rows={3}
-              autoFocus
-              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
-              placeholder="Ej: Ruta incorrecta para tu área, favor corregir..."
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                onClick={() => setIdADevolver(null)}
-                disabled={devolviendo}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarDevolucion}
-                disabled={devolviendo}
-                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {devolviendo && <Spinner className="w-4 h-4" />}
-                {devolviendo ? "Enviando..." : "Devolver"}
-              </button>
-            </div>
-      </Modal>
+      <ModalMotivo
+        abierto={!!idADevolver}
+        onCerrar={() => setIdADevolver(null)}
+        onConfirmar={confirmarDevolucion}
+        procesando={devolviendo}
+        error={error}
+        titulo="Devolver para corrección"
+        descripcion="La solicitud sigue pendiente; el colaborador verá esta nota y podrá corregirla"
+        motivo={comentarioDevolucion}
+        onCambiarMotivo={setComentarioDevolucion}
+        placeholder="Ej: Ruta incorrecta para tu área, favor corregir..."
+        textoConfirmar="Devolver"
+        textoProcesando="Enviando..."
+      />
     </div>
   );
 }

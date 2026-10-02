@@ -30,11 +30,27 @@ async function crearToken(payload: SesionUsuario) {
     .sign(secret);
 }
 
+// Código de nómina tal como se guarda y se compara: en mayúsculas y sin
+// espacios, para que un espacio de más no impida reconocerlo.
+export function normalizarCodigoNomina(codigo: string): string {
+  return codigo.replace(/\s+/g, "").toUpperCase();
+}
+
+// ¿Este código de nómina (de una ficha de colaborador) es el de un usuario
+// de la app (TH, Coordinador, Nómina, Jefe...)? Entonces esa ficha es la
+// propia de esa persona y su PIN no da acceso: ingresa con su usuario.
+export async function esCodigoDeUsuario(codigoNomina: string | null): Promise<boolean> {
+  const codigo = codigoNomina ? normalizarCodigoNomina(codigoNomina) : "";
+  if (!codigo) return false;
+  return !!(await db.usuario.findUnique({ where: { codigoNomina: codigo }, select: { id: true } }));
+}
+
 // ¿El usuario de la sesión sigue habilitado? Sin esto, desactivar a
 // alguien (o cambiarle el rol) no afectaba la sesión que ya tenía abierta:
 // el JWT seguía siendo válido y se renovaba con cada acción. Se verifica
 // en la base (una lectura por id: activo + rol, y para el colaborador su
-// estado y si ahora lo gestiona un supervisor, igual que en el login) y
+// estado, si ahora lo gestiona un supervisor y si su código de nómina es
+// el de un usuario de la app, igual que en el login) y
 // el resultado se guarda VIGENCIA_VERIFICACION_MS en memoria del servidor,
 // para no consultar en cada clic: una baja se aplica en ≤30 segundos.
 const VIGENCIA_VERIFICACION_MS = 30_000;
@@ -48,14 +64,15 @@ async function sesionHabilitada(sesion: SesionUsuario): Promise<boolean> {
 
   const usuario = await db.usuario.findUnique({
     where: { id: sesion.id },
-    select: { activo: true, rol: true, colaborador: { select: { estado: true, esSupervisor: true, supervisorId: true } } },
+    select: { activo: true, rol: true, colaborador: { select: { estado: true, esSupervisor: true, supervisorId: true, codigoNomina: true } } },
   });
   const c = usuario?.colaborador;
   const habilitado =
     !!usuario &&
     usuario.activo &&
     usuario.rol === sesion.rol &&
-    (usuario.rol !== "COLABORADOR" || (!!c && c.estado === "ACTIVO" && (c.esSupervisor || !c.supervisorId)));
+    (usuario.rol !== "COLABORADOR" ||
+      (!!c && c.estado === "ACTIVO" && (c.esSupervisor || !c.supervisorId) && !(await esCodigoDeUsuario(c.codigoNomina))));
 
   // Evita que el mapa crezca sin límite en una instancia de larga vida.
   if (verificaciones.size > 5000) verificaciones.clear();
@@ -226,6 +243,11 @@ export async function verificarAccesoColaborador(usuario: {
   // miraba usuario.activo, así que un colaborador Inactivo seguía entrando.
   if (colaborador && colaborador.estado !== "ACTIVO") {
     return "Tu usuario está inactivo. Comunícate con Talento Humano.";
+  }
+  // Ficha propia de alguien que ya tiene usuario en la app (mismo código de
+  // nómina): ese PIN no da acceso, pide sus pasajes desde su usuario.
+  if (colaborador && (await esCodigoDeUsuario(colaborador.codigoNomina))) {
+    return "Este PIN no da acceso: ya tienes un usuario en la app. Ingresa con el PIN de tu usuario.";
   }
   if (colaborador && !colaborador.esSupervisor && colaborador.supervisorId) {
     return `No puedes ingresar: tus pasajes ahora los gestiona tu supervisor, ${

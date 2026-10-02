@@ -3,20 +3,28 @@
 // junto con su firma (lib/pinFirmado.ts): al guardar un colaborador, el
 // servidor solo acepta PINs generados acá. Igual se vuelve a validar la
 // unicidad al guardar (pudo tomarlo otro mientras tanto).
+// Con { codigoNomina } (nuevo colaborador): si ese código es el de un
+// usuario de la app, no se genera PIN — su ficha se crea sin acceso (ver
+// Usuario.codigoNomina) y se responde { esUsuario: true }.
 
 import { NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import { db } from "../../../../lib/db";
-import { getSession } from "../../../../lib/auth";
+import { getSession, esCodigoDeUsuario } from "../../../../lib/auth";
 import { calcularPinLookup } from "../../../../lib/pin";
 import { firmarPin } from "../../../../lib/pinFirmado";
 
 const INTENTOS_MAXIMOS = 20;
 
-export async function POST() {
+export async function POST(req: Request) {
   const session = await getSession();
   if (!session || !["ADMIN_TH", "SUPER_ADMIN"].includes(session.rol)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const { codigoNomina } = await req.json().catch(() => ({}));
+  if (typeof codigoNomina === "string" && (await esCodigoDeUsuario(codigoNomina))) {
+    return NextResponse.json({ esUsuario: true });
   }
 
   for (let intento = 0; intento < INTENTOS_MAXIMOS; intento++) {

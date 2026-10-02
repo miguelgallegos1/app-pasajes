@@ -5,12 +5,10 @@
 
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/db";
+import { filtroHistorial, POR_PAGINA_HISTORIAL } from "../../../../lib/filtroHistorial";
 import { getSession } from "../../../../lib/auth";
 import { ordenSolicitudes, leerPagina } from "../../../../lib/ordenHistorial";
 import { nombresDeUsuarios } from "../../../../lib/nombresActores";
-import { fechaValida } from "../../../../lib/fechas";
-
-const POR_PAGINA = 15;
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -19,35 +17,10 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const desde = searchParams.get("desde");
-  const hasta = searchParams.get("hasta");
-  const empresaId = searchParams.get("empresaId");
-  const sitioId = searchParams.get("sitioId");
-  const areaId = searchParams.get("areaId");
-  const colaboradorId = searchParams.get("colaboradorId");
-  const rutaId = searchParams.get("rutaId");
   const pagina = leerPagina(searchParams);
-
-  if (!desde || !hasta) {
-    return NextResponse.json({ error: "Debes indicar un rango de fechas" }, { status: 400 });
-  }
-  const desdeFecha = fechaValida(desde);
-  const hastaFecha = fechaValida(hasta);
-  if (!desdeFecha || !hastaFecha) {
-    return NextResponse.json({ error: "Rango de fechas inválido" }, { status: 400 });
-  }
-
-  const filtro: Record<string, unknown> = {
-    estado: "PAGADA",
-    fecha: { gte: desdeFecha, lte: hastaFecha },
-  };
-  if (colaboradorId) filtro.colaboradorId = colaboradorId;
-  else if (areaId) filtro.ruta = { areaId };
-  else if (sitioId) filtro.ruta = { sitioId };
-  else if (empresaId) filtro.ruta = { empresaId };
-  // rutaId se combina con colaboradorId (no es parte de la cascada de
-  // arriba): lo usa la vista agrupada al expandir una ruta puntual.
-  if (rutaId) filtro.rutaId = rutaId;
+  const resultado = await filtroHistorial(session, searchParams, { estados: ["PAGADA"], conAlcance: false });
+  if ("error" in resultado) return resultado.error;
+  const { filtro } = resultado;
 
   const [items, total, suma] = await Promise.all([
     db.solicitudPasaje.findMany({
@@ -59,8 +32,8 @@ export async function GET(req: Request) {
       // Ordena TODO el rango en la base (columna elegida en la tabla) y
       // recién después pagina — no solo la página visible.
       orderBy: ordenSolicitudes(searchParams, { fechaPago: "desc" }),
-      skip: (pagina - 1) * POR_PAGINA,
-      take: POR_PAGINA,
+      skip: (pagina - 1) * POR_PAGINA_HISTORIAL,
+      take: POR_PAGINA_HISTORIAL,
     }),
     db.solicitudPasaje.count({ where: filtro }),
     db.solicitudPasaje.aggregate({ where: filtro, _sum: { montoTotal: true } }),
@@ -81,7 +54,7 @@ export async function GET(req: Request) {
       rutaLabel: s.ruta.nombre,
     })),
     total,
-    totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA)),
+    totalPaginas: Math.max(1, Math.ceil(total / POR_PAGINA_HISTORIAL)),
     totalMonto: Number(suma._sum?.montoTotal ?? 0),
     pagina,
   });

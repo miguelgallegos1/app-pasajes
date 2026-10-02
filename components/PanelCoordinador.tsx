@@ -8,6 +8,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { formatearMoneda } from "../lib/formato";
+import { useSeleccion } from "../lib/useSeleccion";
+import { agruparPorColaborador, opcionesUnicas } from "../lib/agrupar";
 import { IconoCheck, IconoDevolver } from "./Icons";
 import EstadoVacio from "./EstadoVacio";
 import Avatar from "./Avatar";
@@ -15,14 +17,13 @@ import SelectorVista from "./SelectorVista";
 import ComboboxBuscable from "./ComboboxBuscable";
 import BarraFiltros, { CampoFiltro, chipOpcion, chips } from "./BarraFiltros";
 import Paginacion from "./Paginacion";
-import Modal from "./Modal";
+import ModalConfirmar, { ModalMotivo } from "./ModalConfirmar";
 import { formatearFecha } from "../lib/fechas";
-import Spinner from "./Spinner";
 import { enviarEnTandas, resumenEnvio } from "../lib/enviarEnTandas";
 import BotonSeleccionarTodas from "./BotonSeleccionarTodas";
 import { useReportarCarga } from "../lib/cargaGlobal";
 import { useToast } from "./Toast";
-import TablaColaboradores, { type FilaColaborador } from "./TablaColaboradores";
+import TablaColaboradores from "./TablaColaboradores";
 import EncabezadoOrdenable from "./EncabezadoOrdenable";
 import { useOrdenTabla } from "../lib/useOrdenTabla";
 import { useNavegacionFilas } from "../lib/useNavegacionFilas";
@@ -62,14 +63,6 @@ const VALOR_ORDEN: Record<CampoOrden, (a: Aprobada) => string | number> = {
 
 const POR_PAGINA = 15;
 
-function opcionesUnicas<T>(items: T[], idKey: keyof T, labelKey: keyof T) {
-  const vistos = new Map<string, string>();
-  for (const item of items) {
-    const id = String(item[idKey]);
-    if (!vistos.has(id)) vistos.set(id, String(item[labelKey]));
-  }
-  return Array.from(vistos.entries()).map(([id, label]) => ({ id, label }));
-}
 
 export default function PanelCoordinador() {
   const toast = useToast();
@@ -202,65 +195,14 @@ export default function PanelCoordinador() {
     [aprobadasFiltradas]
   );
 
-  const [seleccionadas, setSeleccionadas] = useState<Set<string>>(new Set());
-  const todasEnPaginaSeleccionadas =
-    aprobadasPagina.length > 0 && aprobadasPagina.every((s) => seleccionadas.has(s.id));
+  const { seleccionadas, setSeleccionadas, todasEnPaginaSeleccionadas, alternarSeleccion, alternarSeleccionarTodo, alternarGrupoSeleccion } = useSeleccion(aprobadasPagina);
   const totalSeleccionado = useMemo(
     () => aprobadas.filter((s) => seleccionadas.has(s.id)).reduce((acc, s) => acc + s.montoTotal, 0),
     [aprobadas, seleccionadas]
   );
 
-  const alternarSeleccion = (id: string) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (copia.has(id)) copia.delete(id);
-      else copia.add(id);
-      return copia;
-    });
-  };
-  const alternarSeleccionarTodo = () => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      if (todasEnPaginaSeleccionadas) aprobadasPagina.forEach((s) => copia.delete(s.id));
-      else aprobadasPagina.forEach((s) => copia.add(s.id));
-      return copia;
-    });
-  };
-
-  // Selección en grupo desde la vista "Por colaborador": si ya están
-  // todas seleccionadas las quita, si no las agrega todas — así se puede
-  // marcar un colaborador entero (o "Seleccionar todos") sin expandirlo.
-  const alternarGrupoSeleccion = (ids: string[]) => {
-    setSeleccionadas((prev) => {
-      const copia = new Set(prev);
-      const todas = ids.every((id) => copia.has(id));
-      ids.forEach((id) => (todas ? copia.delete(id) : copia.add(id)));
-      return copia;
-    });
-  };
-
-  // --- Agrupación por colaborador (client-side, cola acotada) ---
-  const gruposPorColaborador = useMemo(() => {
-    const mapa = new Map<string, { nombre: string; items: Aprobada[] }>();
-    for (const r of aprobadasFiltradas) {
-      if (!mapa.has(r.colaboradorId)) mapa.set(r.colaboradorId, { nombre: r.nombreColaborador, items: [] });
-      mapa.get(r.colaboradorId)!.items.push(r);
-    }
-    return mapa;
-  }, [aprobadasFiltradas]);
-
-  const filasColaborador: FilaColaborador[] = useMemo(
-    () =>
-      Array.from(gruposPorColaborador.entries())
-        .map(([id, g]) => ({
-          id,
-          nombre: g.nombre,
-          cantidad: g.items.length,
-          total: g.items.reduce((acc, i) => acc + i.montoTotal, 0),
-        }))
-        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
-    [gruposPorColaborador]
-  );
+  // Vista "Por colaborador": un grupo por colaborador, derivado en el cliente.
+  const { filas: filasColaborador, itemsDe } = useMemo(() => agruparPorColaborador(aprobadasFiltradas), [aprobadasFiltradas]);
 
   const [idARevisar, setIdARevisar] = useState<string | null>(null);
   const [revisando, setRevisando] = useState(false);
@@ -505,14 +447,14 @@ export default function PanelCoordinador() {
           <div className="bg-neutral-50 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-2xl overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <TablaColaboradores
             filas={filasColaborador}
-            cargarItems={(colaboradorId) => gruposPorColaborador.get(colaboradorId)?.items ?? []}
+            cargarItems={itemsDe}
             clave={(s) => s.id}
             porPagina={POR_PAGINA}
             claveOrden="coordinador-revision-colaborador"
             seleccion={{
               seleccionadas,
               alternar: alternarSeleccion,
-              idsDe: (colaboradorId) => (gruposPorColaborador.get(colaboradorId)?.items ?? []).map((s) => s.id),
+              idsDe: (colaboradorId) => itemsDe(colaboradorId).map((s) => s.id),
               alternarGrupo: alternarGrupoSeleccion,
             }}
             columnas={[
@@ -651,122 +593,63 @@ export default function PanelCoordinador() {
         )}
       </div>
 
-      <Modal abierto={!!idARevisar} onCerrar={() => setIdARevisar(null)} onConfirmar={confirmarRevisar} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar esta solicitud como revisada?</p>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setIdARevisar(null)}
-                disabled={revisando}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarRevisar}
-                disabled={revisando}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-sky-600 hover:bg-sky-700 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {revisando && <Spinner className="w-4 h-4" />}
-                {revisando ? "Guardando..." : "Revisar"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={!!idARevisar}
+        onCerrar={() => setIdARevisar(null)}
+        onConfirmar={confirmarRevisar}
+        procesando={revisando}
+        error={error}
+        tono="celeste"
+        icono={IconoCheck}
+        titulo="¿Marcar esta solicitud como revisada?"
+        textoConfirmar="Revisar"
+        textoProcesando="Guardando..."
+      />
 
-      <Modal abierto={confirmandoLote} onCerrar={() => setConfirmandoLote(false)} onConfirmar={confirmarRevisarLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-xs text-center space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mx-auto"><IconoCheck className="w-6 h-6" /></div>
-            <p className="font-semibold text-neutral-900 dark:text-white">¿Marcar {seleccionadas.size} solicitudes como revisadas?</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Total: {formatearMoneda(totalSeleccionado)}</p>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-center pt-1">
-              <button
-                onClick={() => setConfirmandoLote(false)}
-                disabled={revisandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarRevisarLote}
-                disabled={revisandoLote}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-sky-600 hover:bg-sky-700 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {revisandoLote && <Spinner className="w-4 h-4" />}
-                {revisandoLote ? "Guardando..." : "Revisar todas"}
-              </button>
-            </div>
-      </Modal>
+      <ModalConfirmar
+        abierto={confirmandoLote}
+        onCerrar={() => setConfirmandoLote(false)}
+        onConfirmar={confirmarRevisarLote}
+        procesando={revisandoLote}
+        error={error}
+        tono="celeste"
+        icono={IconoCheck}
+        titulo={<>¿Marcar {seleccionadas.size} solicitudes como revisadas?</>}
+        textoConfirmar="Revisar todas"
+        textoProcesando="Guardando..."
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">Total: {formatearMoneda(totalSeleccionado)}</p>
+      </ModalConfirmar>
 
-      <Modal abierto={confirmandoLoteDiscrepancia} onCerrar={() => setConfirmandoLoteDiscrepancia(false)} onConfirmar={confirmarDiscrepanciaLote} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">Discrepancia en {seleccionadas.size} solicitudes</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Todas vuelven a Pendiente para que Talento Humano las corrija.
-              </p>
-            </div>
-            <textarea
-              value={motivoLoteDiscrepancia}
-              onChange={(e) => setMotivoLoteDiscrepancia(e.target.value.toUpperCase())}
-              rows={3}
-              autoFocus
-              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
-              placeholder="Ej: La ruta no corresponde al área del colaborador..."
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                onClick={() => setConfirmandoLoteDiscrepancia(false)}
-                disabled={enviandoLoteDiscrepancia}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarDiscrepanciaLote}
-                disabled={enviandoLoteDiscrepancia}
-                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {enviandoLoteDiscrepancia && <Spinner className="w-4 h-4" />}
-                {enviandoLoteDiscrepancia ? "Enviando..." : "Devolver todas"}
-              </button>
-            </div>
-      </Modal>
+      <ModalMotivo
+        abierto={confirmandoLoteDiscrepancia}
+        onCerrar={() => setConfirmandoLoteDiscrepancia(false)}
+        onConfirmar={confirmarDiscrepanciaLote}
+        procesando={enviandoLoteDiscrepancia}
+        error={error}
+        titulo={<>Discrepancia en {seleccionadas.size} solicitudes</>}
+        descripcion="Todas vuelven a Pendiente para que Talento Humano las corrija."
+        motivo={motivoLoteDiscrepancia}
+        onCambiarMotivo={setMotivoLoteDiscrepancia}
+        placeholder="Ej: La ruta no corresponde al área del colaborador..."
+        textoConfirmar="Devolver todas"
+        textoProcesando="Enviando..."
+      />
 
-      <Modal abierto={!!idADiscrepancia} onCerrar={() => setIdADiscrepancia(null)} onConfirmar={confirmarDiscrepancia} variante="centro" className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-3xl p-7 w-full max-w-sm space-y-4 shadow-2xl">
-            <div>
-              <h2 className="font-semibold text-neutral-900 dark:text-white">Reportar discrepancia</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                La solicitud vuelve a Pendiente para que Talento Humano la corrija.
-              </p>
-            </div>
-            <textarea
-              value={motivoDiscrepancia}
-              onChange={(e) => setMotivoDiscrepancia(e.target.value.toUpperCase())}
-              rows={3}
-              autoFocus
-              className="w-full rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3.5 py-3 text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15 outline-none resize-none"
-              placeholder="Ej: La ruta no corresponde al área del colaborador..."
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <div className="flex gap-2 justify-end pt-1">
-              <button
-                onClick={() => setIdADiscrepancia(null)}
-                disabled={enviandoDiscrepancia}
-                className="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarDiscrepancia}
-                disabled={enviandoDiscrepancia}
-                className="px-5 py-2.5 text-sm font-semibold bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl disabled:opacity-50 transition flex items-center justify-center gap-2"
-              >
-                {enviandoDiscrepancia && <Spinner className="w-4 h-4" />}
-                {enviandoDiscrepancia ? "Enviando..." : "Devolver"}
-              </button>
-            </div>
-      </Modal>
+      <ModalMotivo
+        abierto={!!idADiscrepancia}
+        onCerrar={() => setIdADiscrepancia(null)}
+        onConfirmar={confirmarDiscrepancia}
+        procesando={enviandoDiscrepancia}
+        error={error}
+        titulo="Reportar discrepancia"
+        descripcion="La solicitud vuelve a Pendiente para que Talento Humano la corrija."
+        motivo={motivoDiscrepancia}
+        onCambiarMotivo={setMotivoDiscrepancia}
+        placeholder="Ej: La ruta no corresponde al área del colaborador..."
+        textoConfirmar="Devolver"
+        textoProcesando="Enviando..."
+      />
     </div>
   );
 }
