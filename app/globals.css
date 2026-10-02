@@ -280,3 +280,58 @@ select:focus-visible {
     display: none;
   }
 }
+
+/* Scroll sutil: barra fina y casi transparente que se marca un poco más al
+   pasar el mouse — reemplaza la barra gruesa gris por defecto del
+   navegador. Se aplica al scroll de la ventana (html, el que mueve las
+   pantallas) y a cualquier contenedor con .scroll-sutil (ver
+   components/ScrollSutil.tsx, usado en el menú). scrollbar-color/width
+   cubre Chrome, Edge y Firefox; los ::-webkit-scrollbar quedan solo para
+   Safari, que aún no soporta scrollbar-color. */
+:root {
+  --scroll-pulgar: rgb(115 115 115 / 28%);
+  --scroll-pulgar-hover: rgb(115 115 115 / 55%);
+}
+
+:root.dark {
+  --scroll-pulgar: rgb(163 163 163 / 22%);
+  --scroll-pulgar-hover: rgb(163 163 163 / 45%);
+}
+
+html,
+.scroll-sutil {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-pulgar) transparent;
+}
+
+html:hover,
+.scroll-sutil:hover {
+  scrollbar-color: var(--scroll-pulgar-hover) transparent;
+}
+
+@supports not (scrollbar-color: auto) {
+  html::-webkit-scrollbar,
+  .scroll-sutil::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  html::-webkit-scrollbar-track,
+  .scroll-sutil::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  html::-webkit-scrollbar-thumb,
+  .scroll-sutil::-webkit-scrollbar-thumb {
+    background: var(--scroll-pulgar);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  html::-webkit-scrollbar-thumb:hover,
+  .scroll-sutil::-webkit-scrollbar-thumb:hover {
+    background: var(--scroll-pulgar-hover);
+    background-clip: content-box;
+  }
+}

@@ -28,6 +28,7 @@ import BarraCarga from "./BarraCarga";
 import VigilanteSesion from "./VigilanteSesion";
 import AvisoNovedades from "./AvisoNovedades";
 import { ZonaAvisos } from "./ZonaAvisos";
+import ScrollSutil from "./ScrollSutil";
 import type { Novedad } from "../lib/novedades";
 import { useContadorMenu, type ContadorMenu } from "../lib/useContadorMenu";
 
@@ -460,10 +461,13 @@ export default function AppShell({
     });
   };
 
-  const iniciales = nombreCompleto
-    .split(" ")
-    .slice(0, 2)
-    .map((p) => p[0])
+  // Del nombre corto (primer nombre + primer apellido), no del completo:
+  // "Ana María López Pérez" daba "AM" en vez de "AL". Se toma la primera y
+  // la última palabra para saltar partículas ("Ana De la Torre" → "AT").
+  const palabrasNombre = (nombreCorto || nombreCompleto).trim().split(/\s+/).filter(Boolean);
+  const iniciales = [palabrasNombre[0], palabrasNombre.length > 1 ? palabrasNombre[palabrasNombre.length - 1] : undefined]
+    .filter(Boolean)
+    .map((p) => p![0])
     .join("")
     .toUpperCase();
 
@@ -584,9 +588,9 @@ export default function AppShell({
             (no un <main> con overflow propio) para no romper los
             encabezados de tabla sticky que usan top-14/md:top-16. */}
         <aside className={`hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100dvh-4rem)] self-start ${menuColapsado ? "w-16" : "w-60"} transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 shrink-0`}>
-          <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
+          <ScrollSutil as="nav" className="flex-1 py-3 px-2 space-y-1">
             <ItemsMenu entradas={items} pathname={pathname} gruposAbiertos={gruposVisibles} onAlternarGrupo={alternarGrupo} contadores={contadores} colapsado={menuColapsado} />
-          </nav>
+          </ScrollSutil>
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0">
@@ -598,7 +602,7 @@ export default function AppShell({
         >
           <div className="absolute inset-0 bg-black/50" onClick={() => setMenuAbierto(false)} />
           <div
-            className={`absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 p-4 flex flex-col overflow-y-auto
+            className={`absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800/70 p-4 flex flex-col overflow-y-auto scroll-sutil
               transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none
               ${menuAbierto ? "translate-x-0" : "-translate-x-full"}
             `}
