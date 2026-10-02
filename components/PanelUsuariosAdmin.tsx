@@ -329,7 +329,7 @@ export default function PanelUsuariosAdmin({
         abierto={modalAbierto && !confirmandoResetPin}
         onCerrar={() => setModalAbierto(false)}
         onConfirmar={guardar}
-        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 shadow-2xl"
+        className="bg-white dark:bg-neutral-900 text-black dark:text-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-sm p-7 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl"
       >
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
               {editandoId ? "Editar usuario" : "Nuevo usuario"}
